@@ -1,0 +1,93 @@
+
+environment variables:
+export TARGET=~/opt/cross-compiler/bin/x86_64-elf
+export GRUB=~/opt/grub/bin/grub
+
+
+assembly file compilation
+$TARGET-as boot.s -o boot.o
+
+C file compilation
+$TARGET-gcc -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+
+link object files
+$TARGET-gcc -T linker.ld -o myos.bin -ffreestanding -O2 -nostdlib boot.o kernel.o -lgcc
+
+
+running OVMF in QEMU
+
+qemu-system-x86_64 -cpu qemu64 \
+-drive if=pflash,format=raw,unit=0,file=/home/john/development/edk2/Build/OvmfX64/DEBUG_GCC5/FV/OVMF_CODE.fd,readonly=on \
+-drive if=pflash,format=raw,unit=1,file=/home/john/development/edk2/Build/OvmfX64/DEBUG_GCC5/FV/OVMF_VARS.fd \
+-net none
+
+
+create 16MB UEFI img
+dd if=/dev/zero of=myfat.img bs=1k count=16384
+mformat -i myfat.img -t 32 -h 2 -s 1000 ::
+mmd -i myfat.img ::/EFI
+mmd -i myfat.img ::/EFI/BOOT
+mcopy -i myfat.img /path/to/BOOTX64.EFI ::/EFI/BOOT
+
+
+create CD iso
+mkdir iso
+cp myfat.img iso
+xorriso -as mkisofs -R -f -e myfat.img -no-emul-boot -o myos.iso iso
+
+
+boot CD iso
+qemu-system-x86_64 -L /OVMF/dir/ -bios OVMF.fd -cdrom myos.iso
+
+
+
+
+
+https://git.code.sf.net/p/gnu-efi/code gnu-efi
+
+
+#=================================#
+# GNU-EFI build process           #
+#=================================#
+
+echo TARGET=~/opt/cross-compiler-wrz/bin/x86_64-elf
+
+$TARGET-gcc -I../gnu-efi/inc -I../gnu-efi/inc/x86_64 -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c main.c -o main.o
+
+$TARGET-ld -shared -Bsymbolic -L../gnu-efi/x86_64/gnuefi -L../gnu-efi/x86_64/lib -T../gnu-efi/gnuefi/elf_x86_64_efi.lds crt0-efi-x86_64.o main.o -o main.so -lgnuefi -lefi
+
+objcopy -j .text -j .sdata -j .data -j .dynamic -j .dysym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 main.so main.efi
+
+
+
+
+#=================================#
+# System V ABI Calling Convention #
+#=================================#
+
+integer arguments:
+%rdi, %rsi, %rdx, %rcx, %r8 and %r9
+
+
+
+000000001ED2F418
+
+000000001ED2C000
+
+
+0000000080000000
+0000000080000000
+0000000020000000
+
+
+
+
+Image address: 000000001ED2F418
+ebp:           000000001FEA39D0
+esp:           000000001FEA3968
+
+
+Image address: 000000001ED2F418
+ebp:           000000001FEA39D0
+esp:           000000001FEA3968
+
