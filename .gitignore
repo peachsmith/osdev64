@@ -2,4 +2,6 @@
 *.iso
 *.img
 *.efi
+*.EFI
+*.so
 
