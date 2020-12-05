@@ -12,10 +12,7 @@
 .global k_lgdt
 .global k_lidt
 .global k_ltr
-.global cause_exception
-
-.global k_get_ebp
-.global k_get_esp
+.global k_cause_exception
 
 
 
@@ -181,31 +178,22 @@ k_lidt:
 
 
 # A procedure used to test exception handling with ISRs
-cause_exception:
+k_cause_exception:
   push %rbp
   mov %rsp, %rbp
 
   sub $0x10, %rsp
 
-  int $32
+  # int $32
 
   # divide error
-  # mov $0x0, %rdx
-  # mov $0x4, %rax
-  # div %rdx
+  mov $0x0, %rdx
+  mov $0x4, %rax
+  div %rdx
 
   # page fault (assumes only first 4GiB of RAM are identity mapped)
   # mov $0xFFFFFFFF00000000, %rax
   # mov (%rax), %rbx
 
   leaveq
-  retq
-
-
-k_get_ebp:
-  mov %rbp, %rax
-  retq
-
-k_get_esp:
-  mov %rsp, %rax
   retq
