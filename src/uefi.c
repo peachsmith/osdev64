@@ -1,5 +1,6 @@
 #include "core.h"
 
+
 // The UEFI application image
 EFI_HANDLE g_image;
 
@@ -8,6 +9,7 @@ EFI_SYSTEM_TABLE* g_systab;
 
 // memory map
 k_mem_map mem_map;
+
 
 
 // WCHAR string representations of UEFI memory types
@@ -101,13 +103,11 @@ static WCHAR* efi_mem_str(uint64_t t)
     return wc_EfiMaxMemoryType;
     break;
 
-
   default:
     return wc_EfiInvalid;
     break;
   }
 }
-
 
 /**
  * Prints the memory map
@@ -120,24 +120,18 @@ static void print_mmap()
     mem_map.map_size,
     mem_map.key,
     mem_map.desc_size,
-    mem_map.version
-  );
+    mem_map.version);
 
   EFI_MEMORY_DESCRIPTOR* d;
   void* start = (void*)(mem_map.buffer);
   void* end = start + mem_map.map_size;
 
-  for (;start < end; start += mem_map.desc_size)
+  for (; start < end; start += mem_map.desc_size)
   {
     d = (EFI_MEMORY_DESCRIPTOR*)start;
     Print(L" %-.20s %lX %ld \n", efi_mem_str(d->Type), d->PhysicalStart, d->NumberOfPages);
   }
 }
-
-
-
-
-
 
 
 void k_uefi_init(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
@@ -171,7 +165,6 @@ void k_uefi_get_mem_map()
 
   // UEFI status code
   EFI_STATUS res;
-
 
   // Allocate the initial buffer for the first attempt.
   res = uefi_call_wrapper(alloc_pool, 3, EfiLoaderData, map_size, (void**)&buffer);
@@ -239,6 +232,7 @@ void k_uefi_get_mem_map()
   }
 }
 
+
 int k_uefi_get_rsdp(unsigned char** rsdp)
 {
   UINTN ent = g_systab->NumberOfTableEntries;
@@ -284,4 +278,63 @@ int k_uefi_get_rsdp(unsigned char** rsdp)
 
   // Return 2 if we're using ACPI version >= 2, otherwise return 1.
   return have_acpi2 ? 2 : 1;
+}
+
+
+void k_uefi_get_graphics(k_graphics* graphics)
+{
+  EFI_GUID gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+  EFI_STATUS res;
+  EFI_LOCATE_PROTOCOL loc = g_systab->BootServices->LocateProtocol;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL* gop;
+  UINTN size;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* gomi;
+  UINT32 select = 0;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* mode;
+
+  // Get the UEFI graphics output protocol.
+  res = uefi_call_wrapper(loc, 3, &gop_guid, NULL, (void**)&gop);
+  if (res != EFI_SUCCESS)
+  {
+    Print(L"failed to get graphics protocol: %r\n", res);
+    return;
+  }
+
+  // Loop through all the available graphics modes.
+  // TODO: figure out how to switch modes after calling ExitBootServices.
+  for (UINTN i = 0; i < gop->Mode->MaxMode; i++)
+  {
+    res = uefi_call_wrapper(gop->QueryMode, 4, gop, i, &size, &gomi);
+
+    if (res != EFI_SUCCESS)
+    {
+      Print(L"failed to query graphics mode: %r\n", res);
+    }
+    else
+    {
+      // Select the graphics mode if it's 640 x 480 with BGR8 format
+      if (gomi->HorizontalResolution == 640
+        && gomi->VerticalResolution == 480
+        && gomi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor)
+      {
+        mode = gomi;
+        select = i;
+      }
+    }
+  }
+
+  // Attempt to set the graphics mode
+  res = uefi_call_wrapper(gop->SetMode, 2, gop, select);
+  if (res != EFI_SUCCESS)
+  {
+    Print(L"failed to set graphics mode: %r\n", res);
+    return;
+  }
+
+  graphics->format = mode->PixelFormat;
+  graphics->width = mode->HorizontalResolution;
+  graphics->height = mode->VerticalResolution;
+  graphics->pps = mode->PixelsPerScanLine;
+  graphics->base = gop->Mode->FrameBufferBase;
+  graphics->size = gop->Mode->FrameBufferSize;
 }

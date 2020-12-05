@@ -10,7 +10,7 @@ OVMF_DIR=/home/john/development/edk2/Build/OvmfX64/DEBUG_GCC5/FV
 
 CFLAGS=-fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args
 
-OBJECTS=$(GNUEFI_DIR)/x86_64/gnuefi/crt0-efi-x86_64.o main.o uefi.o acpi.o gdt.o idt.o isr.o exceptions.o serial.o instructor.o
+OBJECTS=$(GNUEFI_DIR)/x86_64/gnuefi/crt0-efi-x86_64.o main.o uefi.o acpi.o gdt.o idt.o isr.o exceptions.o serial.o instructor.o graphics.o
 
 all:
 	$(AS) --64 src/instructor.s -o instructor.o
@@ -21,6 +21,7 @@ all:
 	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/idt.c -o idt.o
 	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/uefi.c -o uefi.o
 	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/acpi.c -o acpi.o
+	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/graphics.c -o graphics.o
 	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/exceptions.c -o exceptions.o
 
 	$(LD) -shared -Bsymbolic -L$(GNUEFI_DIR)/x86_64/gnuefi -L$(GNUEFI_DIR)/x86_64/lib -T$(GNUEFI_DIR)/gnuefi/elf_x86_64_efi.lds $(OBJECTS) -o main.so -lgnuefi -lefi

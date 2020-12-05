@@ -17,6 +17,17 @@ typedef struct k_mem_map {
 }k_mem_map;
 
 
+// graphics information
+typedef struct k_graphics {
+  UINT32 width;
+  UINT32 height;
+  UINT32 pps; // pixels per scan line
+  EFI_GRAPHICS_PIXEL_FORMAT format;
+  UINTN size; // frame buffer size
+  uint64_t base; // frame buffer base address
+}k_graphics;
+
+
 /**
  * Initializes UEFI services.
  *
@@ -45,13 +56,23 @@ void k_uefi_get_mem_map();
  * Gets the RSDP provided by UEFI firmware.
  * The RSDP is returned as an unsigned integer representing the beginning
  * memory address of the RSDP structure.
- * 
+ *
  * Params:
- *   unsigned char** rsdp - 
+ *   unsigned char** rsdp -
  *
  * Returns:
  *   int - 1 if ACPI version < 2, 2 if ACPI version >= 2, or 0 on failure.
  */
 int k_uefi_get_rsdp(unsigned char**);
+
+/**
+ * Gets the information needed to render graphics to the screen.
+ * This is done using the graphics output protocol provided by the UEFI
+ * firmware.
+ *
+ * Params:
+ *   k_graphics* - a pointer to a structure to hold the graphics information.
+ */
+void k_uefi_get_graphics(k_graphics*);
 
 #endif
