@@ -75,4 +75,7 @@ int k_uefi_get_rsdp(unsigned char**);
  */
 void k_uefi_get_graphics(k_graphics*);
 
+
+void k_uefi_file_test();
+
 #endif

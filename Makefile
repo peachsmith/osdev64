@@ -35,6 +35,7 @@ all:
 	mmd -i myos.img ::/EFI
 	mmd -i myos.img ::/EFI/BOOT
 	mcopy -i myos.img BOOTX64.EFI ::/EFI/BOOT
+	mcopy -i myos.img jep.txt ::/
 
 	cp myos.img iso
 	xorriso -as mkisofs -R -f -e myos.img -no-emul-boot -o myos.iso iso

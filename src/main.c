@@ -74,7 +74,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_graphics_init();
 
   // Print out some ACPI information.
-  k_acpi_read();
+  // k_acpi_read();
+
+  k_uefi_file_test();
 
   // Get the memory map.
   k_uefi_get_mem_map();
