@@ -10,6 +10,8 @@ EFI_SYSTEM_TABLE* g_systab;
 // memory map
 k_mem_map mem_map;
 
+// PC screen font for rendering text
+unsigned char zap_font[4096];
 
 
 // WCHAR string representations of UEFI memory types
@@ -339,30 +341,23 @@ void k_uefi_get_graphics(k_graphics* graphics)
   graphics->size = gop->Mode->FrameBufferSize;
 }
 
+unsigned char* k_uefi_get_font()
+{
+  return zap_font;
+}
 
-void k_uefi_file_test()
+void k_uefi_load_font()
 {
   EFI_STATUS res;
-  EFI_GUID li_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
   EFI_GUID sfs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
-  EFI_LOADED_IMAGE_PROTOCOL* li;
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* sfs;
   EFI_LOCATE_PROTOCOL loc = g_systab->BootServices->LocateProtocol;
-  EFI_ALLOCATE_POOL uefi_alloc = g_systab->BootServices->AllocatePool;
-  EFI_FREE_POOL uefi_free = g_systab->BootServices->FreePool;
   EFI_FILE* root;
-  EFI_FILE* jep_txt;
-  UINTN bsize = 1024; // allocated buffer size
-  UINTN size = bsize; // input and output size value
+  EFI_FILE* zap_file; // the font file
+  UINTN size;
   char* buffer;
 
-  res = uefi_call_wrapper(loc, 3, &li_guid, NULL, (void**)&li);
-  if (res != EFI_SUCCESS)
-  {
-    Print(L"failed to locate loaded image protocol: %r\n", res);
-    return;
-  }
-
+  // Get the simple file system protocol to give us access to files.
   res = uefi_call_wrapper(loc, 3, &sfs_guid, NULL, (void**)&sfs);
   if (res != EFI_SUCCESS)
   {
@@ -370,6 +365,7 @@ void k_uefi_file_test()
     return;
   }
 
+  // Open the root volume.
   res = uefi_call_wrapper(sfs->OpenVolume, 2, sfs, (void**)&root);
   if (res != EFI_SUCCESS)
   {
@@ -377,48 +373,37 @@ void k_uefi_file_test()
     return;
   }
 
-  res = uefi_call_wrapper(root->Open, 5, root, (void**)&jep_txt, L"jep.txt", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY);
+  // Open the font file.
+  res = uefi_call_wrapper(root->Open, 5, root, (void**)&zap_file, L"zap-vga16.psf", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to open jep.txt: %r\n", res);
+    Print(L"failed to open zap-vga16.psf: %r\n", res);
     return;
   }
 
-  Print(L"opened jep.txt\n");
-
-  res = uefi_call_wrapper(uefi_alloc, 3, EfiLoaderData, size, (void**)&buffer);
+  // Read the PSF1 header.
+  size = 4;
+  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)zap_font);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to allocate buffer for reading jep.txt: %r\n", res);
+    Print(L"failed to read header from zap-vga16.psf: %r\n", res);
     return;
   }
 
-  res = uefi_call_wrapper(jep_txt->Read, 3, jep_txt, &size, (void*)buffer);
+  // Read the glyph data.
+  size = 4096;
+  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)zap_font);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to read from jep.txt: %r\n", res);
+    Print(L"failed to read glyph data from zap-vga16.psf: %r\n", res);
     return;
   }
 
-  Print(L"read %d bytes from jep.txt\n", size);
-  for (int i = 0; i < size;i++)
-  {
-    Print(L"%c", buffer[i]);
-  }
-  Print(L"\n");
-
-  res = uefi_call_wrapper(uefi_free, 1, (void*)buffer);
+  // Close the font file.
+  res = uefi_call_wrapper(zap_file->Close, 1, zap_file);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to free buffer for reading jep.txt: %r\n", res);
+    Print(L"failed to close zap-vga16.psf: %r\n", res);
     return;
   }
-
-  res = uefi_call_wrapper(jep_txt->Close, 1, jep_txt);
-  if (res != EFI_SUCCESS)
-  {
-    Print(L"failed to close jep.txt: %r\n", res);
-    return;
-  }
-
 }

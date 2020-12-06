@@ -75,7 +75,17 @@ int k_uefi_get_rsdp(unsigned char**);
  */
 void k_uefi_get_graphics(k_graphics*);
 
+/**
+ * Loads a bitmap font into memory.
+ * We currently use the zap-vga16 font from
+ * https://www.zap.org.au/projects/console-fonts-zap
+ */
+void k_uefi_load_font();
 
-void k_uefi_file_test();
+/**
+ * Gets a pointer to the bitmap font.
+ * k_uefi_load_font must be called before this function.
+ */
+unsigned char* k_uefi_get_font();
 
 #endif

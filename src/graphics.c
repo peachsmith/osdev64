@@ -158,3 +158,61 @@ void k_draw_line(int64_t x1, int64_t y1, int64_t x2, int64_t y2,
   }
 
 }
+
+
+void k_text_init()
+{
+  k_uefi_load_font();
+}
+
+uint64_t text_x = 0; // multiple of 8
+uint64_t text_y = 0; // multiple of 16
+
+static void draw_glyph(unsigned char* g)
+{
+  for (int i = 0; i < 16; i++)
+  {
+    for (int j = 0; j < 8; j++)
+    {
+      if ((g[i] >> (7 - j)) & 1)
+      {
+        k_put_pixel(text_x + j, text_y + i, 200, 200, 200);
+      }
+    }
+  }
+
+  if (text_x < 640)
+  {
+    text_x += 8;
+  }
+  else
+  {
+    text_x = 0;
+    if (text_y < 384)
+    {
+      text_y += 16;
+    }
+
+  }
+}
+
+
+// TODO: implement more text output functionality.
+void k_draw_string(char* str)
+{
+  unsigned char* font = k_uefi_get_font();
+
+  while (*str != '\0')
+  {
+    draw_glyph(&(font[*str * 16]));
+    str++;
+  }
+}
+
+
+void k_text_test()
+{
+  unsigned char* font = k_uefi_get_font();
+
+  k_draw_string("Hello, World!");
+}

@@ -38,4 +38,14 @@ void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b);
 void k_draw_line(int64_t x1, int64_t y1, int64_t x2, int64_t y2,
   uint8_t r, uint8_t g, uint8_t b);
 
+/**
+ * Initializes some form of text output.
+ */
+void k_text_init();
+
+/**
+ * Temporary function to test text output.
+ */
+void k_text_test();
+
 #endif
