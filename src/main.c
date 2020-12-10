@@ -73,6 +73,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Initialize graphics
   k_graphics_init();
 
+  // Attempt to draw some geometric primitives.
+  k_geo_test();
+
   // Print out some ACPI information.
   // k_acpi_read();
 
@@ -97,7 +100,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_serial_com1_puts("UEFI boot services have been terminated.\n");
 
   // Draw some lines.
-  k_do_graphics();
+  // k_do_graphics();
 
   // Disable interrupts.
   k_disable_interrupts();
