@@ -35,8 +35,11 @@ void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b);
  *   int8_t - the gren component of the color
  *   int8_t - the blue component of the color
  */
-void k_draw_line(int64_t x1, int64_t y1, int64_t x2, int64_t y2,
-  uint8_t r, uint8_t g, uint8_t b);
+void k_draw_line(
+  int64_t x1, int64_t y1,
+  int64_t x2, int64_t y2,
+  uint8_t r, uint8_t g, uint8_t b
+);
 
 
 /**

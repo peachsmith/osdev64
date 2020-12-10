@@ -97,87 +97,78 @@ void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b)
   *base = color;
 }
 
-void k_draw_line(int64_t x1, int64_t y1, int64_t x2, int64_t y2,
-  uint8_t r, uint8_t g, uint8_t b)
+void k_draw_line(
+  int64_t x1, int64_t y1,
+  int64_t x2, int64_t y2,
+  uint8_t r, uint8_t g, uint8_t b
+)
 {
+  // This function is based on the implementation of Bresenham's line
+  // drawing algorithm found on the Xbox hobbyist site xbdev.net.
+  // https://xbdev.net/non_xdk/openxdk/drawline/index.php
 
-  int64_t x = x1;
-  int64_t y = y1;
 
+  // The net change in x and y from point 1 to point 2.
   int64_t dx = x2 - x1;
   int64_t dy = y2 - y1;
 
-  int64_t adx = dx >= 0 ? dx : -dx;
-  int64_t ady = dy >= 0 ? dy : -dy;
-  int64_t limit = ady;
-  int64_t n = 0;
+  // Counter variables to keep track of how many points we've plotted.
+  int64_t y_count = 0;
+  int64_t x_count = 0;
 
-  int64_t p = 2 * dy - dx;
+  // The amount by which the x and y values are incremented.
+  // If the net change from point 1 to point is negative,
+  // then this increment value will be -1, otherwise it will
+  // be 1.
+  int64_t x_inc = (dx < 0) ? -1 : 1;
+  int64_t y_inc = (dy < 0) ? -1 : 1;
 
-  // If the x coordinate doesn't change, draw a vertical line.
-  if (dx == 0)
+  // The limiting factor of the x and y coordinate is
+  // the absolute value of the net change from point 1
+  // to point 2. This is the minimum number of points
+  // that need to be plotted to draw the complete line.
+  dx = x_inc * dx + 1;
+  dy = y_inc * dy + 1;
+
+  // The x and y coordinates of each point along the line.
+  int64_t px = x1;
+  int64_t py = y1;
+
+  // If the change in x is greater than or equal to the change in y,
+  // then we increment or decrement the x cooridnate on every iteration,
+  // otherwise we increment the y coordinate.
+  if (dx >= dy)
   {
-    if (y < y2)
+    for (x_count = 0; x_count < dx; x_count++)
     {
-      while (y < y2)
+      k_put_pixel(px, py, r, g, b);
+
+      y_count += dy;
+      px += x_inc;
+
+      if (y_count >= dx)
       {
-        k_put_pixel(x, y, r, g, b);
-        y++;
-      }
-    }
-    else
-    {
-      while (y > y2)
-      {
-        k_put_pixel(x, y, r, g, b);
-        y--;
-      }
-    }
-
-    return;
-  }
-
-  int64_t c = dy / dx;
-
-  // If the absolute value of the change in y is greater than the absolute
-  // value of the change in x, then we use y as our limiter.
-  if (c <= 1 && ady <= adx)
-  {
-    limit = adx;
-  }
-
-  while (n++ < limit)
-  {
-    k_put_pixel(x, y, r, g, b);
-
-    if (limit == adx)
-    {
-      x += (dx > 0 ? 1 : -1);
-
-      p += (2 * ady);
-
-      if (p >= 0 && c != 0)
-      {
-        p -= (2 * adx);
-
-        y += (dy > 0 ? 1 : -1);
-      }
-    }
-    else
-    {
-      y += (dy > 0 ? 1 : -1);
-
-      p += (2 * adx);
-
-      if (p >= 0 && c != 0)
-      {
-        p -= (2 * ady);
-
-        x += (dx > 0 ? 1 : -1);
+        y_count -= dx;
+        py += y_inc;
       }
     }
   }
+  else
+  {
+    for (y_count = 0; y_count < dy; y_count++)
+    {
+      k_put_pixel(px, py, r, g, b);
 
+      x_count += dx;
+      py += y_inc;
+
+      if (x_count >= dy)
+      {
+        x_count -= dy;
+        px += x_inc;
+      }
+    }
+  }
 }
 
 
@@ -383,12 +374,11 @@ void fill_tri(
       {
         k_put_pixel(j, i, 80, 250, 120);
       }
-      else
+      else if (i & 1)
       {
-        k_put_pixel(j, i, 220, 50, 100);
+        k_put_pixel(j, i, 200, 50, 80);
       }
     }
-    // k_draw_line(xb0, i, xb1, i, 200, 50, 180); // line 1
   }
 
   // draw the outline of the traingle
@@ -415,6 +405,18 @@ void k_geo_test()
     150, 150,
     175, 200,
     125, 200
+  );
+
+  fill_tri(
+    400, 220,
+    420, 300,
+    470, 100
+  );
+
+  fill_tri(
+    300, 400,
+    280, 380,
+    290, 370
   );
 }
 
