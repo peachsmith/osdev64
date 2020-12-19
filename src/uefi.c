@@ -11,7 +11,7 @@ EFI_SYSTEM_TABLE* g_systab;
 k_mem_map mem_map;
 
 // PC screen font for rendering text
-unsigned char zap_font[4096];
+unsigned char g_zap_font[4096];
 
 
 // WCHAR string representations of UEFI memory types
@@ -33,8 +33,13 @@ static WCHAR* wc_EfiPersistentMemory = L"Persistent";
 static WCHAR* wc_EfiMaxMemoryType = L"Max Memory Type";
 static WCHAR* wc_EfiInvalid = L"Invalid";
 
-// Gets the WCHAR string representation of an EFI memory type
-// suitable for printing with GNU-EFI's Print function.
+/**
+ * Gets the wide char string representation of an EFI memory type
+ * suitable for printing with GNU-EFI's Print function.
+ * 
+ * Params:
+ *   uint64_t - a UEFI memory descriptor type
+ */
 static WCHAR* efi_mem_str(uint64_t t)
 {
   switch (t)
@@ -142,6 +147,8 @@ void k_uefi_init(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   g_image = image;
   g_systab = systab;
+
+  Print(L"\n");
 }
 
 
@@ -341,12 +348,7 @@ void k_uefi_get_graphics(k_graphics* graphics)
   graphics->size = gop->Mode->FrameBufferSize;
 }
 
-unsigned char* k_uefi_get_font()
-{
-  return zap_font;
-}
-
-void k_uefi_load_font()
+unsigned char* k_uefi_load_font()
 {
   EFI_STATUS res;
   EFI_GUID sfs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
@@ -362,7 +364,7 @@ void k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to locate simple file system protocol: %r\n", res);
-    return;
+    return NULL;
   }
 
   // Open the root volume.
@@ -370,7 +372,7 @@ void k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to open root volume: %r\n", res);
-    return;
+    return NULL;
   }
 
   // Open the font file.
@@ -378,25 +380,25 @@ void k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to open zap-vga16.psf: %r\n", res);
-    return;
+    return NULL;
   }
 
   // Read the PSF1 header.
   size = 4;
-  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)zap_font);
+  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_zap_font);
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to read header from zap-vga16.psf: %r\n", res);
-    return;
+    return NULL;
   }
 
   // Read the glyph data.
   size = 4096;
-  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)zap_font);
+  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_zap_font);
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to read glyph data from zap-vga16.psf: %r\n", res);
-    return;
+    return NULL;
   }
 
   // Close the font file.
@@ -404,6 +406,8 @@ void k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to close zap-vga16.psf: %r\n", res);
-    return;
+    return NULL;
   }
+
+  return g_zap_font;
 }

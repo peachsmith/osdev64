@@ -4,57 +4,15 @@
 #include "descriptor.h"
 #include "acpi.h"
 #include "graphics.h"
+#include "console.h"
 
 
 void k_disable_interrupts();
 void k_enable_interrupts();
 
+
 // attempts to do something that results in an exception
 void k_cause_exception();
-
-
-/**
- * Used for debugging graphics stuff.
- *
- * Params:
- *   EFI_GRAPHICS_OUTPUT_PROTOCOL* - pointer to UEFI graphics protocol
- */
-void k_do_graphics()
-{
-
-  // slope == 0
-  k_draw_line(300, 200, 400, 200, 50, 230, 100); // green
-
-  // slope < 1
-  k_draw_line(300, 210, 400, 211, 255, 80, 80); // red
-  k_draw_line(300, 220, 400, 227, 255, 80, 80); // red
-  k_draw_line(300, 230, 400, 250, 255, 80, 80); // red
-
-  // slope == 1
-  k_draw_line(300, 250, 400, 350, 240, 220, 80); // yellow
-
-  // slope > 1
-  k_draw_line(300, 280, 400, 381, 200, 100, 200); // magenta
-  k_draw_line(300, 290, 400, 397, 200, 100, 200); // magenta
-  k_draw_line(300, 300, 400, 420, 200, 100, 200); // magenta
-
-  // vertical line
-  k_draw_line(300, 320, 300, 460, 50, 150, 240); // blue
-
-  // slope < 0
-  k_draw_line(300, 180, 400, 150, 10, 180, 180); // teal
-
-
-  k_draw_line(300, 170, 200, 140, 255, 120, 20); // orange
-  k_draw_line(300, 160, 200, 60, 150, 0, 150);  // purple
-  k_draw_line(300, 150, 200, 20, 120, 100, 0);  // brown
-
-  k_draw_line(280, 270, 180, 300, 255, 120, 20); // orange
-  k_draw_line(280, 260, 180, 360, 150, 0, 150);  // purple
-  k_draw_line(280, 250, 180, 370, 120, 100, 0);  // brown
-}
-
-
 
 
 /**
@@ -73,15 +31,40 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Initialize graphics
   k_graphics_init();
 
-  // Attempt to draw some geometric primitives.
-  k_geo_test();
-
   // Print out some ACPI information.
   // k_acpi_read();
 
-  k_text_init();
+  k_console_init();
 
-  k_text_test();
+  // console text output
+  k_console_puts("Hello, World!\n");
+  k_console_puts("This is some text output.\n");
+
+  // geometric primitives
+  k_draw_rect(
+    50, 50,
+    50, 50,
+    200, 120, 50);
+
+  k_fill_rect(
+    103, 50,
+    50, 50,
+    200, 120, 50
+  );
+
+  k_draw_triangle(
+    100, 153,
+    50, 153,
+    75, 103,
+    50, 120, 200
+  );
+
+  k_fill_triangle(
+    153, 153,
+    103, 153,
+    128, 103,
+    50, 120, 200
+  );
 
   // Get the memory map.
   k_uefi_get_mem_map();

@@ -79,13 +79,13 @@ void k_uefi_get_graphics(k_graphics*);
  * Loads a bitmap font into memory.
  * We currently use the zap-vga16 font from
  * https://www.zap.org.au/projects/console-fonts-zap
+ * 
+ * This font supports 256 characters, where each character is 16 bytes.
+ * So the total font data loaded into memory by this function is 4096 bytes.
+ * 
+ * Returns:
+ *   unsigned char* - a pointer to the font data
  */
-void k_uefi_load_font();
-
-/**
- * Gets a pointer to the bitmap font.
- * k_uefi_load_font must be called before this function.
- */
-unsigned char* k_uefi_get_font();
+unsigned char* k_uefi_load_font();
 
 #endif

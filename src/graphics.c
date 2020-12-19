@@ -12,27 +12,45 @@
   | ((uint32_t)b << 16))
 
 
+// determines the minimum of three numbers
+#define min3(n1, n2, n3) (         \
+    (n1 <= n2 && n1 <= n3) ? n1    \
+    : (n2 <= n1 && n2 <= n3 ? n2   \
+      : (n3 <= n1 && n3 <= n2 ? n3 \
+        : n1))                     \
+    )
+
+// determines the maximum of three numbers
+#define max3(n1, n2, n3) (         \
+    (n1 >= n2 && n1 >= n3) ? n1    \
+    : (n2 >= n1 && n2 >= n3 ? n2   \
+      : (n3 >= n1 && n3 >= n2 ? n3 \
+        : n1))                     \
+    )
+
+
 // The main graphics information
 k_graphics g_graphics;
 
 
-
-
-#define BGR8_RED (BGR_PIXEL(220, 20, 50))
-#define BGR8_ORANGE (BGR_PIXEL(220, 180, 50))
-#define BGR8_YELLOW (BGR_PIXEL(220, 220, 50))
-#define BGR8_GREEN (BGR_PIXEL(20, 220, 50))
-#define BGR8_BLUE (BGR_PIXEL(50, 20, 220))
-#define BGR8_PURPLE (BGR_PIXEL(220, 20, 220))
-
-
-
+// string representations of UEFI pixel formats
 static WCHAR* wc_PixelRedGreenBlueReserved8BitPerColor = L"RGB 8";
 static WCHAR* wc_PixelBlueGreenRedReserved8BitPerColor = L"BGR 8";
 static WCHAR* wc_PixelBitMask = L"bit mask";
 static WCHAR* wc_PixelBltOnly = L"BLT";
 static WCHAR* wc_PixelInvalid = L"Invalid";
 
+/**
+ * Gets the string representation of a UEFI pixel format.
+ * The returned string is a wide char string suitable for
+ * printing with UEFI's console output interface.
+ *
+ * Params:
+ *   EFI_GRAPHICS_PIXEL_FORMAT - a UEFI pixel format
+ *
+ * Returns:
+ *   WCHAR* - a wide char string with the name of the pixel format
+ */
 static inline WCHAR* get_pixel_format_str(EFI_GRAPHICS_PIXEL_FORMAT fmt)
 {
   switch (fmt)
@@ -52,6 +70,53 @@ static inline WCHAR* get_pixel_format_str(EFI_GRAPHICS_PIXEL_FORMAT fmt)
   default:
     return wc_PixelInvalid;
   }
+}
+
+
+/**
+ * This function takes the coordinates of three vertices, A, B, and C,
+ * and determines if the given point P lies with the area enclosed
+ * by those three vertices.
+ * This implementation expects that Bx < Cx < Ax.
+ * TODO: accommodate this limitation in the k_fill_triangle function.
+ *
+ * Params:
+ *   int64_t - the x coordinate of the first vertex
+ *   int64_t - the y coordinate of the first vertex
+ *   int64_t - the x coordinate of the second vertex
+ *   int64_t - the y coordinate of the second vertex
+ *   int64_t - the x coordinate of the third vertex
+ *   int64_t - the y coordinate of the third vertex
+ *   int64_t - the x coordinate of the point in question
+ *   int64_t - the y coordinate of the point in question
+ */
+static int point_in_triangle(
+  int64_t ax, int64_t ay,
+  int64_t bx, int64_t by,
+  int64_t cx, int64_t cy,
+  int64_t px, int64_t py
+)
+{
+  float w1;
+  float w2;
+  float w;
+
+  int64_t cay = cy - ay;
+  int64_t cax = cx - ax;
+  int64_t bay = by - ay;
+  int64_t bax = bx - ax;
+  int64_t pay = py - ay;
+
+  int64_t w1_num = (ax * cay) + (pay * cax) - (px * cay);
+  int64_t w1_den = (bay * cax) - (bax * cay);
+
+  w1 = w1_den != 0 ? (w1_num / (float)w1_den) : (float)w1_num;
+
+  int64_t w2_num = py - ay - (w1 * bay);
+
+  w2 = cay != 0 ? (w2_num / (float)cay) : (float)w2_num;
+
+  return w1 >= 0 && w2 >= 0 && w1 + w2 <= 1;
 }
 
 
@@ -96,6 +161,7 @@ void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b)
   // Write the pixel to the framebuffer.
   *base = color;
 }
+
 
 void k_draw_line(
   int64_t x1, int64_t y1,
@@ -172,188 +238,68 @@ void k_draw_line(
 }
 
 
-void k_text_init()
-{
-  k_uefi_load_font();
-}
-
-uint64_t text_x = 0; // multiple of 8
-uint64_t text_y = 0; // multiple of 16
-
-static void draw_glyph(unsigned char* g)
-{
-  for (int i = 0; i < 16; i++)
-  {
-    for (int j = 0; j < 8; j++)
-    {
-      if ((g[i] >> (7 - j)) & 1)
-      {
-        k_put_pixel(text_x + j, text_y + i, 200, 200, 200);
-      }
-    }
-  }
-
-  if (text_x < 640)
-  {
-    text_x += 8;
-  }
-  else
-  {
-    text_x = 0;
-    if (text_y < 384)
-    {
-      text_y += 16;
-    }
-
-  }
-}
-
-
-// TODO: implement more text output functionality.
-void k_draw_string(char* str)
-{
-  unsigned char* font = k_uefi_get_font();
-
-  while (*str != '\0')
-  {
-    draw_glyph(&(font[*str * 16]));
-    str++;
-  }
-}
-
-
-void k_text_test()
-{
-  unsigned char* font = k_uefi_get_font();
-
-  k_draw_string("Hello, World!");
-}
-
-
-
-// draws a rectanlge
-void draw_rect(
-  int64_t x,
-  int64_t y,
-  int64_t w,
-  int64_t h
+void k_draw_rect(
+  int64_t x, int64_t y,
+  int64_t w, int64_t h,
+  uint8_t r, uint8_t g, uint8_t b
 )
 {
-  int64_t x0 = x;
-  int64_t y0 = y;
-  int64_t x1 = x + w;
-  int64_t y1 = y + h;
+  int64_t x1 = x;
+  int64_t y1 = y;
+  int64_t x2 = x + w;
+  int64_t y2 = y + h;
 
-  // The goal is to draw a rectangle by drawing lines that connect
-  // the following points like so:
-  //
-  //     (x0, y0)      line 1      (x1, y0)
-  //        +-------------------------+
-  //        |                         |
-  // line 4 |                         | line 2
-  //        |                         |
-  //        +-------------------------+
-  //     (x0, y1)      line 3      (x1, y1)
-
-  k_draw_line(x0, y0, x1, y0, 80, 120, 250); // line 1
-  k_draw_line(x1, y0, x1, y1, 80, 120, 250); // line 2
-  k_draw_line(x1, y1, x0, y1, 80, 120, 250); // line 3
-  k_draw_line(x0, y1, x0, y0, 80, 120, 250); // line 4
+  k_draw_line(x1, y1, x2, y1, r, g, b); // line 1
+  k_draw_line(x2, y1, x2, y2, r, g, b); // line 2
+  k_draw_line(x2, y2, x1, y2, r, g, b); // line 3
+  k_draw_line(x1, y2, x1, y1, r, g, b); // line 4
 }
 
-// draws a filled rectanlge
-void fill_rect(
-  int64_t x,
-  int64_t y,
-  int64_t w,
-  int64_t h
+
+void k_fill_rect(
+  int64_t x, int64_t y,
+  int64_t w, int64_t h,
+  uint8_t r, uint8_t g, uint8_t b
 )
 {
-  int64_t x0 = x;
-  int64_t y0 = y;
-  int64_t x1 = x + w;
-  int64_t y1 = y + h;
+  int64_t x1 = x;
+  int64_t y1 = y;
+  int64_t x2 = x + w;
+  int64_t y2 = y + h;
 
-  draw_rect(x, y, w, h);
+  k_draw_rect(x, y, w, h, r, g, b);
 
-  for (int64_t i = y0 + 1; i < y1; i++)
+  for (int64_t i = y1 + 1; i < y2; i++)
   {
-    k_draw_line(x0, i, x1, i, 80, 120, 250); // line 1
+    k_draw_line(x1, i, x2, i, r, g, b);
   }
 }
 
-// draws a triangle
-void draw_tri(
+
+void k_draw_triangle(
   int64_t x1,
   int64_t y1,
   int64_t x2,
   int64_t y2,
   int64_t x3,
-  int64_t y3
+  int64_t y3,
+  uint8_t r, uint8_t g, uint8_t b
 )
 {
-  k_draw_line(x1, y1, x2, y2, 80, 250, 120); // line 1
-  k_draw_line(x2, y2, x3, y3, 80, 250, 120); // line 2
-  k_draw_line(x3, y3, x1, y1, 80, 250, 120); // line 3
+  k_draw_line(x1, y1, x2, y2, r, g, b); // line 1
+  k_draw_line(x2, y2, x3, y3, r, g, b); // line 2
+  k_draw_line(x3, y3, x1, y1, r, g, b); // line 3
 }
 
 
-
-// determines the minimum of three numbers
-#define min3(n1, n2, n3) (         \
-    (n1 <= n2 && n1 <= n3) ? n1    \
-    : (n2 <= n1 && n2 <= n3 ? n2   \
-      : (n3 <= n1 && n3 <= n2 ? n3 \
-        : n1))                     \
-    )
-
-// determines the maximum of three numbers
-#define max3(n1, n2, n3) (         \
-    (n1 >= n2 && n1 >= n3) ? n1    \
-    : (n2 >= n1 && n2 >= n3 ? n2   \
-      : (n3 >= n1 && n3 >= n2 ? n3 \
-        : n1))                     \
-    )
-
-
-// determines if a point is in a triangle
-int is_in_tri(
-  int64_t ax, int64_t ay,
-  int64_t bx, int64_t by,
-  int64_t cx, int64_t cy,
-  int64_t px, int64_t py
-)
-{
-  float w1;
-  float w2;
-  float w;
-
-  int64_t cay = cy - ay;
-  int64_t cax = cx - ax;
-  int64_t bay = by - ay;
-  int64_t bax = bx - ax;
-  int64_t pay = py - ay;
-
-  int64_t w1_num = (ax * cay) + (pay * cax) - (px * cay);
-  int64_t w1_den = (bay * cax) - (bax * cay);
-
-  w1 = w1_den != 0 ? (w1_num / (float)w1_den) : (float)w1_num;
-
-  int64_t w2_num = py - ay - (w1 * bay);
-
-  w2 = cay != 0 ? (w2_num / (float)cay) : (float)w2_num;
-
-  return w1 >= 0 && w2 >= 0 && w1 + w2 <= 1;
-}
-
-// draws a filled triangle
-void fill_tri(
+void k_fill_triangle(
   int64_t x1,
   int64_t y1,
   int64_t x2,
   int64_t y2,
   int64_t x3,
-  int64_t y3
+  int64_t y3,
+  uint8_t r, uint8_t g, uint8_t b
 )
 {
   // First, determine the bounding box
@@ -362,61 +308,20 @@ void fill_tri(
   int64_t xb1 = max3(x1, x2, x3);
   int64_t yb1 = max3(y1, y2, y3);
 
-  // Draw the bounding box
-  draw_rect(xb0, yb0, xb1 - xb0, yb1 - yb0);
-
   // Scan lines
   for (int64_t i = yb0 + 1; i < yb1; i++)
   {
     for (int64_t j = xb0 + 1; j < xb1; j++)
     {
-      if (is_in_tri(x1, y1, x2, y2, x3, y3, j, i))
+      if (point_in_triangle(x1, y1, x2, y2, x3, y3, j, i))
       {
-        k_put_pixel(j, i, 80, 250, 120);
-      }
-      else if (i & 1)
-      {
-        k_put_pixel(j, i, 200, 50, 80);
+        k_put_pixel(j, i, r, g, b);
       }
     }
   }
 
   // draw the outline of the traingle
-  k_draw_line(x1, y1, x2, y2, 80, 250, 120); // line 1
-  k_draw_line(x2, y2, x3, y3, 80, 250, 120); // line 2
-  k_draw_line(x3, y3, x1, y1, 80, 250, 120); // line 3
+  k_draw_line(x1, y1, x2, y2, r, g, b); // line 1
+  k_draw_line(x2, y2, x3, y3, r, g, b); // line 2
+  k_draw_line(x3, y3, x1, y1, r, g, b); // line 3
 }
-
-
-// geometric primitive test
-void k_geo_test()
-{
-  draw_rect(50, 50, 50, 50);
-
-  fill_rect(50, 150, 50, 50);
-
-  draw_tri(
-    150, 50,
-    175, 100,
-    125, 100
-  );
-
-  fill_tri(
-    150, 150,
-    175, 200,
-    125, 200
-  );
-
-  fill_tri(
-    400, 220,
-    420, 300,
-    470, 100
-  );
-
-  fill_tri(
-    300, 400,
-    280, 380,
-    290, 370
-  );
-}
-
