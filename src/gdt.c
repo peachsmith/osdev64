@@ -1,6 +1,6 @@
-#include "descriptor.h"
+#include "osdev64/uefi.h"
+#include "osdev64/descriptor.h"
 
-#include "core.h"
 
 // the number of entries in the GDT
 #define GDT_COUNT 5

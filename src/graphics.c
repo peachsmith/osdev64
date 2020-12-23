@@ -1,4 +1,4 @@
-#include "core.h"
+#include "osdev64/uefi.h"
 
 
 // combines three bytes into a 32-bit number representing a BGR pixel

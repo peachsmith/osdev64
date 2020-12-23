@@ -58,7 +58,9 @@ $TARGET-ld -shared -Bsymbolic -L../gnu-efi/x86_64/gnuefi -L../gnu-efi/x86_64/lib
 
 objcopy -j .text -j .sdata -j .data -j .dynamic -j .dysym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 main.so main.efi
 
-
+NOTE: libefi.a contains some libc functions like memcpy
+If we implement these ourselves, we'll need to remove the symbols from libefi.a using objcopy like so:
+objcopy -N memcpy libefi.a
 
 
 #=================================#
@@ -67,27 +69,4 @@ objcopy -j .text -j .sdata -j .data -j .dynamic -j .dysym -j .rel -j .rela -j .r
 
 integer arguments:
 %rdi, %rsi, %rdx, %rcx, %r8 and %r9
-
-
-
-000000001ED2F418
-
-000000001ED2C000
-
-
-0000000080000000
-0000000080000000
-0000000020000000
-
-
-
-
-Image address: 000000001ED2F418
-ebp:           000000001FEA39D0
-esp:           000000001FEA3968
-
-
-Image address: 000000001ED2F418
-ebp:           000000001FEA39D0
-esp:           000000001FEA3968
 

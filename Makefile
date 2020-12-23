@@ -1,16 +1,44 @@
 
-CC=/home/john/opt/cross-compiler-wrz/bin/x86_64-elf-gcc
-AS=/home/john/opt/cross-compiler-wrz/bin/x86_64-elf-as
-LD=/home/john/opt/cross-compiler-wrz/bin/x86_64-elf-ld
+# cross compiler built without red zone
+CC_DIR=/home/john/opt/cross-compiler-wrz/bin
+
+# repos built from source
+REPOS=/home/john/development
+
+# build tools
+CC=$(CC_DIR)/x86_64-elf-gcc
+AS=$(CC_DIR)/x86_64-elf-as
+LD=$(CC_DIR)/x86_64-elf-ld
 OBJCOPY=objcopy
 
-GNUEFI_DIR=/home/john/development/gnu-efi
+# GNU-EFI utilities
+GNUEFI_DIR=$(REPOS)/gnu-efi
 
-OVMF_DIR=/home/john/development/edk2/Build/OvmfX64/DEBUG_GCC5/FV
+# OVMF firmware used by QEMU
+OVMF_DIR=$(REPOS)/edk2/Build/OvmfX64/DEBUG_GCC5/FV
 
+# C compilation flags
 CFLAGS=-fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args
 
-OBJECTS=$(GNUEFI_DIR)/x86_64/gnuefi/crt0-efi-x86_64.o main.o uefi.o acpi.o gdt.o idt.o isr.o exceptions.o serial.o instructor.o graphics.o console.o klibc.o
+# C additional include directories
+CINCLUDES=-I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude
+
+# object files generated during build
+OBJECTS=\
+$(GNUEFI_DIR)/x86_64/gnuefi/crt0-efi-x86_64.o \
+instructor.o \
+main.o \
+uefi.o \
+graphics.o \
+serial.o \
+console.o \
+memory.o \
+acpi.o \
+gdt.o \
+idt.o \
+isr.o \
+exceptions.o \
+klibc.o
 
 
 all: myos.iso
@@ -34,22 +62,23 @@ myos.iso: myos.efi
 
 myos.efi: klibc.o
 	$(AS) --64 src/instructor.s -o instructor.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/main.c -o main.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/uefi.c -o uefi.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/graphics.c -o graphics.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/serial.c -o serial.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/console.c -o console.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/memory.c -o memory.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/acpi.c -o acpi.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/gdt.c -o gdt.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/idt.c -o idt.o
 	$(AS) --64 src/isr.s -o isr.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/main.c -o main.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/serial.c -o serial.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/gdt.c -o gdt.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/idt.c -o idt.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/uefi.c -o uefi.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/acpi.c -o acpi.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/graphics.c -o graphics.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/console.c -o console.o
-	$(CC) -I$(GNUEFI_DIR)/inc -I$(GNUEFI_DIR)/inc/x86_64 -Iinclude $(CFLAGS) -c src/exceptions.c -o exceptions.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/exceptions.c -o exceptions.o
 
 	$(LD) -shared -Bsymbolic -L$(GNUEFI_DIR)/x86_64/gnuefi -L$(GNUEFI_DIR)/x86_64/lib -T$(GNUEFI_DIR)/gnuefi/elf_x86_64_efi.lds $(OBJECTS) -o main.so -lgnuefi -lefi
 
 
 klibc.o:
-	$(CC) -Iklibc -Iinclude $(CFLAGS) -c klibc/src/klibc.c -o klibc.o
+	$(CC) -Iklibc -Iinclude $(CFLAGS) -c src/klibc/klibc.c -o klibc.o
 
 
 # starts the VM and boots the kernel

@@ -1,4 +1,4 @@
-#include "core.h"
+#include "osdev64/uefi.h"
 
 
 void k_acpi_read()

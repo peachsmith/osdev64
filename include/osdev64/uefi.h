@@ -1,5 +1,5 @@
-#ifndef JEP_CORE_H
-#define JEP_CORE_H
+#ifndef JEP_UEFI_H
+#define JEP_UEFI_H
 
 #include <stdint.h>
 
@@ -7,7 +7,7 @@
 #include <efilib.h>
 
 
-// The memory map
+// memory map
 typedef struct k_mem_map {
   UINTN map_size;
   EFI_MEMORY_DESCRIPTOR* buffer;
@@ -40,11 +40,8 @@ void k_uefi_init(EFI_HANDLE, EFI_SYSTEM_TABLE*);
 /**
  * Terminates the boot services provided by UEFI.
  * This must be done before setting up a GDT, IDT, etc.
- * 
- * Returns:
- *   int - 1 on success, 0 on failure.
  */
-int k_uefi_exit();
+void k_uefi_exit();
 
 /**
  * Gets the memory map.
@@ -79,10 +76,10 @@ void k_uefi_get_graphics(k_graphics*);
  * Loads a bitmap font into memory.
  * We currently use the zap-vga16 font from
  * https://www.zap.org.au/projects/console-fonts-zap
- * 
+ *
  * This font supports 256 characters, where each character is 16 bytes.
  * So the total font data loaded into memory by this function is 4096 bytes.
- * 
+ *
  * Returns:
  *   unsigned char* - a pointer to the font data
  */

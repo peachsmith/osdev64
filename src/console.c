@@ -1,6 +1,6 @@
-#include "core.h"
-#include "console.h"
-#include "graphics.h"
+#include "osdev64/uefi.h"
+#include "osdev64/console.h"
+#include "osdev64/graphics.h"
 
 
 // console dimensions in pixels

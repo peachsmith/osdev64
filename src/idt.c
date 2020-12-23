@@ -1,4 +1,4 @@
-#include "descriptor.h"
+#include "osdev64/descriptor.h"
 
 // The IDT contains interrupt gate descriptors.
 // Each descriptor locates an ISR and specifies the offset of the segment

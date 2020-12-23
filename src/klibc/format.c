@@ -8,8 +8,8 @@
 
 ;
 
-#include "include/stdio.h"
-#include "include/string.h"
+#include "klibc/stdio.h"
+#include "klibc/string.h"
 
 #include <stdint.h>
 #include <stddef.h>

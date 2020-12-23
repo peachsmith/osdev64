@@ -1,23 +1,23 @@
 #ifndef JEP_STRING_C
 #define JEP_STRING_C
 
-#include "include/string.h"
+#include "klibc/string.h"
 
-// GNU-EFI apparently implements this
-// TODO: figure out how to get around using GNU-EFI's libc functions
-// void* memcpy(void* dest, const void* src, size_t n)
-// {
-//   size_t i;
-//   char* d = (char*)dest;
-//   const char* s = (char*)src;
 
-//   for (i = 0; i < n; i++)
-//   {
-//     d[i] = s[i];
-//   }
+void* memcpy(void* dest, const void* src, size_t n)
+{
+  size_t i;
+  char* d = (char*)dest;
+  const char* s = (char*)src;
 
-//   return dest;
-// }
+  for (i = 0; i < n; i++)
+  {
+    d[i] = s[i];
+  }
+
+  return dest;
+}
+
 
 void* memmove(void* dest, const void* src, size_t n)
 {
@@ -46,6 +46,7 @@ void* memmove(void* dest, const void* src, size_t n)
 
   return dest;
 }
+
 
 size_t strlen(const char* str)
 {

@@ -1,7 +1,7 @@
 // This file contains functions for handling exceptions.
 // These functions are called from ISRs.
 
-#include "../klibc/include/stdio.h"
+#include "klibc/stdio.h"
 
 /**
  * Handles a divide error, which triggers interrupt 0.

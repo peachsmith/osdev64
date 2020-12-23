@@ -1,7 +1,7 @@
 #ifndef JEP_PUTS_C
 #define JEP_PUTS_C
 
-#include "include/stdio.h"
+#include "klibc/stdio.h"
 
 int puts(const char* str)
 {

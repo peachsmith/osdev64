@@ -1,12 +1,12 @@
-#include "core.h"
+#include "osdev64/uefi.h"
+#include "osdev64/graphics.h"
+#include "osdev64/serial.h"
+#include "osdev64/console.h"
+#include "osdev64/memory.h"
+#include "osdev64/descriptor.h"
+#include "osdev64/acpi.h"
 
-#include "serial.h"
-#include "descriptor.h"
-#include "acpi.h"
-#include "graphics.h"
-#include "console.h"
-
-#include "../klibc/include/stdio.h"
+#include "klibc/stdio.h"
 
 
 void k_disable_interrupts();
@@ -25,14 +25,26 @@ EFIAPI
 efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 {
   //==============================
-  // BEGIN UEFI boot services
+  // BEGIN Stage 1 initialization
 
-  // Initialize UEFI services.
+  // Initialize UEFI boot services.
   k_uefi_init(image, systab);
 
+  k_graphics_init();          // graphical output
+  k_serial_com1_init();       // serial output
+  k_console_init();           // text output
+  k_memory_init();            // memory management
+  // TODO: ACPI
 
-  // Initialize graphics
-  k_graphics_init();
+  // Terminate UEFI boot services.
+  k_uefi_exit();
+
+  // END Stage 1 initialization
+  //==============================
+
+
+  //==============================
+  // BEGIN demo code
 
   // draw an outline of a rectangle
   k_draw_rect(
@@ -65,16 +77,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   );
 
 
-  // Initialize serial output on COM1
-  k_serial_com1_init();
-
-  // Initialize console output.
-  k_console_init();
-
   // Write a "Hello, World" message to the console and to serial output.
   fputs("console output with fputs\n", stdout);
   fputs("serial output with fputs\n", stddbg);
 
+  // Write some formatted standard output.
   char my_char = 'J';
   char* my_str = "bagel";
   uint64_t my_long_hex = 0xDEAD0000BEEF0000;
@@ -87,28 +94,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   printf("multiple arguments: %c, %s, %llX, %d, %o\n", my_char, my_str, my_long_hex, my_n, my_o);
   printf("pointer: %p\n", &my_char);
 
-
-  // Print out some ACPI information.
-  // k_acpi_read();
-
-  // Get the memory map.
-  k_uefi_get_mem_map();
-
-  // Terminate the boot services.
-  int exited_uefi = k_uefi_exit();
-  if (!exited_uefi)
-  {
-    fprintf(stddbg, "failed to exit UEFI boot services\n");
-    fprintf(stderr, "failed to exit UEFI boot services\n");
-  }
-  else
-  {
-    fprintf(stddbg, "UEFI boot services have been terminated.\n");
-  }
-  
-  // END UEFI boot services
+  // END demo code
   //==============================
 
+
+  //==============================
+  // BEGIN Stage 2 initialization
 
   // Disable interrupts.
   k_disable_interrupts();
@@ -121,6 +112,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // Enable interrupts.
   k_enable_interrupts();
+
+  // END Stage 2 initialization
+  //==============================
+
 
   // Test an exception handler.
   // k_cause_exception();
