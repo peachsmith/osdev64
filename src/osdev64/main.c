@@ -77,11 +77,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   );
 
 
-  // Write a "Hello, World" message to the console and to serial output.
+  // Write some text to standard output and debug output.
   fputs("console output with fputs\n", stdout);
   fputs("serial output with fputs\n", stddbg);
 
-  // Write some formatted standard output.
+  // Write some formatted text to standard output.
   char my_char = 'J';
   char* my_str = "bagel";
   uint64_t my_long_hex = 0xDEAD0000BEEF0000;
@@ -93,6 +93,32 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   printf("long hex: %llX\n", my_long_hex);
   printf("multiple arguments: %c, %s, %llX, %d, %o\n", my_char, my_str, my_long_hex, my_n, my_o);
   printf("pointer: %p\n", &my_char);
+
+  // Print the RAM pool.
+  k_memory_print_pool();
+
+  // Allocate three separate regions of memory where
+  // each region is one page.
+  char* my_ram = (char*)k_memory_alloc_pages(1);
+  char* my_ram2 = (char*)k_memory_alloc_pages(1);
+  char* my_ram3 = (char*)k_memory_alloc_pages(1);
+  char* my_ram4 = NULL;
+  k_memory_print_ledger();
+
+  // Free the second region of memory.
+  fprintf(stddbg, "freeing my_ram2\n");
+  k_memory_free_pages((void*)my_ram2);
+  k_memory_print_ledger();
+
+  // Allocate three pages for the second memory region.
+  fprintf(stddbg, "reserving 3 pages\n");
+  my_ram2 = (char*)k_memory_alloc_pages(3);
+  k_memory_print_ledger();
+
+  // Allocate one more page. 
+  fprintf(stddbg, "reserving 1 page\n");
+  my_ram4 = (char*)k_memory_alloc_pages(1);
+  k_memory_print_ledger();
 
   // END demo code
   //==============================
