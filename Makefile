@@ -61,18 +61,18 @@ myos.iso: myos.efi
 
 
 myos.efi: klibc.o
-	$(AS) --64 src/instructor.s -o instructor.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/main.c -o main.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/uefi.c -o uefi.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/graphics.c -o graphics.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/serial.c -o serial.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/console.c -o console.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/memory.c -o memory.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/acpi.c -o acpi.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/gdt.c -o gdt.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/idt.c -o idt.o
-	$(AS) --64 src/isr.s -o isr.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/exceptions.c -o exceptions.o
+	$(AS) --64 src/osdev64/instructor.s -o instructor.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/main.c -o main.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/uefi.c -o uefi.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/graphics.c -o graphics.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/serial.c -o serial.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/console.c -o console.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/memory.c -o memory.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/acpi.c -o acpi.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/gdt.c -o gdt.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/idt.c -o idt.o
+	$(AS) --64 src/osdev64/isr.s -o isr.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/exceptions.c -o exceptions.o
 
 	$(LD) -shared -Bsymbolic -L$(GNUEFI_DIR)/x86_64/gnuefi -L$(GNUEFI_DIR)/x86_64/lib -T$(GNUEFI_DIR)/gnuefi/elf_x86_64_efi.lds $(OBJECTS) -o main.so -lgnuefi -lefi
 
