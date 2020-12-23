@@ -1,5 +1,6 @@
 #include "core.h"
 
+#include "../klibc/include/stdio.h"
 
 // The UEFI application image
 EFI_HANDLE g_image;
@@ -33,14 +34,33 @@ static WCHAR* wc_EfiPersistentMemory = L"Persistent";
 static WCHAR* wc_EfiMaxMemoryType = L"Max Memory Type";
 static WCHAR* wc_EfiInvalid = L"Invalid";
 
+// char string representations of UEFI memory types
+static char* c_EfiReservedMemoryType = "Reserved";
+static char* c_EfiLoaderCode = "Loader Code";
+static char* c_EfiLoaderData = "Loader Data";
+static char* c_EfiBootServicesCode = "Boot Service Code";
+static char* c_EfiBootServicesData = "Boot Service Data";
+static char* c_EfiRuntimeServicesCode = "Runtime Code";
+static char* c_EfiRuntimeServicesData = "Runtime Data";
+static char* c_EfiConventionalMemory = "Conventional";
+static char* c_EfiUnusableMemory = "Unusable";
+static char* c_EfiACPIReclaimMemory = "ACPI Reclaim";
+static char* c_EfiACPIMemoryNVS = "ACPI NVS";
+static char* c_EfiMemoryMappedIO = "MMIO";
+static char* c_EfiMemoryMappedIOPortSpace = "MMIO Port";
+static char* c_EfiPalCode = "Pal Code";
+static char* c_EfiPersistentMemory = "Persistent";
+static char* c_EfiMaxMemoryType = "Max Memory Type";
+static char* c_EfiInvalid = "Invalid";
+
 /**
  * Gets the wide char string representation of an EFI memory type
  * suitable for printing with GNU-EFI's Print function.
- * 
+ *
  * Params:
  *   uint64_t - a UEFI memory descriptor type
  */
-static WCHAR* efi_mem_str(uint64_t t)
+static WCHAR* efi_mem_wstr(uint64_t t)
 {
   switch (t)
   {
@@ -117,13 +137,96 @@ static WCHAR* efi_mem_str(uint64_t t)
 }
 
 /**
+ * Gets the string representation of an EFI memory type.
+ *
+ * Params:
+ *   uint64_t - a UEFI memory descriptor type
+ */
+static char* efi_mem_str(uint64_t t)
+{
+  switch (t)
+  {
+  case EfiReservedMemoryType:
+    return c_EfiReservedMemoryType;
+    break;
+
+  case EfiLoaderCode:
+    return c_EfiLoaderCode;
+    break;
+
+  case EfiLoaderData:
+    return c_EfiLoaderData;
+    break;
+
+  case EfiBootServicesCode:
+    return c_EfiBootServicesCode;
+    break;
+
+  case EfiBootServicesData:
+    return c_EfiBootServicesData;
+    break;
+
+  case EfiRuntimeServicesCode:
+    return c_EfiRuntimeServicesCode;
+    break;
+
+  case EfiRuntimeServicesData:
+    return c_EfiRuntimeServicesData;
+    break;
+
+  case EfiConventionalMemory:
+    return c_EfiConventionalMemory;
+    break;
+
+  case EfiUnusableMemory:
+    return c_EfiUnusableMemory;
+    break;
+
+  case EfiACPIReclaimMemory:
+    return c_EfiACPIReclaimMemory;
+    break;
+
+  case EfiACPIMemoryNVS:
+    return c_EfiACPIMemoryNVS;
+    break;
+
+  case EfiMemoryMappedIO:
+    return c_EfiMemoryMappedIO;
+    break;
+
+  case EfiMemoryMappedIOPortSpace:
+    return c_EfiMemoryMappedIOPortSpace;
+    break;
+
+  case EfiPalCode:
+    return c_EfiPalCode;
+    break;
+
+    // NOTE: EfiPersistentMemory is a memory type in the current
+    // version of the UEFI spec, but not in this version of GNU-EFI.
+    // case EfiPersistentMemory:
+    // return c_EfiPersistentMemory;
+    // break;
+
+  case EfiMaxMemoryType:
+    return c_EfiMaxMemoryType;
+    break;
+
+  default:
+    return c_EfiInvalid;
+    break;
+  }
+}
+
+
+/**
  * Prints the memory map
  * After calling this function, the memory map must be obtained
  * again before exiting the boot services.
  */
 static void print_mmap()
 {
-  Print(L"map size: %lu, key: %lu, descriptor size: %lu, descriptor version: %lu\n",
+  fprintf(stddbg, "map size: %lu, key: %lu, descriptor size: %lu, descriptor version: %lu\n",
     mem_map.map_size,
     mem_map.key,
     mem_map.desc_size,
@@ -136,7 +239,7 @@ static void print_mmap()
   for (; start < end; start += mem_map.desc_size)
   {
     d = (EFI_MEMORY_DESCRIPTOR*)start;
-    Print(L" %-.20s %lX %ld \n", efi_mem_str(d->Type), d->PhysicalStart, d->NumberOfPages);
+    fprintf(stddbg, " %-20s %p %ld \n", efi_mem_str(d->Type), d->PhysicalStart, d->NumberOfPages);
   }
 }
 
@@ -152,9 +255,16 @@ void k_uefi_init(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 }
 
 
-void k_uefi_exit()
+int k_uefi_exit()
 {
-  uefi_call_wrapper(g_systab->BootServices->ExitBootServices, 2, g_image, mem_map.key);
+  EFI_STATUS res = uefi_call_wrapper(g_systab->BootServices->ExitBootServices, 2, g_image, mem_map.key);
+  if (res != EFI_SUCCESS)
+  {
+    Print(L"failed to exit UEFI boot services: %r\n", res);
+    return 0;
+  }
+
+  return 1;
 }
 
 
@@ -238,6 +348,8 @@ void k_uefi_get_mem_map()
     mem_map.key = key;
     mem_map.desc_size = desc_size;
     mem_map.version = version;
+
+    print_mmap();
   }
 }
 
@@ -299,7 +411,7 @@ void k_uefi_get_graphics(k_graphics* graphics)
   UINTN size;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* gomi;
   UINT32 select = 0;
-  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* mode;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* mode = NULL;
 
   // Get the UEFI graphics output protocol.
   res = uefi_call_wrapper(loc, 3, &gop_guid, NULL, (void**)&gop);
@@ -321,10 +433,18 @@ void k_uefi_get_graphics(k_graphics* graphics)
     }
     else
     {
-      // Select the graphics mode if it's 640 x 480 with BGR8 format
-      if (gomi->HorizontalResolution == 640
-        && gomi->VerticalResolution == 480
-        && gomi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor)
+      // The graphics mode must have a horizontal resolution
+      // of at least 640 pixels, and a vertical resolution
+      // of at least 480 pixels.
+      // The pixel mode must be either BGR or RGB.
+      if (
+        gomi->HorizontalResolution >= 640
+        && gomi->VerticalResolution >= 480
+        && (gomi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor
+          || gomi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor
+          )
+        && mode == NULL
+        )
       {
         mode = gomi;
         select = i;

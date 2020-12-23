@@ -25,12 +25,7 @@ void k_serial_com1_init()
   k_outb(COM1 + 4, 0x0B); // IRQs enabled, RTS/DSR set
 }
 
-/**
- * Writes a character to a serial port.
- *
- * Params:
- *   c - a char to be written
- */
+
 void k_serial_com1_putc(char c)
 {
   while (is_transmit_empty(COM1) == 0);
@@ -38,13 +33,8 @@ void k_serial_com1_putc(char c)
   k_outb(COM1, (uint8_t)c);
 }
 
-/**
- * Writes a string of characters to a serial port.
- *
- * Params:
- *   s - a pointer to a string of char data to be written
- */
-void k_serial_com1_puts(char* s)
+
+void k_serial_com1_puts(const char* s)
 {
   while (*s != '\0')
   {

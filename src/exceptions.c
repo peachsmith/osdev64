@@ -1,15 +1,15 @@
 // This file contains functions for handling exceptions.
 // These functions are called from ISRs.
 
-#include "core.h"
-#include "serial.h"
+#include "../klibc/include/stdio.h"
 
 /**
  * Handles a divide error, which triggers interrupt 0.
  */
 void div0_handler()
 {
-  k_serial_com1_puts("divide error\n");
+  fprintf(stddbg, "divide error\n");
+  fprintf(stderr, "divide error\n");
   for (;;);
 }
 
@@ -18,7 +18,8 @@ void div0_handler()
  */
 void gp_fault_handler()
 {
-  k_serial_com1_puts("general protection fault\n");
+  fprintf(stddbg, "general protection fault\n");
+  fprintf(stderr, "general protection fault\n");
   for (;;);
 }
 
@@ -27,7 +28,8 @@ void gp_fault_handler()
  */
 void page_fault_handler()
 {
-  k_serial_com1_puts("page fault\n");
+  fprintf(stddbg, "page fault\n");
+  fprintf(stderr, "page fault\n");
   for (;;);
 }
 
@@ -36,11 +38,12 @@ void page_fault_handler()
  */
 void generic_handler()
 {
-  k_serial_com1_puts("generic fault\n");
+  fprintf(stddbg, "generic fault\n");
+  fprintf(stderr, "generic fault\n");
   for (;;);
 }
 
 void my_irq()
 {
-  k_serial_com1_puts("Hello from an IRQ handler!\n");
+  printf("Hello from an IRQ handler!\n");
 }

@@ -40,11 +40,11 @@ void k_uefi_init(EFI_HANDLE, EFI_SYSTEM_TABLE*);
 /**
  * Terminates the boot services provided by UEFI.
  * This must be done before setting up a GDT, IDT, etc.
- *
- * Params:
- *   EFI_SYSTEM_TABLE* - the UEFI system table
+ * 
+ * Returns:
+ *   int - 1 on success, 0 on failure.
  */
-void k_uefi_exit();
+int k_uefi_exit();
 
 /**
  * Gets the memory map.

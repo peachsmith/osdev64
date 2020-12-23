@@ -70,7 +70,6 @@ void k_console_putc(char c)
   // Limit the number of lines.
   if (text_y >= CON_HEIGHT)
   {
-    Print(L"character limit reached\n");
     return;
   }
 
