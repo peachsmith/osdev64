@@ -17,21 +17,21 @@
  *
  * Each segment descriptor has the following structure:
  * ---------------------------------------------------------------------------
- * bits      purpose
+ * bits    purpose
  * ---------------------------------------------------------------------------
- * 0 - 15    segment limit (16 bits)
- * 16 - 31   base address (16 bits)
- * 32 - 39   base address (8 bits)
- * 40 - 43   type field (contains type-specific configuration)
- * 44        type flag (0 for system, 1 for code/data)
- * 45 - 46   descriptor privilege level (DPL)
- * 47        presence flag
- * 48 - 51   segment limit (4 bits)
- * 52        available for use by software
- * 53        64-bit code segment flag (0 for compatability mode, 1 for 64-bit)
- * 54        default operation size (must be 0 when L is 1 in 64-bit mode)
- * 55        granularity (i.e. scaling) (0 for bytes, 1 for 4KB)
- * 56 - 63   base address (8 bits)
+ * [15:0]  segment limit (16 bits)
+ * [31:16] base address (16 bits)
+ * [39:32] base address (8 bits)
+ * [43:40] type field (contains type-specific configuration)
+ * 44      type flag (0 for system, 1 for code/data)
+ * [46:45] descriptor privilege level (DPL)
+ * 47      presence flag
+ * [51:48] segment limit (4 bits)
+ * 52      available for use by software
+ * 53      64-bit code segment flag (0 for compatability mode, 1 for 64-bit)
+ * 54      default operation size (must be 0 when L is 1 in 64-bit mode)
+ * 55      granularity (i.e. scaling) (0 for bytes, 1 for 4KB)
+ * [63:56] base address (8 bits)
  * ---------------------------------------------------------------------------
  */
 typedef uint64_t seg_desc;
@@ -48,19 +48,19 @@ typedef uint64_t seg_desc;
  *
  * Each interrupt gate descriptor has the following structure:
  * ---------------------------------------------------------------------------
- * bits      purpose
+ * bits     purpose
  * ---------------------------------------------------------------------------
- * 0 - 15    address offset of interrupt handler (lower 16 bits)
- * 16 - 31   segment selector offset (16 bits)
- * 32 - 34   IST number (1-7 to use IST, or 0 to not use IST)
- * 35 - 39   0
- * 40 - 43   type configuration
- * 44        0
- * 45 - 46   descriptor privilege level (DPL)
- * 47        presence flag
- * 48 - 63   address offset of interrupt handler (middle 16 bits)
- * 64 - 95   address offset of interrupt handler (higher 32 bits)
- * 96 - 127  reserved
+ * [15:0]   address offset of interrupt handler (lower 16 bits)
+ * [31:16]  segment selector offset (16 bits)
+ * [34:32]  IST number (1-7 to use IST, or 0 to not use IST)
+ * [39:35]  0
+ * [43:40]  type configuration
+ * 44       0
+ * [46:45]  descriptor privilege level (DPL)
+ * 47       presence flag
+ * [63:48]  address offset of interrupt handler (middle 16 bits)
+ * [95:64]  address offset of interrupt handler (higher 32 bits)
+ * [127:96] reserved
  * ---------------------------------------------------------------------------
  */
 typedef uint64_t int_desc;
