@@ -1,20 +1,14 @@
+#include "osdev64/instructor.h"
 #include "osdev64/uefi.h"
 #include "osdev64/graphics.h"
 #include "osdev64/serial.h"
 #include "osdev64/console.h"
 #include "osdev64/memory.h"
+#include "osdev64/paging.h"
 #include "osdev64/descriptor.h"
 #include "osdev64/acpi.h"
 
 #include "klibc/stdio.h"
-
-
-void k_disable_interrupts();
-void k_enable_interrupts();
-
-
-// attempts to do something that results in an exception
-void k_cause_exception();
 
 
 /**
@@ -81,44 +75,44 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   fputs("console output with fputs\n", stdout);
   fputs("serial output with fputs\n", stddbg);
 
-  // Write some formatted text to standard output.
-  char my_char = 'J';
-  char* my_str = "bagel";
-  uint64_t my_long_hex = 0xDEAD0000BEEF0000;
-  int my_n = -17;
-  int my_o = 8;
+  // // Write some formatted text to standard output.
+  // char my_char = 'J';
+  // char* my_str = "bagel";
+  // uint64_t my_long_hex = 0xDEAD0000BEEF0000;
+  // int my_n = -17;
+  // int my_o = 8;
 
-  printf("character: %c\n", my_char);
-  printf("string: %s\n", my_str);
-  printf("long hex: %llX\n", my_long_hex);
-  printf("multiple arguments: %c, %s, %llX, %d, %o\n", my_char, my_str, my_long_hex, my_n, my_o);
-  printf("pointer: %p\n", &my_char);
+  // printf("character: %c\n", my_char);
+  // printf("string: %s\n", my_str);
+  // printf("long hex: %llX\n", my_long_hex);
+  // printf("multiple arguments: %c, %s, %llX, %d, %o\n", my_char, my_str, my_long_hex, my_n, my_o);
+  // printf("pointer: %p\n", &my_char);
 
-  // Print the RAM pool.
-  k_memory_print_pool();
+  // // Print the physical RAM pool.
+  // k_memory_print_pool();
 
-  // Allocate three separate regions of memory where
-  // each region is one page.
-  char* my_ram = (char*)k_memory_alloc_pages(1);
-  char* my_ram2 = (char*)k_memory_alloc_pages(1);
-  char* my_ram3 = (char*)k_memory_alloc_pages(1);
-  char* my_ram4 = NULL;
-  k_memory_print_ledger();
+  // // Allocate three separate regions of memory where
+  // // each region is one page.
+  // char* my_ram = (char*)k_memory_alloc_pages(1);
+  // char* my_ram2 = (char*)k_memory_alloc_pages(1);
+  // char* my_ram3 = (char*)k_memory_alloc_pages(1);
+  // char* my_ram4 = NULL;
+  // k_memory_print_ledger();
 
-  // Free the second region of memory.
-  fprintf(stddbg, "freeing my_ram2\n");
-  k_memory_free_pages((void*)my_ram2);
-  k_memory_print_ledger();
+  // // Free the second region of memory.
+  // fprintf(stddbg, "freeing my_ram2\n");
+  // k_memory_free_pages((void*)my_ram2);
+  // k_memory_print_ledger();
 
-  // Allocate three pages for the second memory region.
-  fprintf(stddbg, "reserving 3 pages\n");
-  my_ram2 = (char*)k_memory_alloc_pages(3);
-  k_memory_print_ledger();
+  // // Allocate three pages for the second memory region.
+  // fprintf(stddbg, "reserving 3 pages\n");
+  // my_ram2 = (char*)k_memory_alloc_pages(3);
+  // k_memory_print_ledger();
 
-  // Allocate one more page. 
-  fprintf(stddbg, "reserving 1 page\n");
-  my_ram4 = (char*)k_memory_alloc_pages(1);
-  k_memory_print_ledger();
+  // // Allocate one more page. 
+  // fprintf(stddbg, "reserving 1 page\n");
+  // my_ram4 = (char*)k_memory_alloc_pages(1);
+  // k_memory_print_ledger();
 
   // END demo code
   //==============================
@@ -130,11 +124,70 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Disable interrupts.
   k_disable_interrupts();
 
+
+  // Read the control registers and RFLAGS
+  uint64_t cr0 = k_get_cr0();
+  uint64_t cr4 = k_get_cr4();
+  uint64_t rflags = k_get_rflags();
+  uint64_t cr_mask = 1;
+
+  // CR0 bits
+  // PE - protected mode enabled
+  // EM - x87 floating point emulation
+  // PG - paging enabled
+  printf("CR0.PE: %c\n", (cr0 & CR0_PE) ? 'Y' : 'N');
+  printf("CR0.EM: %c\n", (cr0 & CR0_EM) ? 'Y' : 'N');
+  printf("CR0.PG: %c\n", (cr0 & CR0_PG) ? 'Y' : 'N');
+
+  // CR4 bits
+  // PAE - physical address extension
+  // PCIDE - process context identifiers enabled
+  // PKE - protection key enabled
+  printf("CR4.PAE: %c\n", (cr4 & CR4_PAE) ? 'Y' : 'N');
+  printf("CR4.PCIDE: %c\n", (cr4 & CR4_PCIDE) ? 'Y' : 'N');
+  printf("CR4.SMEP: %c\n", (cr4 & CR4_SMEP) ? 'Y' : 'N');
+  printf("CR4.SMAP: %c\n", (cr4 & CR4_SMAP) ? 'Y' : 'N');
+  printf("CR4.PKE: %c\n", (cr4 & CR4_PKE) ? 'Y' : 'N');
+
+  // Clear CR4.PCIDE if it's set.
+  // I don't want to mess around with
+  if (cr4 & CR4_PCIDE)
+  {
+    cr4 &= ~CR4_PCIDE;
+    k_set_cr4(cr4);
+  }
+
+  // Clear CR4.PKE if it's set.
+  // I can't be bothered to deal with protection keys in
+  // my paging structures.
+  if (cr4 & CR4_PKE)
+  {
+    cr4 &= ~CR4_PKE;
+    k_set_cr4(cr4);
+  }
+
+  // RFLAGS bits
+  // Set bit 21 of RFLAGS to confirm that CPUID is available
+  if (!(rflags & RFLAGS_CPUID))
+  {
+    rflags |= RFLAGS_CPUID;
+    k_set_rflags(rflags);
+
+    rflags = k_get_rflags();
+  }
+  printf("CPUID: %c\n", (rflags & RFLAGS_CPUID) ? 'Y' : 'N');
+
+  
+
   // Load the GDT.
   k_load_gdt();
 
   // Load the IDT.
   k_load_idt();
+
+  // Replace UEFI's paging with our own.
+  // k_paging_init();
+
 
   // Enable interrupts.
   k_enable_interrupts();
@@ -146,7 +199,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Test an exception handler.
   // k_cause_exception();
 
-  fprintf(stddbg, "Initialization complete.\n");
+  fprintf(stddbg, "\n\nInitialization complete.\n");
 
   // The main loop.
   for (;;);

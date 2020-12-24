@@ -6,35 +6,40 @@
 // memory map obtained from the firmware
 extern k_mem_map g_mem_map;
 
-// a chunk of physical RAM
-typedef struct mem_entry {
+
+/**
+ * A single entry in the physical RAM pool
+ */
+typedef struct pool_entry {
   uint64_t address; // physical address
   uint64_t pages;   // number of pages
-}mem_entry;
+}pool_entry;
 
-#define MAX_MEM_ENTRIES 32
-
-// number of regions in the RAM pool
-int g_pool_count = 0;
-
-// RAM pool
-mem_entry g_ram_pool[MAX_MEM_ENTRIES];
-
-// Page Reservation
-// This is used to represent a single contiguous series of pages.
-typedef struct page_res {
+/**
+ * A single entry in the page reservation ledger.
+ */
+typedef struct ledger_entry {
   int i; // index of available memory region array
   uint64_t address;
   uint64_t pages;
   unsigned char avail; // availability flag
-}page_res;
+}ledger_entry;
 
-#define MAX_PAGE_RES 1000
 
-// Page Reservation Ledger
-// This is a 32 KiB region of memory used to keep track of which regions of
-// memory have been reserved.
-page_res* g_page_ledger;
+// maximum number of pool entries
+#define RAM_POOL_MAX 32
+
+// maximum number of ledger entries
+#define PAGE_LEDGER_MAX 1000
+
+// number of regions in the RAM pool
+int g_pool_count = 0;
+
+// physical RAM pool
+pool_entry g_ram_pool[RAM_POOL_MAX];
+
+// page reservation ledger
+ledger_entry* g_page_ledger;
 
 
 // char string representations of UEFI memory types
@@ -159,7 +164,7 @@ static void print_mmap()
   for (; start < end; start += g_mem_map.desc_size)
   {
     d = (EFI_MEMORY_DESCRIPTOR*)start;
-    if (d->Type == EfiConventionalMemory && g_pool_count < MAX_MEM_ENTRIES)
+    if (d->Type == EfiConventionalMemory && g_pool_count < RAM_POOL_MAX)
     {
       fprintf(stddbg, "%-20s %p %ld \n", efi_mem_str(d->Type), d->PhysicalStart, d->NumberOfPages);
     }
@@ -169,7 +174,7 @@ static void print_mmap()
 
 void k_memory_init()
 {
-  page_res root_res;        // root page reservation
+  ledger_entry root;        // root page reservation
   EFI_MEMORY_DESCRIPTOR* d; // UEFI memory descriptor
   void* start;              // base address of memory map
   void* end;                // end of memory map
@@ -187,8 +192,8 @@ void k_memory_init()
     d = (EFI_MEMORY_DESCRIPTOR*)start;
 
     // The memory type should be EfiConventionalMemory and
-    // we should have less than MAX_MEM_ENTRIES regions collected.
-    if (d->Type == EfiConventionalMemory && g_pool_count < MAX_MEM_ENTRIES)
+    // we should have less than RAM_POOL_MAX regions collected.
+    if (d->Type == EfiConventionalMemory && g_pool_count < RAM_POOL_MAX)
     {
       g_ram_pool[g_pool_count].address = (uint64_t)(d->PhysicalStart);
       g_ram_pool[g_pool_count++].pages = (uint64_t)(d->NumberOfPages);
@@ -203,19 +208,19 @@ void k_memory_init()
     if (g_ram_pool[i].pages >= 8)
     {
       // Populate the root memory reservation.
-      root_res.i = i;
-      root_res.address = g_ram_pool[i].address;
-      root_res.pages = 8;
-      root_res.avail = 0;
+      root.i = i;
+      root.address = g_ram_pool[i].address;
+      root.pages = 8;
+      root.avail = 0;
 
       // Set the base address of the reservation array.
-      g_page_ledger = (page_res*)(root_res.address);
+      g_page_ledger = (ledger_entry*)(root.address);
 
       // Put the root memory reservation in the reservation array.
-      g_page_ledger[0] = root_res;
+      g_page_ledger[0] = root;
 
       // Mark all of the entries as available.
-      for (int j = 1; j < MAX_PAGE_RES; j++)
+      for (int j = 1; j < PAGE_LEDGER_MAX; j++)
       {
         g_page_ledger[j].avail = 1;
       }
@@ -234,16 +239,14 @@ void* k_memory_alloc_pages(size_t n)
     // the requested number of pages.
     if (g_ram_pool[i].pages >= n)
     {
-
-      // offset from base address of current memory region in the
-      // available regions array
-      uint64_t offset = 0;
+      // number of addresses in the pool entry.
+      uint64_t p_size = g_ram_pool[i].pages * 0x1000;
 
       // start and end addresses of requested memory region
       uint64_t req_start = g_ram_pool[i].address;
       uint64_t req_end = req_start + (n * 0x1000) - 1;
 
-      for (int j = 0; j < MAX_PAGE_RES; j++)
+      for (int j = 0; j < PAGE_LEDGER_MAX; j++)
       {
         if (g_page_ledger[j].i == i && !g_page_ledger[j].avail)
         {
@@ -265,10 +268,10 @@ void* k_memory_alloc_pages(size_t n)
         }
       }
 
-      if (g_ram_pool[i].pages - offset >= n)
+      if (req_end <= g_ram_pool[i].address + p_size - 1)
       {
         // Create a new page reservation.
-        page_res res;
+        ledger_entry res;
         res.i = i;
         res.avail = 0;
         res.address = req_start;
@@ -276,7 +279,7 @@ void* k_memory_alloc_pages(size_t n)
 
         // Put the new page reservation in the ledger,
         // and return the base address of the reservation.
-        for (int j = 0; j < MAX_PAGE_RES; j++)
+        for (int j = 0; j < PAGE_LEDGER_MAX; j++)
         {
           if (g_page_ledger[j].avail)
           {
@@ -296,7 +299,7 @@ void k_memory_free_pages(void* addr)
 {
   uint64_t a = (uint64_t)addr;
 
-  for (int i = 1; i < MAX_PAGE_RES; i++)
+  for (int i = 1; i < PAGE_LEDGER_MAX; i++)
   {
     // Find the first entry in the page reservation ledger
     // that matches the address and mark it as available.
@@ -339,7 +342,7 @@ void k_memory_print_pool()
 
 void k_memory_print_ledger()
 {
-  for (int i = 0; i < MAX_PAGE_RES; i++)
+  for (int i = 0; i < PAGE_LEDGER_MAX; i++)
   {
     if (!g_page_ledger[i].avail)
     {

@@ -33,6 +33,7 @@ graphics.o \
 serial.o \
 console.o \
 memory.o \
+paging.o \
 acpi.o \
 gdt.o \
 idt.o \
@@ -68,6 +69,7 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/serial.c -o serial.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/console.c -o console.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/memory.c -o memory.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/paging.c -o paging.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/acpi.c -o acpi.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/gdt.c -o gdt.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/idt.c -o idt.o
@@ -85,7 +87,7 @@ klibc.o:
 # use the following to see CPU state:
 # -no-reboot -d int,cpu_reset
 run:
-	qemu-system-x86_64 -serial stdio -L $(OVMF_DIR) -bios OVMF.fd -cdrom myos.iso -m 512M
+	qemu-system-x86_64 -serial stdio -L $(OVMF_DIR) -bios OVMF.fd -cdrom myos.iso -m 512M -no-reboot -d int,cpu_reset
 
 
 .PHONY : clean

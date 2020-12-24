@@ -14,6 +14,16 @@
 .global k_ltr
 .global k_cause_exception
 
+.global k_xor
+.global k_get_cr0
+.global k_set_cr0
+.global k_get_cr3
+.global k_set_cr3
+.global k_get_cr4
+.global k_set_cr4
+.global k_get_rflags
+.global k_set_rflags
+.global k_cpuid_rax
 
 
 # disabled interrupts
@@ -194,6 +204,131 @@ k_cause_exception:
   # page fault (assumes only first 4GiB of RAM are identity mapped)
   # mov $0xFFFFFFFF00000000, %rax
   # mov (%rax), %rbx
+
+  leaveq
+  retq
+
+# executes the XOR instruction
+#
+# Params:
+#   %rdi - a 64-bit unsigned integer
+#   %rsi - a 64-bit unsigned integer
+#
+# Returns:
+#   %rax - the result of the XOR instruction
+k_xor:
+
+  push %rbp
+  mov %rsp, %rbp
+
+  xor %rdi, %rsi
+  mov %rsi, %rax
+
+  leaveq
+  retq
+
+
+# Reads the value from CR0
+k_get_cr0:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %cr0, %rax
+
+  leaveq
+  retq
+
+
+# Writes a value into CR0
+k_set_cr0:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %rdi, %cr0
+
+  leaveq
+  retq
+
+
+# Reads the value from CR3
+k_get_cr3:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %cr3, %rax
+
+  leaveq
+  retq
+
+# Writes a value into CR3
+k_set_cr3:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %rdi, %cr3
+
+  leaveq
+  retq
+
+
+# Reads the value from CR4
+k_get_cr4:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %cr4, %rax
+
+  leaveq
+  retq
+
+
+# Writes a value into CR3
+k_set_cr4:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %rdi, %cr4
+
+  leaveq
+  retq
+
+
+k_get_rflags:
+  push %rbp
+  mov %rsp, %rbp
+
+  pushfq
+  pop %rax
+
+  leaveq
+  retq
+
+
+k_set_rflags:
+  push %rbp
+  mov %rsp, %rbp
+
+  push %rdi
+  popfq
+
+  leaveq
+  retq
+
+
+# Executes the CPUID instruction and returns the value
+# in RAX.
+#
+# Params:
+#   %rdi - the input provided to CPUID
+#
+# Returns:
+#   %rax - the result out the CPUID instruction
+k_cpuid_rax:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %rdi, %rax
+  cpuid
 
   leaveq
   retq

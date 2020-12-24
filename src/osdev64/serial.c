@@ -1,10 +1,7 @@
 #include "osdev64/serial.h"
+#include "osdev64/instructor.h"
 
 #include <stdint.h>
-
-// port I/O functions
-void k_outb(uint16_t port, uint8_t val);
-uint8_t k_inb(uint16_t port);
 
 #define COM1 0x03F8
 

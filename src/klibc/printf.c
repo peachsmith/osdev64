@@ -63,6 +63,9 @@ int vfprintf(FILE* stream, const char* format, va_list args)
   int n;          // integer
   int64_t n64;    // long integer
   unsigned int u; // unsigned integer
+  uint32_t u8;    // 8-bit unsigned integer
+  uint32_t u16;   // 16-bit unsigned integer
+  uint32_t u32;   // 32-bit unsigned integer
   uint64_t u64;   // unsigned long integer
   uintptr_t p;    // pointer
   double d;       // floating point number
@@ -88,6 +91,7 @@ int vfprintf(FILE* stream, const char* format, va_list args)
       // Get the precision from the argument list.
       if (t.flags & FMT_PREC)
       {
+        k_serial_com1_puts("we should NOT be here getting the precision\n");
         t.prec = va_arg(args, size_t);
       }
 
@@ -176,6 +180,43 @@ int vfprintf(FILE* stream, const char* format, va_list args)
         len = uptr_to_buffer(p, buf, 1);
 
         print_num(stream, buf, len, t);
+      }
+      else if (t.spec == SPEC_b)
+      {
+        // binary
+        // This format specifier is NOT standard.
+        u64 = 0;
+
+        // The preceision should be either 8, 16, 32, or 64.
+        switch (t.prec)
+        {
+        case 8:
+          u8 = (uint8_t)va_arg(args, int);
+          len = bin_to_buffer((u64 | u8), buf, 8);
+          print_num(stream, buf, len, t);
+          break;
+
+        case 16:
+          u16 = (uint16_t)va_arg(args, int);
+          len = bin_to_buffer((u64 | u16), buf, 16);
+          print_num(stream, buf, len, t);
+          break;
+
+        case 32:
+          u32 = va_arg(args, uint32_t);
+          len = bin_to_buffer((u64 | u32), buf, 32);
+          print_num(stream, buf, len, t);
+          break;
+
+        case 64:
+          u64 = va_arg(args, uint64_t);
+          len = bin_to_buffer(u64, buf, 64);
+          print_num(stream, buf, len, t);
+          break;
+
+        default:
+          break;
+        }
       }
       else if (t.spec == SPEC_f)
       {

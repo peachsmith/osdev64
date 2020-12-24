@@ -41,6 +41,7 @@
 #define SPEC_p 'p'
 #define SPEC_n 'n'
 #define SPEC_per '%'
+#define SPEC_b 'b' // (binary) NOT standard
 
 // format length bit flags
 #define LEN_h  0x01 /* h  */
@@ -123,6 +124,7 @@
     : c == 'p' ? SPEC_p   \
     : c == 'n' ? SPEC_n   \
     : c == '%' ? SPEC_per \
+    : c == 'b' ? SPEC_b   \
     : 0                   \
 )
 
@@ -253,7 +255,7 @@ static ftag parse_format(const char* start, char** end)
         else
         {
           d = parse_udec(start, &n);
-          tag.width = n;
+          tag.prec = n;
           start += e * d;
         }
       }
@@ -462,6 +464,8 @@ static size_t int64_to_buffer(int64_t n, char* buffer, ftag t)
   if (n == 0)
   {
     buffer[i++] = '0';
+    buffer[i] = '\0';
+    return 1;
   }
 
   while (u)
@@ -529,6 +533,61 @@ static size_t uptr_to_buffer(uintptr_t n, char* buffer, int cap)
     r = n % 16;
     buffer[i++] = r > 9 ? r - 10 + (cap ? 'A' : 'a') : r + '0';
     n /= 16;
+  }
+
+  // Terminate the string with the NUL character.
+  buffer[i] = '\0';
+
+  // The resulting string is backwards, so we need to reverse it.
+  reverse(buffer, i);
+
+  return i;
+}
+
+
+static size_t bin_to_buffer(int64_t n, char* buffer, int prec)
+{
+  size_t i;   // index
+  int sign;   // whether or not the integer is signed
+  int r;      // remainder
+  int orig;   // original integer value
+  uint64_t u; // unsigned integer
+
+  // Ensure that the buffer is not a NULL pointer.
+  if (buffer == NULL)
+  {
+    return 0;
+  }
+
+  // Save the original value of n.
+  orig = n;
+
+  // Convert the integer to an unsigned integer
+  // for the purpose of evaluating the individual digits.
+  u = sign ? (n < 0 ? -n : n) : (uint64_t)n;
+
+  i = 0;
+
+  // If the integer is 0, we only need one digit,
+  // so we populate the array accordingly and return.
+  if (n == 0)
+  {
+    buffer[i++] = '0';
+    buffer[i] = '\0';
+    return 1;
+  }
+
+  while (u)
+  {
+    r = u % 2;
+    buffer[i++] = r + '0';
+    u /= 2;
+  }
+
+  // fill the rest of the buffer with padding
+  while (i < prec)
+  {
+    buffer[i++] = '0';
   }
 
   // Terminate the string with the NUL character.
