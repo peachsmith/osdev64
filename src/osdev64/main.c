@@ -1,5 +1,8 @@
-#include "osdev64/util.h"
+#include "osdev64/bitmask.h"
 #include "osdev64/instructor.h"
+#include "osdev64/control.h"
+#include "osdev64/cpuid.h"
+#include "osdev64/msr.h"
 #include "osdev64/uefi.h"
 #include "osdev64/graphics.h"
 #include "osdev64/serial.h"
@@ -31,10 +34,86 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_memory_init();            // memory management
   // TODO: ACPI
 
+
+  // Get the control registers and flags.
+  uint64_t cr0 = k_get_cr0();
+  uint64_t cr4 = k_get_cr4();
+  uint64_t rflags = k_get_rflags();
+
+  // Check for CPUID.
+  if (rflags & BM_21)
+  {
+    fprintf(stddbg, "CPUID enabled\n");
+  }
+  else
+  {
+    k_set_rflags(rflags | BM_21);
+    rflags = k_get_rflags();
+    if (rflags & BM_21)
+    {
+      fprintf(stddbg, "CPUID enabled\n");
+    }
+    else
+    {
+      fprintf(stddbg, "CPUID unavailable\n");
+      for (;;);
+    }
+  }
+
+
+  fprintf(stddbg, "CR0.PE: %c\n", (cr0 & BM_0) ? 'Y' : 'N');
+  fprintf(stddbg, "CR0.NW: %c\n", (cr0 & BM_29) ? 'Y' : 'N');
+  fprintf(stddbg, "CR0.CD: %c\n", (cr0 & BM_30) ? 'Y' : 'N');
+  fprintf(stddbg, "CR0.PG: %c\n", (cr0 & BM_31) ? 'Y' : 'N');
+
+  fprintf(stddbg, "CR4.PSE: %c\n", (cr4 & BM_4) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.PAE: %c\n", (cr4 & BM_5) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.PGE: %c\n", (cr4 & BM_7) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.PKE: %c\n", (cr4 & BM_22) ? 'Y' : 'N');
+
+
   // Terminate UEFI boot services.
   k_uefi_exit();
 
   // END Stage 1 initialization
+  //==============================
+
+
+  //==============================
+  // BEGIN Stage 2 initialization
+
+  // Disable interrupts.
+  k_disable_interrupts();
+
+  // Load the GDT.
+  k_load_gdt();
+
+  // Load the IDT.
+  k_load_idt();
+
+  // Clear CR4.PCIDE
+  if (cr4 & CR4_PCIDE)
+  {
+    cr4 &= ~CR4_PCIDE;
+    k_set_cr4(cr4);
+  }
+
+  // Clear CR4.PKE
+  if (cr4 & CR4_PKE)
+  {
+    cr4 &= ~CR4_PKE;
+    k_set_cr4(cr4);
+  }
+
+  // Replace UEFI's paging with our own.
+  k_paging_init();
+
+  // Enable interrupts.
+  k_enable_interrupts();
+
+
+  // END Stage 2 initialization
   //==============================
 
 
@@ -71,24 +150,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     50, 120, 200 // r, g, b
   );
 
-
-  // Write some text to standard output and debug output.
-  fputs("console output with fputs\n", stdout);
-  fputs("serial output with fputs\n", stddbg);
-
-  // // Write some formatted text to standard output.
-  // char my_char = 'J';
-  // char* my_str = "bagel";
-  // uint64_t my_long_hex = 0xDEAD0000BEEF0000;
-  // int my_n = -17;
-  // int my_o = 8;
-
-  // printf("character: %c\n", my_char);
-  // printf("string: %s\n", my_str);
-  // printf("long hex: %llX\n", my_long_hex);
-  // printf("multiple arguments: %c, %s, %llX, %d, %o\n", my_char, my_str, my_long_hex, my_n, my_o);
-  // printf("pointer: %p\n", &my_char);
-
   // // Print the physical RAM pool.
   // k_memory_print_pool();
 
@@ -116,84 +177,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // k_memory_print_ledger();
 
   // END demo code
-  //==============================
-
-
-  //==============================
-  // BEGIN Stage 2 initialization
-
-  // Disable interrupts.
-  k_disable_interrupts();
-
-
-  // Read the control registers and RFLAGS
-  uint64_t cr0 = k_get_cr0();
-  uint64_t cr4 = k_get_cr4();
-  uint64_t rflags = k_get_rflags();
-  uint64_t cr_mask = 1;
-
-  // CR0 bits
-  // PE - protected mode enabled
-  // EM - x87 floating point emulation
-  // PG - paging enabled
-  printf("CR0.PE: %c\n", (cr0 & CR0_PE) ? 'Y' : 'N');
-  printf("CR0.EM: %c\n", (cr0 & CR0_EM) ? 'Y' : 'N');
-  printf("CR0.PG: %c\n", (cr0 & CR0_PG) ? 'Y' : 'N');
-
-  // CR4 bits
-  // PAE - physical address extension
-  // PCIDE - process context identifiers enabled
-  // PKE - protection key enabled
-  fprintf(stddbg, "CR4.PAE: %c\n", (cr4 & CR4_PAE) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.PCIDE: %c\n", (cr4 & CR4_PCIDE) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.SMEP: %c\n", (cr4 & CR4_SMEP) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.SMAP: %c\n", (cr4 & CR4_SMAP) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.PKE: %c\n", (cr4 & CR4_PKE) ? 'Y' : 'N');
-
-  // Clear CR4.PCIDE if it's set.
-  // I don't want to mess around with
-  if (cr4 & CR4_PCIDE)
-  {
-    cr4 &= ~CR4_PCIDE;
-    k_set_cr4(cr4);
-  }
-
-  // Clear CR4.PKE if it's set.
-  // I can't be bothered to deal with protection keys in
-  // my paging structures.
-  if (cr4 & CR4_PKE)
-  {
-    cr4 &= ~CR4_PKE;
-    k_set_cr4(cr4);
-  }
-
-  // RFLAGS bits
-  // Set bit 21 of RFLAGS to confirm that CPUID is available
-  if (!(rflags & RFLAGS_CPUID))
-  {
-    rflags |= RFLAGS_CPUID;
-    k_set_rflags(rflags);
-
-    rflags = k_get_rflags();
-  }
-  printf("CPUID: %c\n", (rflags & RFLAGS_CPUID) ? 'Y' : 'N');
-
-
-
-  // Load the GDT.
-  k_load_gdt();
-
-  // Load the IDT.
-  k_load_idt();
-
-  // Replace UEFI's paging with our own.
-  k_paging_init();
-
-  // Enable interrupts.
-  k_enable_interrupts();
-
-
-  // END Stage 2 initialization
   //==============================
 
 
