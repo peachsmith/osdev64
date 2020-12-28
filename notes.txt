@@ -69,4 +69,3 @@ objcopy -N memcpy libefi.a
 
 integer arguments:
 %rdi, %rsi, %rdx, %rcx, %r8 and %r9
-

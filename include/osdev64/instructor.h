@@ -135,6 +135,26 @@ void k_set_rflags(uint64_t);
  */
 uint64_t k_cpuid_rax(uint64_t);
 
+/**
+ * Executes the CPUID instruction and returns the value in the RDX
+ * register.
+ *
+ * Params:
+ *   uint64_t - the input for CPUID
+ *
+ * Returns:
+ *   uint64_t - the result of CPUID
+ */
+uint64_t k_cpuid_rdx(uint64_t);
+
+/**
+ * Reads the value of the IA32_PAT MSR.
+ *
+ * Returns:
+ *   uint64_t - the 64 bits of the IA32_PAT MSR
+ */
+uint64_t k_read_pat();
+
 
 /**
  * Causes an exception.

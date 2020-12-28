@@ -14,22 +14,60 @@
 // of some number.
 
 // PML4
-uint64_t pml4[512] __attribute__((aligned(0x1000)));
+pml4e pml4[512] __attribute__((aligned(0x1000)));
 
 // PDPT
-uint64_t pdpt[512] __attribute__((aligned(0x1000)));
+pdpte pdpt[512] __attribute__((aligned(0x1000)));
 
+static char* pat_Uncacheable = "UC";
+static char* pat_WriteCombining = "WC";
+static char* pat_WriteThrough = "WT";
+static char* pat_WriteProtected = "WP";
+static char* pat_WriteBack = "WB";
+static char* pat_Uncached = "UC-";
+static char* pat_RES = "RES";
+
+static inline char* pat_to_str(uint64_t p)
+{
+  switch (p)
+  {
+  case 0:
+    return pat_Uncacheable;
+
+  case 1:
+    return pat_WriteCombining;
+
+  case 4:
+    return pat_WriteThrough;
+
+  case 5:
+    return pat_WriteProtected;
+
+  case 6:
+    return pat_WriteBack;
+
+  case 7:
+    return pat_Uncached;
+
+  default:
+    return pat_RES;
+  }
+}
 
 // page sizes in hexadecimal
 // 1 GiB = 0x40000000
-// 1 MiB = 0x100000
-// 1 KiB = 0x1000
+// 2 MiB = 0x200000
+// 4 KiB = 0x1000
+
+
+// 1 GiB is 512 2 MiB pages
 
 /**
  * Creates a PML4 entry to hold the address of a PDPT.
  * The resulting PML4 entry is marked as present, read/write,
  * and supervisor mode.
- *
+ * Page-level write through and page-level cache disable bits
+ * are left at 0.
  *
  *
  * Params:
@@ -67,9 +105,11 @@ pml4e make_pml4e(uint64_t pdpt_addr)
   // Bit 7 is reserved, and must be 0.
   // Bits [11:8] are ignored.
 
-  // Set the address of the PDPT entry.
-  // pdpt_addr &= mpa_mask;
-  p |= (pdpt_addr << 12);
+  // Bits [51:12] are the address of the PDPT entry.
+  // Since this is a multiple of 4096, the lowest 12 bits
+  // of the address should always be 0, so they shouldn't
+  // change the existing bits of the PML4 entry.
+  p |= pdpt_addr;
 
   // Bits [62:52] are ignored
 
@@ -80,6 +120,22 @@ pml4e make_pml4e(uint64_t pdpt_addr)
   return p;
 }
 
+
+/**
+ * Creates a PDPT entry.
+ * The resulting PDPT entry is marked as present, read/write,
+ * and supervisor mode.
+ * Page-level write through and page-level cache disable bits
+ * are left at 0.
+ * The PAT and global translation bits are left at 0.
+ * The PKE bits [62:59] are left as 0 since CR4.PKE is 0.
+ *
+ * Params:
+ *   uint64_t - base address of 1 Gib page
+ *
+ * Returns:
+ *   pdpte - a PDPT entry
+ */
 pdpte make_pdpte(uint64_t page_base)
 {
   pdpte p = 0;
@@ -146,87 +202,57 @@ void k_paging_init()
 
   // Attempt to find the MAXPHYADDR bit count by using
   // CPUID.80000008H:EAX[7:0]
-  uint64_t max_e;
-  uint64_t max_phys;
+  // uint64_t max_e;
+  // uint64_t max_phys;
 
-  max_e = k_cpuid_rax(0x80000000);
-  printf("max E: %X\n", max_e);
-  if (max_e >= 0x80000008)
-  {
-    max_phys = k_cpuid_rax(0x80000008) & 0xFF;
-    printf("max phys: %llu\n", max_phys);
-  }
-  else
-  {
-    printf("CPUID.80000008H:EAX[7:0] not supported\n");
-  }
+  // max_e = k_cpuid_rax(0x80000000);
+  // printf("max E: %X\n", max_e);
+  // if (max_e >= 0x80000008)
+  // {
+  //   max_phys = k_cpuid_rax(0x80000008) & 0xFF;
+  //   printf("max phys: %llu\n", max_phys);
+  // }
+  // else
+  // {
+  //   printf("CPUID.80000008H:EAX[7:0] not supported\n");
+  // }
 
-  // Create a bit mask for MAXPHYADDR.
-  // TODO: confirm likelyhood of MAXPHYADDR being 40.
-  uint64_t mask = 0;
-  for (uint64_t i = 0; i < max_phys; i++)
-  {
-    mask |= ((uint64_t)1 << i);
-  }
-  printf("MPA mask: %.64b\n", mask);
+  uint64_t has_mtrr = k_cpuid_rdx(0x01);
+  printf("MSR: %c\n", (has_mtrr & 0x20) ? 'Y' : 'N');
+  printf("MTRR: %c\n", (has_mtrr & 0x1000) ? 'Y' : 'N');
+  printf("PAT: %c\n", (has_mtrr & 0x10000) ? 'Y' : 'N');
 
+  uint64_t pat = k_read_pat();
+  fprintf(stddbg, "PA0: %s\n", pat_to_str((pat & 0x7)));
+  fprintf(stddbg, "PA1: %s\n", pat_to_str(((pat >> 8) & 0x7)));
+  fprintf(stddbg, "PA2: %s\n", pat_to_str(((pat >> 16) & 0x7)));
+  fprintf(stddbg, "PA3: %s\n", pat_to_str(((pat >> 24) & 0x7)));
+  fprintf(stddbg, "PA4: %s\n", pat_to_str(((pat >> 32) & 0x7)));
+  fprintf(stddbg, "PA5: %s\n", pat_to_str(((pat >> 40) & 0x7)));
+  fprintf(stddbg, "PA6: %s\n", pat_to_str(((pat >> 48) & 0x7)));
+  fprintf(stddbg, "PA7: %s\n", pat_to_str(((pat >> 56) & 0x7)));
 
-
-  // Identity map the first 4 GiB of address space.
-  // TODO: confirm the likelyhood of the PDPT entry's
-  // page address being 22 bits.
+  // Identity map 512 GiB of address space in the PDPT.
   uint64_t phys = 0;
-  uint64_t phys_mask = 0xFFFFFC0000000; // mask to get the high 22 bits of an address
   for (uint64_t i = 0; i < 512; i++)
   {
     pdpt[i] = make_pdpte(i * 0x40000000);
   }
 
   // Put the PDPT in the PML4.
-  pml4[0] = make_pml4e((uint64_t)(&pdpt));
+  pml4[0] = make_pml4e((uint64_t)(pdpt));
 
   // Mark the rest of the entries in the PML4 as not present.
   for (int i = 1; i < 512; i++)
   {
-    pml4e p = make_pml4e((uint64_t)(&pdpt));
-    p &= ~((uint64_t)1);
+    pml4[i] = pml4[0] & ~((uint64_t)1);
   }
 
-  // Get CR0 and CR3 since we'll need them to install our
-  // paging structures.
-  uint64_t cr0 = k_get_cr0();
   uint64_t cr3 = k_get_cr3();
-  fprintf(stddbg, "UEFI's CR3: %p\n", cr3);
-
-  // Disable paging
-  // TODO: confirm if this is even necessary.
-  // cr0 &= ~CR0_PG;
-  // k_set_cr0(cr0);
 
   // Put the address of our PML4 in CR3.
-  cr3 = (((uint64_t)(&pml4)) << 12);
-  fprintf(stddbg, "new CR3: %p\n", cr3);
-
-  // Bits [11:0] of CR3 should be 0.
-  // [2:0] reserved
-  // [4:3] page-level write through
-  // [5]   page-level cache disable
-  // [11:5] reserved
-  // for (int i = 0; i <= 11; i++)
-  // {
-  //   cr3 &= ~((uint64_t)1 << i);
-  // }
+  cr3 = (uint64_t)pml4;
 
   // Update CR3.
-  k_set_cr3(cr3);
-
-  // Enable paging
-  // TODO: confirm if this is even necessary.
-  // cr0 |= CR0_PG;
-  // k_set_cr0(cr0);
-
-  // Confirm that CR3 has been updated.
-  cr3 = k_get_cr3();
-  fprintf(stddbg, "actual CR3: %p\n", cr3);
-
+  // k_set_cr3(cr3);
 }

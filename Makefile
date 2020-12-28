@@ -87,7 +87,7 @@ klibc.o:
 # use the following to see CPU state:
 # -no-reboot -d int,cpu_reset
 run:
-	qemu-system-x86_64 -serial stdio -L $(OVMF_DIR) -bios OVMF.fd -cdrom myos.iso -m 512M -no-reboot -d int,cpu_reset
+	qemu-system-x86_64 -serial stdio -L $(OVMF_DIR) -bios OVMF.fd -cdrom myos.iso -m 512M
 
 
 .PHONY : clean

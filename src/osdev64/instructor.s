@@ -24,6 +24,8 @@
 .global k_get_rflags
 .global k_set_rflags
 .global k_cpuid_rax
+.global k_cpuid_rdx
+.global k_read_pat
 
 
 # disabled interrupts
@@ -329,6 +331,33 @@ k_cpuid_rax:
 
   mov %rdi, %rax
   cpuid
+
+  leaveq
+  retq
+
+
+k_cpuid_rdx:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov %rdi, %rax
+  cpuid
+  mov %rdx, %rax
+
+  leaveq
+  retq
+
+k_read_pat:
+  push %rbp
+  mov %rsp, %rbp
+
+  sub $0x10, %rsp
+
+  mov $0x277, %ecx
+  rdmsr
+  mov %eax, -0x10(%rbp) # lo 32 bits of PAT
+  mov %edx, -0xC(%rbp)  # hi 32 bits of PAT
+  mov -0x10(%rbp), %rax
 
   leaveq
   retq

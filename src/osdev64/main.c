@@ -1,3 +1,4 @@
+#include "osdev64/util.h"
 #include "osdev64/instructor.h"
 #include "osdev64/uefi.h"
 #include "osdev64/graphics.h"
@@ -143,11 +144,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // PAE - physical address extension
   // PCIDE - process context identifiers enabled
   // PKE - protection key enabled
-  printf("CR4.PAE: %c\n", (cr4 & CR4_PAE) ? 'Y' : 'N');
-  printf("CR4.PCIDE: %c\n", (cr4 & CR4_PCIDE) ? 'Y' : 'N');
-  printf("CR4.SMEP: %c\n", (cr4 & CR4_SMEP) ? 'Y' : 'N');
-  printf("CR4.SMAP: %c\n", (cr4 & CR4_SMAP) ? 'Y' : 'N');
-  printf("CR4.PKE: %c\n", (cr4 & CR4_PKE) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.PAE: %c\n", (cr4 & CR4_PAE) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.PCIDE: %c\n", (cr4 & CR4_PCIDE) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.SMEP: %c\n", (cr4 & CR4_SMEP) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.SMAP: %c\n", (cr4 & CR4_SMAP) ? 'Y' : 'N');
+  fprintf(stddbg, "CR4.PKE: %c\n", (cr4 & CR4_PKE) ? 'Y' : 'N');
 
   // Clear CR4.PCIDE if it's set.
   // I don't want to mess around with
@@ -177,7 +178,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   }
   printf("CPUID: %c\n", (rflags & RFLAGS_CPUID) ? 'Y' : 'N');
 
-  
+
 
   // Load the GDT.
   k_load_gdt();
@@ -186,11 +187,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_load_idt();
 
   // Replace UEFI's paging with our own.
-  // k_paging_init();
-
+  k_paging_init();
 
   // Enable interrupts.
   k_enable_interrupts();
+
 
   // END Stage 2 initialization
   //==============================
