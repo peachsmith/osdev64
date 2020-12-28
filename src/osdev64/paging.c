@@ -93,12 +93,8 @@ pml4e make_pml4e(uint64_t pdpt_addr)
   // Leaving it at 0 since there's no user mode yet.
 
   // Bit 3 is the page-level write through bit.
-  // Leaving it as 0 for now since I don't know what this is.
-  // TODO: figure out what this means
 
   // Bit 4 is the page-level cache disabled bit.
-  // Leaving it as 0 for now since I don't know what this is.
-  // TODO: figure out what this means
 
   // Bit 5 is the access bit. We'll leave it as 0.
   // Bit 6 is ignored.
@@ -153,12 +149,8 @@ pdpte make_pdpte(uint64_t page_base)
   // Leaving it at 0 since there's no user mode yet.
 
   // Bit 3 is the page-level write through bit.
-  // Leaving it as 0 for now since I don't know what this is.
-  // TODO: figure out what this means
 
   // Bit 4 is the page-level cache disabled bit.
-  // Leaving it as 0 for now since I don't know what this is.
-  // TODO: figure out what this means
 
   // Bit 5 is the access flag.
   // Bit 6 is the dirty flag.
@@ -174,10 +166,7 @@ pdpte make_pdpte(uint64_t page_base)
 
   // Bits [11:9] are ignored.
 
-  // Bit 12 is the PAT flag.
-  // I have no idea what this is, so we're going to set this
-  // to 0 for now.
-  // TODO: figure this out
+  // Bit 12 is the PAT bit.
 
   // Bits [51:30] are the base address of a 1 GiB page frame.
   p |= (page_base);
@@ -200,22 +189,32 @@ void k_paging_init()
   // The UEFI firmware should have identity mapped  the first 4 GiB
   // of address space. We will attempt to do that here as well.
 
-  // Attempt to find the MAXPHYADDR bit count by using
-  // CPUID.80000008H:EAX[7:0]
-  // uint64_t max_e;
-  // uint64_t max_phys;
 
-  // max_e = k_cpuid_rax(0x80000000);
-  // printf("max E: %X\n", max_e);
-  // if (max_e >= 0x80000008)
-  // {
-  //   max_phys = k_cpuid_rax(0x80000008) & 0xFF;
-  //   printf("max phys: %llu\n", max_phys);
-  // }
-  // else
-  // {
-  //   printf("CPUID.80000008H:EAX[7:0] not supported\n");
-  // }
+  uint64_t max_e = 0;
+  uint64_t max_phys = 0;
+  uint64_t gbpage = 0;
+
+  max_e = k_cpuid_rax(0x80000000);
+  printf("Max E: %X\n", max_e);
+
+  if (max_e >= 0x80000008)
+  {
+    // Attempt to find the MAXPHYADDR bit count by using
+    // CPUID.80000008H:EAX[7:0]
+    max_phys = k_cpuid_rax(0x80000008) & 0xFF;
+    printf("MAXPHYADDR: %llu\n", max_phys);
+
+    // Check for 1 GiB page support
+    // CPUID.80000001H:EDX.Page1GB [bit 26] 
+    gbpage = k_cpuid_rdx(0x80000001);
+    printf("1 GiB Page Support: %c\n", (gbpage & 0x4000000) ? 'Y' : 'N');
+  }
+  else
+  {
+    printf("CPUID.80000008H:EAX[7:0] not supported\n");
+  }
+
+
 
   uint64_t has_mtrr = k_cpuid_rdx(0x01);
   printf("MSR: %c\n", (has_mtrr & 0x20) ? 'Y' : 'N');
@@ -254,5 +253,5 @@ void k_paging_init()
   cr3 = (uint64_t)pml4;
 
   // Update CR3.
-  // k_set_cr3(cr3);
+  k_set_cr3(cr3);
 }
