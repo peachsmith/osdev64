@@ -1,19 +1,17 @@
+#include "osdev64/core.h"
 #include "osdev64/uefi.h"
+#include "osdev64/bitmask.h"
 #include "osdev64/descriptor.h"
 
-
-// the number of entries in the GDT
-#define GDT_COUNT 5
-
 // GDT
-seg_desc gdt[GDT_COUNT];
+seg_desc g_gdt[GDT_COUNT];
 
 // TSS
-uint32_t tss[26];
+uint32_t g_tss[TSS_COUNT];
 
 // IST1 stack
 // TODO: get this from RAM
-uint8_t ist1[8192]__attribute__((aligned(16)));
+unsigned char g_ist1[8192]__attribute__((aligned(16)));
 
 /**
  * Creates a segment descriptor which describes a 64-bit code or data
@@ -37,40 +35,42 @@ static seg_desc build_cd_descriptor
   // Create a segment descriptor.
   seg_desc desc = 0;
 
-  // Set the base address.
-  desc |= ((base & 0xFF000000) << 32);
-  desc |= ((base & 0x00FFFFFF) << 16);
+  // The base address of the segment is put into bits [31:16], [39:32],
+  // and [63:56]. Since we're in 64-bit mode, we can treat bits [39:16]
+  // as a single, contiguous collection of bits.
+  desc |= ((base & 0x00FFFFFF) << 16); // [39:16]
+  desc |= ((base & 0xFF000000) << 32); // [63:56]
 
-  // Set the limit.
-  desc |= ((limit & 0x0F0000) << 32);
-  desc |= (limit & 0x00FFFF);
+  // The limit of the segment is put into bits [15:0] and [51:48].
+  desc |= (limit & 0x00FFFF);         // [15:0]
+  desc |= ((limit & 0x0F0000) << 32); // [51:48]
 
   // Set the granularity to be 4KB.
-  desc |= ((uint64_t)0x1 << 55);
+  desc |= BM_55;
 
-  // Make sure the default operand size flag is 0
-  // since we're in 64-bit mode.
-  desc |= ((uint64_t)0x0 << 54);
+  // Bit 54 is the default operand size flag.
+  // It should be 0 since we're in 64-bit mode.
 
-  // Set the long mode flag.
-  desc |= ((uint64_t)0x1 << 53);
+  // Bit 53 is the long mode flag.
+  // This should be 1 since we're in 64-bit mode.
+  desc |= BM_53;
 
-  // Set the system use bit to 0.
-  // We're not currently using this.
-  desc |= ((uint64_t)0x0 << 52);
+  // Bit 52 is the system use bit.
+  // We're leaving it as 0.
 
-  // Set the presence flag.
-  desc |= ((uint64_t)0x1 << 47);
+  // Bit 47 is the present flag.
+  desc |= BM_47;
 
-  // Set the descriptor privilege level to 0.
-  // Give us all the permissions!
-  desc |= ((uint64_t)0x0 << 45);
+  // Bits [46:45] are the descriptor privilege level.
+  // We'll set these to 0 for now for DPL 0.
+  desc |= ((uint64_t)0 << 45);
 
-  // Set the type flag to 1 since this descriptor
-  // is describing a code or data segment.
-  desc |= ((uint64_t)0x1 << 44);
+  // Bit 44 is the type flag.
+  // We set this to 1 to indicate that this descriptor describes
+  // a code or data segment.
+  desc |= BM_44;
 
-  // Set the type field.
+  // Bits [43:40] are the descriptor type configuration.
   desc |= ((type & 0x0F) << 40);
 
   return desc;
@@ -84,25 +84,25 @@ void k_ltr(uint16_t);
 
 void k_load_gdt()
 {
-  gdt[0] = 0; // null descriptor
+  g_gdt[0] = 0; // null descriptor
 
   // code segment descriptor
   // type: execute/read, conforming, not yet accessed
-  gdt[1] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_ERC);
+  g_gdt[1] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_ERC);
 
   // data segment descriptor
   // type: read/write, expand down, not yet accessed
-  gdt[2] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_RWD);
+  g_gdt[2] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_RWD);
 
   // Initialize all the values of the TSS to 0.
   for (int i = 0; i < 26; i++)
   {
-    tss[i] = 0;
+    g_tss[i] = 0;
   }
 
   // Put the address of IST1 in the TSS?
-  tss[9] = (uint32_t)(((uint64_t)(ist1 + (sizeof(uint8_t) * 4096)) & 0xFFFFFFFF));
-  tss[10] = (uint32_t)(((uint64_t)(ist1 + (sizeof(uint8_t) * 4096)) & 0xFFFFFFFF00000000) >> 32);
+  g_tss[9] = (uint32_t)(((uint64_t)(g_ist1 + 4096) & 0xFFFFFFFF));
+  g_tss[10] = (uint32_t)(((uint64_t)(g_ist1 + 4096) & 0xFFFFFFFF00000000) >> 32);
 
   // In 64-bit mode, a TSS descriptor is 128 bits, so we use two descriptors
   // to represent the low and high bits.
@@ -120,18 +120,18 @@ void k_load_gdt()
 
   // The TSS base address is split over the high and low
   // descriptor portions.
-  tss_lo |= (((uint64_t)tss & 0xFF000000) << 32);
-  tss_lo |= (((uint64_t)tss & 0x00FFFFFF) << 16);
-  tss_hi |= (((uint64_t)tss & 0xFFFFFFFF00000000) >> 32);
+  tss_lo |= (((uint64_t)g_tss & 0xFF000000) << 32);
+  tss_lo |= (((uint64_t)g_tss & 0x00FFFFFF) << 16);
+  tss_hi |= (((uint64_t)g_tss & 0xFFFFFFFF00000000) >> 32);
 
   // Put the TSS descriptor in the GDT.
-  gdt[3] = tss_lo;
-  gdt[4] = tss_hi;
+  g_gdt[3] = tss_lo;
+  g_gdt[4] = tss_hi;
 
-  uint16_t limit = sizeof(gdt) - 1;
+  uint16_t limit = sizeof(g_gdt) - 1;
 
   // load the GDT
-  k_lgdt(limit, gdt);
+  k_lgdt(limit, g_gdt);
 
   // load the TSS
   k_ltr(0x18);

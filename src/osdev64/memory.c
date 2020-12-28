@@ -1,3 +1,4 @@
+#include "osdev64/core.h"
 #include "osdev64/uefi.h"
 #include "osdev64/memory.h"
 
@@ -26,20 +27,14 @@ typedef struct ledger_entry {
 }ledger_entry;
 
 
-// maximum number of pool entries
-#define RAM_POOL_MAX 32
-
-// maximum number of ledger entries
-#define PAGE_LEDGER_MAX 1000
-
 // number of regions in the RAM pool
 int g_pool_count = 0;
 
-// physical RAM pool
+// RAM pool
 pool_entry g_ram_pool[RAM_POOL_MAX];
 
-// page reservation ledger
-ledger_entry* g_page_ledger;
+// RAM ledger
+ledger_entry* g_ram_ledger;
 
 
 // char string representations of UEFI memory types
@@ -214,15 +209,15 @@ void k_memory_init()
       root.avail = 0;
 
       // Set the base address of the reservation array.
-      g_page_ledger = (ledger_entry*)(root.address);
+      g_ram_ledger = (ledger_entry*)(root.address);
 
       // Put the root memory reservation in the reservation array.
-      g_page_ledger[0] = root;
+      g_ram_ledger[0] = root;
 
       // Mark all of the entries as available.
-      for (int j = 1; j < PAGE_LEDGER_MAX; j++)
+      for (int j = 1; j < RAM_LEDGER_MAX; j++)
       {
-        g_page_ledger[j].avail = 1;
+        g_ram_ledger[j].avail = 1;
       }
 
       return;
@@ -246,13 +241,13 @@ void* k_memory_alloc_pages(size_t n)
       uint64_t req_start = g_ram_pool[i].address;
       uint64_t req_end = req_start + (n * 0x1000) - 1;
 
-      for (int j = 0; j < PAGE_LEDGER_MAX; j++)
+      for (int j = 0; j < RAM_LEDGER_MAX; j++)
       {
-        if (g_page_ledger[j].i == i && !g_page_ledger[j].avail)
+        if (g_ram_ledger[j].i == i && !g_ram_ledger[j].avail)
         {
           // start and end addresses of reserved memory region
-          uint64_t res_start = g_page_ledger[j].address;
-          uint64_t res_end = res_start + (g_page_ledger[j].pages * 0x1000) - 1;
+          uint64_t res_start = g_ram_ledger[j].address;
+          uint64_t res_end = res_start + (g_ram_ledger[j].pages * 0x1000) - 1;
 
           // If the requested region overlaps a reserved region,
           // update the start and end addresses of the requested region.
@@ -279,11 +274,11 @@ void* k_memory_alloc_pages(size_t n)
 
         // Put the new page reservation in the ledger,
         // and return the base address of the reservation.
-        for (int j = 0; j < PAGE_LEDGER_MAX; j++)
+        for (int j = 0; j < RAM_LEDGER_MAX; j++)
         {
-          if (g_page_ledger[j].avail)
+          if (g_ram_ledger[j].avail)
           {
-            g_page_ledger[j] = res;
+            g_ram_ledger[j] = res;
             return (void*)(res.address);
           }
         }
@@ -299,15 +294,15 @@ void k_memory_free_pages(void* addr)
 {
   uint64_t a = (uint64_t)addr;
 
-  for (int i = 1; i < PAGE_LEDGER_MAX; i++)
+  for (int i = 1; i < RAM_LEDGER_MAX; i++)
   {
     // Find the first entry in the page reservation ledger
     // that matches the address and mark it as available.
     // We skip the first entry in the ledger, since it is
     // the root page reservation.
-    if (g_page_ledger[i].address == a && !g_page_ledger[i].avail)
+    if (g_ram_ledger[i].address == a && !g_ram_ledger[i].avail)
     {
-      g_page_ledger[i].avail = 1;
+      g_ram_ledger[i].avail = 1;
       return;
     }
   }
@@ -326,9 +321,9 @@ void k_memory_print_pool()
   bytes = pages * 4096;
 
   fprintf(stddbg, "+-----------------------------------+\n");
-  fprintf(stddbg, "| regions:                      %.3d |\n", g_pool_count);
-  fprintf(stddbg, "| pages:                 %.10u |\n", pages);
-  fprintf(stddbg, "| bytes:                 %.10u |\n", bytes);
+  fprintf(stddbg, "| regions:                      %3d |\n", g_pool_count);
+  fprintf(stddbg, "| pages:                 %10u |\n", pages);
+  fprintf(stddbg, "| bytes:                 %10u |\n", bytes);
   fprintf(stddbg, "+-----------------------------------+\n");
 
   for (int i = 0; i < g_pool_count; i++)
@@ -342,15 +337,15 @@ void k_memory_print_pool()
 
 void k_memory_print_ledger()
 {
-  for (int i = 0; i < PAGE_LEDGER_MAX; i++)
+  for (int i = 0; i < RAM_LEDGER_MAX; i++)
   {
-    if (!g_page_ledger[i].avail)
+    if (!g_ram_ledger[i].avail)
     {
       fprintf(stddbg,
-        "%p %p %.10llu\n",
-        g_page_ledger[i].address,
-        g_page_ledger[i].address + (g_page_ledger[i].pages * 0x1000) - 1,
-        g_page_ledger[i].pages
+        "%p %p %llu\n",
+        g_ram_ledger[i].address,
+        g_ram_ledger[i].address + (g_ram_ledger[i].pages * 0x1000) - 1,
+        g_ram_ledger[i].pages
       );
     }
   }

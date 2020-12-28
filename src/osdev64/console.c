@@ -1,31 +1,22 @@
+#include "osdev64/core.h"
 #include "osdev64/uefi.h"
 #include "osdev64/console.h"
 #include "osdev64/graphics.h"
 
 
-// console dimensions in pixels
-#define CON_WIDTH 640
-#define CON_HEIGHT 480
-
-
-// glyph dimensions in pixels
-#define GLYPH_WIDTH 8
-#define GLYPH_HEIGHT 16
-
-
 // font used when rendering text
-unsigned char* g_font;
+extern unsigned char g_font[4096];
 
 
 void k_console_init()
 {
-  g_font = k_uefi_load_font();
+  k_uefi_get_font();
 }
 
 
 // coordinates of the next character to be written
-uint64_t text_x = 0; // multiple of 8
-uint64_t text_y = 0; // multiple of 16
+uint64_t text_x = 0; // multiple of GLYPH_WIDTH
+uint64_t text_y = 0; // multiple of GLYPH_HEIGHT
 
 
 /**
@@ -39,7 +30,7 @@ uint64_t text_y = 0; // multiple of 16
  *   uint64_t - the x coordinate of the top left of the glyph on the screen
  *   uint64_t - the y coordinate of the top left of the glyph on the screen
  *   int8_t - the red component of the colour
- *   int8_t - the gren component of the colour
+ *   int8_t - the green component of the colour
  *   int8_t - the blue component of the colour
  */
 static void draw_glyph(
@@ -68,7 +59,7 @@ static void draw_glyph(
 void k_console_putc(char c)
 {
   // Limit the number of lines.
-  if (text_y >= CON_HEIGHT)
+  if (text_y >= CONSOLE_HEIGHT)
   {
     return;
   }
@@ -89,7 +80,7 @@ void k_console_putc(char c)
 
   // If we've reached the end of the line,
   // reset x and increment y.
-  if (text_x >= CON_WIDTH)
+  if (text_x >= CONSOLE_WIDTH)
   {
     text_x = 0;
     text_y += GLYPH_HEIGHT;
@@ -103,7 +94,7 @@ void k_console_putc(char c)
   draw_glyph(glyph, text_x, text_y, 200, 200, 200);
 
   // Increment x.
-  if (text_x < CON_WIDTH)
+  if (text_x < CONSOLE_WIDTH)
   {
     text_x += 8;
   }

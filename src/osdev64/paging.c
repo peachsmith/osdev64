@@ -186,6 +186,7 @@ void k_paging_init()
   // The UEFI firmware should have identity mapped  the first 4 GiB
   // of address space. We will attempt to do that here as well.
 
+  // TODO: verify support for 1 GiB pages using MTRRs.
 
   // uint64_t max_e = 0;
   // uint64_t max_phys = 0;

@@ -1,3 +1,5 @@
+#include "osdev64/core.h"
+#include "osdev64/bitmask.h"
 #include "osdev64/descriptor.h"
 
 // The IDT contains interrupt gate descriptors.
@@ -39,12 +41,8 @@ void isr31();
 // void isr32();
 
 
-// the initial number of descriptors in the IDT multiplied
-// by 2, since each descriptor is 128 bits.
-#define IDT_COUNT 64
-
 // the IDT
-int_desc idt[IDT_COUNT];
+int_desc g_idt[IDT_COUNT];
 
 
 // Inserts an ISR into the IDT
@@ -53,43 +51,41 @@ void install_isr(uint64_t r, int i)
   int_desc lo = 0; // low 64 bits of descriptor
   int_desc hi = 0; // high 64 bits of descriptor
 
-  // Set the low 16 bits of ISR address.
-  lo |= (r & 0xFFFF);
+  // Bits [31:16] are the offset, in bytes, of the code segment selector.
+  lo |= ((uint64_t)8 << 16);
 
-  // offset of code segment
-  lo |= ((uint64_t)0x8 << 16);
-
-  // Set the IST index.
+  // Bits [34:32] are the IST index, ranging from 1-7 if an IST
+  // is used, or 0 if no IST is used.
   // ISR0 will use IST1 for handling divide errors.
   // All other ISRs will just not bother with the IST for now.
   if (i == 0)
   {
-    lo |= ((uint64_t)0x1 << 32);
+    lo |= ((uint64_t)1 << 32);
   }
   else
   {
-    lo |= ((uint64_t)0x0 << 32);
+    lo |= ((uint64_t)0 << 32);
   }
 
-  // Set the type configuration for a 32-bit interrupt gate
-  // bit values: 1 1 1 0
+  // Bits [43:40] are the type configuration for a 32-bit interrupt gate.
+  // We're currently using the bits 1 1 1 0
   lo |= (SG_SEG_INT_GATE << 40);
 
-  // Set the descriptor privilege level to 0.
-  lo |= ((uint64_t)0x0 << 45);
+  // Bits [46:45] are the descriptor privilege level.
+  // Currently, the segments described by the GDT all use DPL 0.
+  lo |= ((uint64_t)0 << 45);
 
-  // Set the presence flag.
-  lo |= ((uint64_t)0x1 << 47);
+  // Set the present flag.
+  lo |= BM_47;
 
-  // Set the middle 16 bits of the ISR address
-  lo |= ((r & 0xFFFF0000) << 32);
-
-  // Set the high 32 bits of the ISR address
-  hi |= ((r & 0xFFFFFFFF00000000) >> 32);
+  // The ISR address is placed in bits [15:0], [63:48], and [95:64]
+  lo |= (r & 0xFFFF);                     // [15:0]
+  lo |= ((r & 0xFFFF0000) << 32);         // [63:48]
+  hi |= ((r & 0xFFFFFFFF00000000) >> 32); // [95:64]
 
   // Put the descriptor in the IDT.
-  idt[i * 2] = lo;
-  idt[i * 2 + 1] = hi;
+  g_idt[i * 2] = lo;
+  g_idt[i * 2 + 1] = hi;
 }
 
 // an assmebly procedure that executes the LIDT instruction
@@ -131,7 +127,7 @@ void k_load_idt()
   install_isr((uint64_t)isr31, 31);
   // install_isr((uint64_t)isr32, 32);
 
-  uint16_t limit = sizeof(idt) - 1;
+  uint16_t limit = sizeof(g_idt) - 1;
 
-  k_lidt(limit, idt);
+  k_lidt(limit, g_idt);
 }

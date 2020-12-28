@@ -30,7 +30,7 @@
 
 
 // The main graphics information
-k_graphics g_graphics;
+extern k_graphics g_graphics;
 
 
 // string representations of UEFI pixel formats
@@ -123,7 +123,7 @@ static int point_in_triangle(
 
 void k_graphics_init()
 {
-  k_uefi_get_graphics(&g_graphics);
+  k_uefi_get_graphics();
 }
 
 

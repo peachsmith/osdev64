@@ -37,17 +37,39 @@ typedef struct k_graphics {
  */
 void k_uefi_init(EFI_HANDLE, EFI_SYSTEM_TABLE*);
 
+
 /**
  * Terminates the boot services provided by UEFI.
  * This must be done before setting up a GDT, IDT, etc.
  */
 void k_uefi_exit();
 
+
 /**
  * Gets the memory map.
  * This must be called immediately before k_uefi_exit.
  */
 void k_uefi_get_mem_map();
+
+
+/**
+ * Gets the information needed to render graphics to the screen.
+ * This is done using the graphics output protocol provided by the UEFI
+ * firmware.
+ */
+void k_uefi_get_graphics();
+
+
+/**
+ * Loads a bitmap font into memory.
+ * We currently use the zap-vga16 font from
+ * https://www.zap.org.au/projects/console-fonts-zap
+ *
+ * This font supports 256 characters, where each character is 16 bytes.
+ * So the total font data loaded into memory by this function is 4096 bytes.
+ */
+void k_uefi_get_font();
+
 
 /**
  * Gets the RSDP provided by UEFI firmware.
@@ -61,28 +83,5 @@ void k_uefi_get_mem_map();
  *   int - 1 if ACPI version < 2, 2 if ACPI version >= 2, or 0 on failure.
  */
 int k_uefi_get_rsdp(unsigned char**);
-
-/**
- * Gets the information needed to render graphics to the screen.
- * This is done using the graphics output protocol provided by the UEFI
- * firmware.
- *
- * Params:
- *   k_graphics* - a pointer to a structure to hold the graphics information.
- */
-void k_uefi_get_graphics(k_graphics*);
-
-/**
- * Loads a bitmap font into memory.
- * We currently use the zap-vga16 font from
- * https://www.zap.org.au/projects/console-fonts-zap
- *
- * This font supports 256 characters, where each character is 16 bytes.
- * So the total font data loaded into memory by this function is 4096 bytes.
- *
- * Returns:
- *   unsigned char* - a pointer to the font data
- */
-unsigned char* k_uefi_load_font();
 
 #endif

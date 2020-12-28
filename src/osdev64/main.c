@@ -28,10 +28,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Initialize UEFI boot services.
   k_uefi_init(image, systab);
 
-  k_graphics_init();          // graphical output
-  k_serial_com1_init();       // serial output
-  k_console_init();           // text output
-  k_memory_init();            // memory management
+  k_graphics_init();    // graphical output
+  k_serial_com1_init(); // serial output
+  k_console_init();     // text output
+  k_memory_init();      // memory management
   // TODO: ACPI
 
 

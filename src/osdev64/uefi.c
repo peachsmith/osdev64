@@ -1,18 +1,27 @@
 #include "osdev64/uefi.h"
 
+
 #include "klibc/stdio.h"
+
 
 // The UEFI application image
 EFI_HANDLE g_image;
 
+
 // The UEFI system table
 EFI_SYSTEM_TABLE* g_systab;
 
-// memory map
-k_mem_map g_mem_map;
+
+// graphics information
+k_graphics g_graphics;
+
 
 // PC screen font for rendering text
-unsigned char g_zap_font[4096];
+unsigned char g_font[4096];
+
+
+// memory map
+k_mem_map g_mem_map;
 
 
 // WCHAR string representations of UEFI memory types
@@ -230,55 +239,7 @@ void k_uefi_get_mem_map()
 }
 
 
-int k_uefi_get_rsdp(unsigned char** rsdp)
-{
-  UINTN ent = g_systab->NumberOfTableEntries;
-  EFI_CONFIGURATION_TABLE* tab = g_systab->ConfigurationTable;
-
-  // GUIDs that allow us to identify which vendor table contains the RSDP.
-  EFI_GUID acpi_1_guid = ACPI_TABLE_GUID;
-  EFI_GUID acpi_2_guid = ACPI_20_TABLE_GUID;
-
-  // UEFI vendor tables
-  VOID* acpi1 = NULL;
-  VOID* acpi2 = NULL;
-  VOID* chosen_table = NULL;
-
-  int have_acpi2 = 0;
-
-  // Search the UEFI configuration table for vendor tables
-  // that match the ACPI GUIDs.
-  for (UINTN i = 0; i < ent; i++, tab++)
-  {
-    if (!CompareGuid(&(tab->VendorGuid), &acpi_1_guid))
-    {
-      acpi1 = tab->VendorTable;
-    }
-    else if (!CompareGuid(&(tab->VendorGuid), &acpi_2_guid))
-    {
-      have_acpi2 = 1;
-      acpi2 = tab->VendorTable;
-    }
-  }
-
-  // ACPI version 2 is preferred.
-  chosen_table = acpi2 != NULL ? acpi2 : acpi1;
-
-  // If we couldn't find the RSDP, return a failure code of 0.
-  if (chosen_table == NULL)
-  {
-    return 0;
-  }
-
-  // Convert the UEFI VendorTable into an RSDP base address.
-  *rsdp = (unsigned char*)(chosen_table);
-
-  // Return 2 if we're using ACPI version >= 2, otherwise return 1.
-  return have_acpi2 ? 2 : 1;
-}
-
-
-void k_uefi_get_graphics(k_graphics* graphics)
+void k_uefi_get_graphics()
 {
   EFI_GUID gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
   EFI_STATUS res;
@@ -336,15 +297,16 @@ void k_uefi_get_graphics(k_graphics* graphics)
     return;
   }
 
-  graphics->format = mode->PixelFormat;
-  graphics->width = mode->HorizontalResolution;
-  graphics->height = mode->VerticalResolution;
-  graphics->pps = mode->PixelsPerScanLine;
-  graphics->base = gop->Mode->FrameBufferBase;
-  graphics->size = gop->Mode->FrameBufferSize;
+  g_graphics.format = mode->PixelFormat;
+  g_graphics.width = mode->HorizontalResolution;
+  g_graphics.height = mode->VerticalResolution;
+  g_graphics.pps = mode->PixelsPerScanLine;
+  g_graphics.base = gop->Mode->FrameBufferBase;
+  g_graphics.size = gop->Mode->FrameBufferSize;
 }
 
-unsigned char* k_uefi_load_font()
+
+void k_uefi_get_font()
 {
   EFI_STATUS res;
   EFI_GUID sfs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
@@ -360,7 +322,7 @@ unsigned char* k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to locate simple file system protocol: %r\n", res);
-    return NULL;
+    return;
   }
 
   // Open the root volume.
@@ -368,7 +330,7 @@ unsigned char* k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to open root volume: %r\n", res);
-    return NULL;
+    return;
   }
 
   // Open the font file.
@@ -376,25 +338,25 @@ unsigned char* k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to open zap-vga16.psf: %r\n", res);
-    return NULL;
+    return;
   }
 
   // Read the PSF1 header.
   size = 4;
-  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_zap_font);
+  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_font);
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to read header from zap-vga16.psf: %r\n", res);
-    return NULL;
+    return;
   }
 
   // Read the glyph data.
   size = 4096;
-  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_zap_font);
+  res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_font);
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to read glyph data from zap-vga16.psf: %r\n", res);
-    return NULL;
+    return;
   }
 
   // Close the font file.
@@ -402,8 +364,54 @@ unsigned char* k_uefi_load_font()
   if (res != EFI_SUCCESS)
   {
     Print(L"failed to close zap-vga16.psf: %r\n", res);
-    return NULL;
+    return;
+  }
+}
+
+
+int k_uefi_get_rsdp(unsigned char** rsdp)
+{
+  UINTN ent = g_systab->NumberOfTableEntries;
+  EFI_CONFIGURATION_TABLE* tab = g_systab->ConfigurationTable;
+
+  // GUIDs that allow us to identify which vendor table contains the RSDP.
+  EFI_GUID acpi_1_guid = ACPI_TABLE_GUID;
+  EFI_GUID acpi_2_guid = ACPI_20_TABLE_GUID;
+
+  // UEFI vendor tables
+  VOID* acpi1 = NULL;
+  VOID* acpi2 = NULL;
+  VOID* chosen_table = NULL;
+
+  int have_acpi2 = 0;
+
+  // Search the UEFI configuration table for vendor tables
+  // that match the ACPI GUIDs.
+  for (UINTN i = 0; i < ent; i++, tab++)
+  {
+    if (!CompareGuid(&(tab->VendorGuid), &acpi_1_guid))
+    {
+      acpi1 = tab->VendorTable;
+    }
+    else if (!CompareGuid(&(tab->VendorGuid), &acpi_2_guid))
+    {
+      have_acpi2 = 1;
+      acpi2 = tab->VendorTable;
+    }
   }
 
-  return g_zap_font;
+  // ACPI version 2 is preferred.
+  chosen_table = acpi2 != NULL ? acpi2 : acpi1;
+
+  // If we couldn't find the RSDP, return a failure code of 0.
+  if (chosen_table == NULL)
+  {
+    return 0;
+  }
+
+  // Convert the UEFI VendorTable into an RSDP base address.
+  *rsdp = (unsigned char*)(chosen_table);
+
+  // Return 2 if we're using ACPI version >= 2, otherwise return 1.
+  return have_acpi2 ? 2 : 1;
 }
