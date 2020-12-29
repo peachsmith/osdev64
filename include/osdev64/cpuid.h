@@ -30,4 +30,15 @@ uint64_t k_cpuid_rax(uint64_t);
  */
 uint64_t k_cpuid_rdx(uint64_t);
 
+/**
+ * Executes the CPUID instruction to get the vendor identification string.
+ * The string is placed in a buffer that is passed to this function.
+ * The string is 12 characters, so the buffer should have at least that
+ * much memory available.
+ * 
+ * Params:
+ *   char* - buffer with space for at least 12 characters
+ */
+void k_cpuid_vendor(char*);
+
 #endif

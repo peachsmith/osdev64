@@ -34,16 +34,19 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_memory_init();      // memory management
   // TODO: ACPI
 
-
-  // Get the control registers and flags.
+  // CPU information
   uint64_t cr0 = k_get_cr0();
   uint64_t cr4 = k_get_cr4();
   uint64_t rflags = k_get_rflags();
+  uint64_t max_e = k_cpuid_rax(0x80000000);
+  uint64_t maxphysaddr;
+  uint64_t rdx_features = k_cpuid_rdx(1);
+  char vendor[13];
 
   // Check for CPUID.
   if (rflags & BM_21)
   {
-    fprintf(stddbg, "CPUID enabled\n");
+    fprintf(stddbg, "[CPUID] available\n");
   }
   else
   {
@@ -51,30 +54,73 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     rflags = k_get_rflags();
     if (rflags & BM_21)
     {
-      fprintf(stddbg, "CPUID enabled\n");
+      fprintf(stddbg, "[CPUID] enabled\n");
     }
     else
     {
-      fprintf(stddbg, "CPUID unavailable\n");
+      fprintf(stddbg, "[CPUID] unavailable\n");
       for (;;);
     }
   }
 
+  // Vendor Identification String
+  k_cpuid_vendor(vendor);
+  vendor[12] = '\0';
+  fprintf(stddbg, "[CPUID] Vendor: %s\n", vendor);
 
-  fprintf(stddbg, "CR0.PE: %c\n", (cr0 & BM_0) ? 'Y' : 'N');
-  fprintf(stddbg, "CR0.NW: %c\n", (cr0 & BM_29) ? 'Y' : 'N');
-  fprintf(stddbg, "CR0.CD: %c\n", (cr0 & BM_30) ? 'Y' : 'N');
-  fprintf(stddbg, "CR0.PG: %c\n", (cr0 & BM_31) ? 'Y' : 'N');
+  // Check for max extension.
+  if (max_e >= 0x80000008)
+  {
+    fprintf(stddbg, "[CPUID] Max Extension: %llX\n", max_e);
+  }
+  else
+  {
+    fprintf(stddbg, "[CPUID] Max Extension too low: %llu\n", max_e);
+    for (;;);
+  }
 
-  fprintf(stddbg, "CR4.PSE: %c\n", (cr4 & BM_4) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.PAE: %c\n", (cr4 & BM_5) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.PGE: %c\n", (cr4 & BM_7) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
-  fprintf(stddbg, "CR4.PKE: %c\n", (cr4 & BM_22) ? 'Y' : 'N');
+  // Get MAXPHYADDR from CPUID.80000008H:EAX[bits 7-0]
+  maxphysaddr = k_cpuid_rax(0x80000008) & 0xFF;
+  fprintf(stddbg, "[CPUID] MAXPHYSADDR: %llu\n", maxphysaddr);
 
+  // Check for MSR support.
+  if (!(rdx_features & BM_5))
+  {
+    fprintf(stddbg, "[CPUID] MSRs are not supported\n");
+    for (;;);
+  }
+
+  // Check for MTRR support.
+  if (!(rdx_features & BM_12))
+  {
+    fprintf(stddbg, "[CPUID] MTRRs are not supported\n");
+    for (;;);
+  }
+
+  // Check for PAT support.
+  if (!(rdx_features & BM_16))
+  {
+    fprintf(stddbg, "[CPUID] The PAT is not supported\n");
+    for (;;);
+  }
+
+  // Write some bits from CR0 and CR4
+  fprintf(stddbg, "[CR0] PE:    %c\n", (cr0 & BM_0) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR0] NW:    %c\n", (cr0 & BM_29) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR0] CD:    %c\n", (cr0 & BM_30) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR0] PG:    %c\n", (cr0 & BM_31) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR4] PSE:   %c\n", (cr4 & BM_4) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR4] PAE:   %c\n", (cr4 & BM_5) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR4] PGE:   %c\n", (cr4 & BM_7) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR4] PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
+  fprintf(stddbg, "[CR4] PKE:   %c\n", (cr4 & BM_22) ? 'Y' : 'N');
 
   // Terminate UEFI boot services.
-  k_uefi_exit();
+  if (!k_uefi_exit())
+  {
+    fprintf(stddbg, "[UEFI] Failed to exit UEFI boot services.\n");
+    for (;;);
+  }
 
   // END Stage 1 initialization
   //==============================

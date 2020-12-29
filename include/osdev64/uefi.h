@@ -41,8 +41,11 @@ void k_uefi_init(EFI_HANDLE, EFI_SYSTEM_TABLE*);
 /**
  * Terminates the boot services provided by UEFI.
  * This must be done before setting up a GDT, IDT, etc.
+ * 
+ * Returns:
+ *   int - 1 on successful exit, or 0 on failure
  */
-void k_uefi_exit();
+int k_uefi_exit();
 
 
 /**

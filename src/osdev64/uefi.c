@@ -139,19 +139,16 @@ void k_uefi_init(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 }
 
 
-void k_uefi_exit()
+int k_uefi_exit()
 {
   EFI_STATUS res = uefi_call_wrapper(g_systab->BootServices->ExitBootServices, 2, g_image, g_mem_map.key);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to exit UEFI boot services: %r\n", res);
-    fprintf(stddbg, "failed to exit UEFI boot services\n");
-    fprintf(stderr, "failed to exit UEFI boot services\n");
-
-    return;
+    Print(L"[UEFI] Error calling ExitBootServices: %r\n", res);
+    return 0;
   }
 
-  fprintf(stddbg, "UEFI boot services have been terminated.\n");
+  return 1;
 }
 
 

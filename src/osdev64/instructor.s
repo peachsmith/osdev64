@@ -25,7 +25,10 @@
 .global k_set_rflags
 .global k_cpuid_rax
 .global k_cpuid_rdx
-.global k_read_pat
+.global k_cpuid_vendor
+.global k_get_pat
+.global k_get_mtrrcap
+
 
 
 # disabled interrupts
@@ -347,7 +350,21 @@ k_cpuid_rdx:
   leaveq
   retq
 
-k_read_pat:
+
+k_cpuid_vendor:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov $0x0, %rax
+  cpuid
+  mov %rbx, (%rdi)
+  mov %rdx, 4(%rdi)
+  mov %rcx, 8(%rdi)
+
+  leaveq
+  retq
+
+k_get_pat:
   push %rbp
   mov %rsp, %rbp
 
@@ -355,8 +372,24 @@ k_read_pat:
 
   mov $0x277, %ecx
   rdmsr
-  mov %eax, -0x10(%rbp) # lo 32 bits of PAT
-  mov %edx, -0xC(%rbp)  # hi 32 bits of PAT
+  mov %eax, -0x10(%rbp) # lo 32 bits
+  mov %edx, -0xC(%rbp)  # hi 32 bits
+  mov -0x10(%rbp), %rax
+
+  leaveq
+  retq
+
+
+k_get_mtrrcap:
+  push %rbp
+  mov %rsp, %rbp
+
+  sub $0x10, %rsp
+
+  mov $0xFE, %ecx
+  rdmsr
+  mov %eax, -0x10(%rbp) # lo 32 bits
+  mov %edx, -0xC(%rbp)  # hi 32 bits
   mov -0x10(%rbp), %rax
 
   leaveq

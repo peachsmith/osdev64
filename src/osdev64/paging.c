@@ -186,48 +186,23 @@ void k_paging_init()
   // The UEFI firmware should have identity mapped  the first 4 GiB
   // of address space. We will attempt to do that here as well.
 
-  // TODO: verify support for 1 GiB pages using MTRRs.
-
-  // uint64_t max_e = 0;
-  // uint64_t max_phys = 0;
-  // uint64_t gbpage = 0;
-
-  // max_e = k_cpuid_rax(0x80000000);
-  // printf("Max E: %X\n", max_e);
-
-  // if (max_e >= 0x80000008)
-  // {
-  //   // Attempt to find the MAXPHYADDR bit count by using
-  //   // CPUID.80000008H:EAX[7:0]
-  //   max_phys = k_cpuid_rax(0x80000008) & 0xFF;
-  //   printf("MAXPHYADDR: %llu\n", max_phys);
-
-  //   // Check for 1 GiB page support
-  //   // CPUID.80000001H:EDX.Page1GB [bit 26] 
-  //   gbpage = k_cpuid_rdx(0x80000001);
-  //   printf("1 GiB Page Support: %c\n", (gbpage & 0x4000000) ? 'Y' : 'N');
-  // }
-  // else
-  // {
-  //   printf("CPUID.80000008H:EAX[7:0] not supported\n");
-  // }
+  // One way to check for 1 GiB page support is to use
+  // CPUID.80000001H:EDX.Page1GB [bit 26]
 
 
+  // Read the IA32_MTRRCAP MSR
+  uint64_t mtrrcap = k_get_mtrrcap();
+  uint64_t vcnt = mtrrcap & 0xFF;
+  uint64_t fixed = mtrrcap & BM_10;
+  uint64_t smrr = mtrrcap & BM_11;
 
-  // uint64_t has_mtrr = k_cpuid_rdx(0x01);
-  // printf("MSR: %c\n", (has_mtrr & 0x20) ? 'Y' : 'N');
-  // printf("MTRR: %c\n", (has_mtrr & 0x1000) ? 'Y' : 'N');
-  // printf("PAT: %c\n", (has_mtrr & 0x10000) ? 'Y' : 'N');
+  fprintf(stddbg, "[MTRR] VCNT:  %-llu\n", vcnt);
+  fprintf(stddbg, "[MTRR] Fixed: %c\n", (mtrrcap & BM_8) ? 'Y' : 'N');
+  fprintf(stddbg, "[MTRR] WC:    %c\n", fixed ? 'Y' : 'N');
+  fprintf(stddbg, "[MTRR] SMRR:  %c\n", smrr ? 'Y' : 'N');
 
-  // uint64_t pat = k_read_pat();
-  // fprintf(stddbg, "PA0: %s\n", pat_to_str((pat & 0x7)));
-  // fprintf(stddbg, "PA1: %s\n", pat_to_str(((pat >> 8) & 0x7)));
-  // fprintf(stddbg, "PA2: %s\n", pat_to_str(((pat >> 16) & 0x7)));
-  // fprintf(stddbg, "PA3: %s\n", pat_to_str(((pat >> 24) & 0x7)));
-  // fprintf(stddbg, "PA4: %s\n", pat_to_str(((pat >> 32) & 0x7)));
-  // fprintf(stddbg, "PA5: %s\n", pat_to_str(((pat >> 40) & 0x7)));
-  // fprintf(stddbg, "PA6: %s\n", pat_to_str(((pat >> 48) & 0x7)));
-  // fprintf(stddbg, "PA7: %s\n", pat_to_str(((pat >> 56) & 0x7)));
+  
+
 
   // Identity map 512 GiB of address space in the PDPT.
   uint64_t phys = 0;

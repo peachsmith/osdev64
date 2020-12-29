@@ -13,6 +13,11 @@
  * Returns:
  *   uint64_t - the 64 bits of the IA32_PAT MSR
  */
-uint64_t k_read_pat();
+uint64_t k_get_pat();
+
+/**
+ * Reads the value in the IA32_MTRRCAP MSR.
+ */
+uint64_t k_get_mtrrcap();
 
 #endif
