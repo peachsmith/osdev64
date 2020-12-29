@@ -10,10 +10,13 @@
 // The PAT
 #define IA32_PAT (uint64_t)0x277
 
-// MTRRCAP (contains information about the MTRRs)
+// MTRR available features
 #define IA32_MTRRCAP (uint64_t)0xFE
 
-// Fixed Range MTRRs
+// MTRR default memory type and feature enable/disable flags
+#define IA32_MTRR_DEF_TYPE (uint64_t)0x2FF
+
+// fixed range MTRRs
 #define IA32_MTRR_FIX64K_00000 (uint64_t)0x250
 #define IA32_MTRR_FIX16K_80000 (uint64_t)0x258
 #define IA32_MTRR_FIX16K_A0000 (uint64_t)0x259
@@ -26,7 +29,7 @@
 #define IA32_MTRR_FIX4K_F0000  (uint64_t)0x26E
 #define IA32_MTRR_FIX4K_F8000  (uint64_t)0x26F
 
-// Variable Range MTRRs
+// variable range MTRRs
 #define IA32_MTRR_PHYSBASE0 (uint64_t)0x200
 #define IA32_MTRR_PHYSMASK0 (uint64_t)0x201
 #define IA32_MTRR_PHYSBASE1 (uint64_t)0x202
@@ -72,5 +75,17 @@ uint64_t k_get_mtrrcap();
  *   uint64_t - the contents of the MSR.
  */
 uint64_t k_get_msr(uint64_t);
+
+/**
+ * Sets the value of an MSR specified by the argument.
+ *
+ * Params:
+ *   uint64_t - the register address of the MSR
+ *   uint64_t - the contents to write to the MSR
+ *
+ * Returns:
+ *   uint64_t - the contents of the MSR.
+ */
+void k_set_msr(uint64_t, uint64_t);
 
 #endif

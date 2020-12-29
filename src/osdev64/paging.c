@@ -251,29 +251,38 @@ void k_paging_init()
 
   // One way to check for 1 GiB page support is to use
   // CPUID.80000001H:EDX.Page1GB [bit 26]
+  uint64_t has_gib_pages = k_cpuid_rdx(0x80000001) & BM_26;
+  fprintf(stddbg, "[CPUID] 1 GiB Pages: %c\n", has_gib_pages ? 'Y' : 'N');
 
   // Determine how many bits to check in the variable range MTRRs.
   uint64_t mask_bits = (k_cpuid_rax(0x80000008) & 0xFF) - 12;
   uint64_t var_mask = 0;
-  fprintf(stddbg, "mask bits: %llu\n", mask_bits);
   for (int i = 0; i < mask_bits; i++)
   {
-    var_mask |= ((uint64_t)1 << (12 + i));
+    var_mask |= (i << (12 + i));
   }
-  fprintf(stddbg, "mask: %.64b\n", var_mask);
 
-  // Read the IA32_MTRRCAP MSR
-  uint64_t mtrrcap = k_get_mtrrcap();
+  // Available MTRR features
+  uint64_t mtrrcap = k_get_msr(IA32_MTRRCAP);
   uint64_t vcnt = mtrrcap & 0xFF;
-  uint64_t fixed = mtrrcap & BM_10;
-  uint64_t smrr = mtrrcap & BM_11;
-
+  uint64_t has_fixed = mtrrcap & BM_8;
+  uint64_t has_wc = mtrrcap & BM_10;
+  uint64_t has_smrr = mtrrcap & BM_11;
   fprintf(stddbg, "[MTRR] VCNT:  %-llu\n", vcnt);
-  fprintf(stddbg, "[MTRR] Fixed: %c\n", (mtrrcap & BM_8) ? 'Y' : 'N');
-  fprintf(stddbg, "[MTRR] WC:    %c\n", fixed ? 'Y' : 'N');
-  fprintf(stddbg, "[MTRR] SMRR:  %c\n", smrr ? 'Y' : 'N');
+  fprintf(stddbg, "[MTRR] Fixed: %c\n", has_fixed ? 'Y' : 'N');
+  fprintf(stddbg, "[MTRR] WC:    %c\n", has_wc ? 'Y' : 'N');
+  fprintf(stddbg, "[MTRR] SMRR:  %c\n", has_smrr ? 'Y' : 'N');
 
-  if (fixed)
+  // Current MTRR configuration
+  uint64_t mtrrdef = k_get_msr(IA32_MTRR_DEF_TYPE);
+  uint64_t def_type = mtrrdef & 0xFF;
+  uint64_t fixed_enabled = mtrrdef & BM_10;
+  uint64_t mtrr_enabled = mtrrdef & BM_11;
+  fprintf(stddbg, "[MTRR] Default Type:  %s\n", mtrr_type_to_str(def_type));
+  fprintf(stddbg, "[MTRR] Fixed Enabled: %c\n", fixed_enabled ? 'Y' : 'N');
+  fprintf(stddbg, "[MTRR] MTRR Enabled:  %c\n", mtrr_enabled ? 'Y' : 'N');
+
+  if (fixed_enabled)
   {
     uint64_t fix_regs[11];
 
@@ -293,7 +302,7 @@ void k_paging_init()
     {
       fprintf(
         stddbg,
-        "%s %s, %s, %s, %s, %s, %s, %s, %s\n",
+        "[MTRR] %s %s, %s, %s, %s, %s, %s, %s, %s\n",
         fix_names[i],
         mtrr_type_to_str((fix_regs[i] >> 56) & 7),
         mtrr_type_to_str((fix_regs[i] >> 48) & 7),
@@ -341,8 +350,7 @@ void k_paging_init()
         uint64_t physbase = var_regs[i * 2] & var_mask;
         uint64_t physmask = var_regs[i * 2 + 1] & var_mask;
 
-        fprintf(stddbg, "%d Start: %.16llX, ", i, physbase);
-        // fprintf(stddbg, "MASK: %.16llX\n", physmask);
+        fprintf(stddbg, "[MTRR] n: %d, Start: %.16llX, ", i, physbase);
 
         uint64_t addr_test = physbase;
         while ((addr_test & physmask) == physbase)
@@ -352,31 +360,37 @@ void k_paging_init()
         fprintf(stddbg, "End: %.16llX, ", addr_test - 1);
         fprintf(stddbg, "Type: %s\n", mtrr_type_to_str(var_regs[i * 2] & 0xFF));
       }
+    }
+  }
 
-      // fprintf(stddbg, "%s %16llX %s\n",
-      //   var_names[i * 2],
-      //   var_regs[i * 2] & var_mask,
-      //   mtrr_type_to_str(var_regs[i * 2] & 0xFF)
-      // );
+  // Disable MTRRs if they're enabled
+  if (mtrr_enabled)
+  {
+    k_set_msr(IA32_MTRR_DEF_TYPE, mtrrdef & ~BM_11);
 
-      // fprintf(stddbg, "%s %16llX %s\n",
-      //   var_names[i * 2 + 1],
-      //   var_regs[i * 2 + 1] & var_mask,
-      //   (var_regs[i * 2 + 1] & BM_11) ? "VALID" : "INVALID"
-      // );
+    // Verify that we successfully updated the IA32_MTRR_DEF_TYPE register.
+    uint64_t mtrr_still_enabled = k_get_msr(IA32_MTRR_DEF_TYPE);
+    if (mtrr_still_enabled & BM_11)
+    {
+      fprintf(stddbg, "[MTRR] failed to disable MTRRs\n");
+      for (;;);
+    }
+    else
+    {
+      fprintf(stddbg, "[MTRR] successfully disabled MTRRs\n");
     }
   }
 
   // Read the PAT
   uint64_t pat = k_get_msr(IA32_PAT);
-  fprintf(stddbg, "PA0: %s\n", pat_type_to_str(pat & 7));
-  fprintf(stddbg, "PA1: %s\n", pat_type_to_str((pat >> 8) & 7));
-  fprintf(stddbg, "PA2: %s\n", pat_type_to_str((pat >> 16) & 7));
-  fprintf(stddbg, "PA3: %s\n", pat_type_to_str((pat >> 24) & 7));
-  fprintf(stddbg, "PA4: %s\n", pat_type_to_str((pat >> 32) & 7));
-  fprintf(stddbg, "PA5: %s\n", pat_type_to_str((pat >> 40) & 7));
-  fprintf(stddbg, "PA6: %s\n", pat_type_to_str((pat >> 48) & 7));
-  fprintf(stddbg, "PA7: %s\n", pat_type_to_str((pat >> 56) & 7));
+  fprintf(stddbg, "[PAT] PA0: %s\n", pat_type_to_str(pat & 7));
+  fprintf(stddbg, "[PAT] PA1: %s\n", pat_type_to_str((pat >> 8) & 7));
+  fprintf(stddbg, "[PAT] PA2: %s\n", pat_type_to_str((pat >> 16) & 7));
+  fprintf(stddbg, "[PAT] PA3: %s\n", pat_type_to_str((pat >> 24) & 7));
+  fprintf(stddbg, "[PAT] PA4: %s\n", pat_type_to_str((pat >> 32) & 7));
+  fprintf(stddbg, "[PAT] PA5: %s\n", pat_type_to_str((pat >> 40) & 7));
+  fprintf(stddbg, "[PAT] PA6: %s\n", pat_type_to_str((pat >> 48) & 7));
+  fprintf(stddbg, "[PAT] PA7: %s\n", pat_type_to_str((pat >> 56) & 7));
 
 
   // Identity map 512 GiB of address space in the PDPT.

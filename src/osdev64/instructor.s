@@ -26,9 +26,8 @@
 .global k_cpuid_rax
 .global k_cpuid_rdx
 .global k_cpuid_vendor
-.global k_get_pat
-.global k_get_mtrrcap
 .global k_get_msr
+.global k_set_msr
 
 
 
@@ -365,48 +364,37 @@ k_cpuid_vendor:
   leaveq
   retq
 
-k_get_pat:
-  push %rbp
-  mov %rsp, %rbp
-
-  sub $0x10, %rsp
-
-  mov $0x277, %ecx
-  rdmsr
-  mov %eax, -0x10(%rbp) # lo 32 bits
-  mov %edx, -0xC(%rbp)  # hi 32 bits
-  mov -0x10(%rbp), %rax
-
-  leaveq
-  retq
-
-
-k_get_mtrrcap:
-  push %rbp
-  mov %rsp, %rbp
-
-  sub $0x10, %rsp
-
-  mov $0xFE, %ecx
-  rdmsr
-  mov %eax, -0x10(%rbp) # lo 32 bits
-  mov %edx, -0xC(%rbp)  # hi 32 bits
-  mov -0x10(%rbp), %rax
-
-  leaveq
-  retq
-
 k_get_msr:
   push %rbp
   mov %rsp, %rbp
 
   sub $0x10, %rsp
 
-  mov %rdi, %rcx
-  rdmsr
+  mov %rdi, %rcx        # MSR address
+
+  rdmsr                 # Read the MSR
+
   mov %eax, -0x10(%rbp) # lo 32 bits
   mov %edx, -0xC(%rbp)  # hi 32 bits
+
   mov -0x10(%rbp), %rax
+
+  leaveq
+  retq
+
+k_set_msr:
+  push %rbp
+  mov %rsp, %rbp
+
+  sub $0x10, %rsp
+
+  mov %rdi, %rcx         # MSR address
+  mov %rsi, -0x10(%rbp)  # MSR contents
+
+  mov -0x10(%rbp), %eax  # lo 32 bits
+  mov -0xC(%rbp), %edx   # hi 32 bits
+
+  wrmsr                  # Write the MSR
 
   leaveq
   retq
