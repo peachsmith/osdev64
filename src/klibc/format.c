@@ -545,13 +545,13 @@ static size_t uptr_to_buffer(uintptr_t n, char* buffer, int cap)
 }
 
 
-static size_t bin_to_buffer(int64_t n, char* buffer, int prec)
+static size_t bin_to_buffer(uint64_t n, char* buffer, int prec)
 {
   size_t i;   // index
   int sign;   // whether or not the integer is signed
   int r;      // remainder
   int orig;   // original integer value
-  uint64_t u; // unsigned integer
+  // uint64_t u; // unsigned integer
 
   // Ensure that the buffer is not a NULL pointer.
   if (buffer == NULL)
@@ -564,7 +564,7 @@ static size_t bin_to_buffer(int64_t n, char* buffer, int prec)
 
   // Convert the integer to an unsigned integer
   // for the purpose of evaluating the individual digits.
-  u = sign ? (n < 0 ? -n : n) : (uint64_t)n;
+  // u = sign ? (n < 0 ? -n : n) : (uint64_t)n;
 
   i = 0;
 
@@ -577,11 +577,11 @@ static size_t bin_to_buffer(int64_t n, char* buffer, int prec)
     return 1;
   }
 
-  while (u)
+  while (n)
   {
-    r = u % 2;
+    r = n % 2;
     buffer[i++] = r + '0';
-    u /= 2;
+    n /= 2;
   }
 
   // fill the rest of the buffer with padding

@@ -28,6 +28,7 @@
 .global k_cpuid_vendor
 .global k_get_pat
 .global k_get_mtrrcap
+.global k_get_msr
 
 
 
@@ -387,6 +388,21 @@ k_get_mtrrcap:
   sub $0x10, %rsp
 
   mov $0xFE, %ecx
+  rdmsr
+  mov %eax, -0x10(%rbp) # lo 32 bits
+  mov %edx, -0xC(%rbp)  # hi 32 bits
+  mov -0x10(%rbp), %rax
+
+  leaveq
+  retq
+
+k_get_msr:
+  push %rbp
+  mov %rsp, %rbp
+
+  sub $0x10, %rsp
+
+  mov %rdi, %rcx
   rdmsr
   mov %eax, -0x10(%rbp) # lo 32 bits
   mov %edx, -0xC(%rbp)  # hi 32 bits
