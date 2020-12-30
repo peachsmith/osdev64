@@ -195,6 +195,17 @@ void k_memory_init()
     }
   }
 
+  // Ensure that all RAM pool entries are 4KiB aligned.
+  // If they're not, then we should fail here.
+  for (int i = 0; i < g_pool_count; i++)
+  {
+    if (g_ram_pool[i].address % 0x1000)
+    {
+      fprintf(stddbg, "[ERROR] RAM pool entry not 4K aligned\n");
+      for (;;);
+    }
+  }
+
 
   // Create the page reservation ledger.
   for (int i = 0; i < g_pool_count; i++)

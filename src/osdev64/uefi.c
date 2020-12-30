@@ -144,7 +144,7 @@ int k_uefi_exit()
   EFI_STATUS res = uefi_call_wrapper(g_systab->BootServices->ExitBootServices, 2, g_image, g_mem_map.key);
   if (res != EFI_SUCCESS)
   {
-    Print(L"[UEFI] Error calling ExitBootServices: %r\n", res);
+    Print(L"[ERROR] Error calling ExitBootServices: %r\n", res);
     return 0;
   }
 
@@ -173,8 +173,8 @@ void k_uefi_get_mem_map()
   res = uefi_call_wrapper(alloc_pool, 3, EfiLoaderData, map_size, (void**)&buffer);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to allocate initial memory map buffer: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to allocate initial memory map buffer: %r\n", res);
+    for (;;);
   }
 
   // Make the first attempt to get the memory map.
@@ -186,8 +186,8 @@ void k_uefi_get_mem_map()
     // then we abandon the attempt.
     if (res != EFI_BUFFER_TOO_SMALL)
     {
-      Print(L"failed to get the memory map: %r\n", res);
-      return;
+      Print(L"[ERROR] failed to get the memory map: %r\n", res);
+      for (;;);
     }
 
     // Free the initial buffer.
@@ -195,8 +195,8 @@ void k_uefi_get_mem_map()
 
     if (res != EFI_SUCCESS)
     {
-      Print(L"failed to free memory map buffer: %r\n", res);
-      return;
+      Print(L"[ERROR] failed to free memory map buffer: %r\n", res);
+      for (;;);
     }
 
     // The first call to GetMemoryMap should have put the required buffer
@@ -209,8 +209,8 @@ void k_uefi_get_mem_map()
 
     if (res != EFI_SUCCESS)
     {
-      Print(L"failed to allocate second memory map buffer: %r\n", res);
-      return;
+      Print(L"[ERROR] failed to allocate second memory map buffer: %r\n", res);
+      for (;;);
     }
 
     // Make a second attempt to get the memory map.
@@ -218,8 +218,8 @@ void k_uefi_get_mem_map()
 
     if (res != EFI_SUCCESS)
     {
-      Print(L"failed to get the memory map on the second attempt: %r\n", res);
-      return;
+      Print(L"[ERROR] failed to get the memory map on the second attempt: %r\n", res);
+      for (;;);
     }
   }
 
@@ -251,8 +251,8 @@ void k_uefi_get_graphics()
   res = uefi_call_wrapper(loc, 3, &gop_guid, NULL, (void**)&gop);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to get graphics protocol: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to get graphics protocol: %r\n", res);
+    for (;;);
   }
 
   // Loop through all the available graphics modes.
@@ -263,7 +263,8 @@ void k_uefi_get_graphics()
 
     if (res != EFI_SUCCESS)
     {
-      Print(L"failed to query graphics mode: %r\n", res);
+      Print(L"[ERROR] failed to query graphics mode: %r\n", res);
+      for (;;);
     }
     else
     {
@@ -290,8 +291,8 @@ void k_uefi_get_graphics()
   res = uefi_call_wrapper(gop->SetMode, 2, gop, select);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to set graphics mode: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to set graphics mode: %r\n", res);
+    for (;;);
   }
 
   g_graphics.format = mode->PixelFormat;
@@ -318,24 +319,24 @@ void k_uefi_get_font()
   res = uefi_call_wrapper(loc, 3, &sfs_guid, NULL, (void**)&sfs);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to locate simple file system protocol: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to locate simple file system protocol: %r\n", res);
+    for (;;);
   }
 
   // Open the root volume.
   res = uefi_call_wrapper(sfs->OpenVolume, 2, sfs, (void**)&root);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to open root volume: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to open root volume: %r\n", res);
+    for (;;);
   }
 
   // Open the font file.
   res = uefi_call_wrapper(root->Open, 5, root, (void**)&zap_file, L"zap-vga16.psf", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to open zap-vga16.psf: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to open zap-vga16.psf: %r\n", res);
+    for (;;);
   }
 
   // Read the PSF1 header.
@@ -343,8 +344,8 @@ void k_uefi_get_font()
   res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_font);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to read header from zap-vga16.psf: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to read header from zap-vga16.psf: %r\n", res);
+    for (;;);
   }
 
   // Read the glyph data.
@@ -352,16 +353,16 @@ void k_uefi_get_font()
   res = uefi_call_wrapper(zap_file->Read, 3, zap_file, &size, (void*)g_font);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to read glyph data from zap-vga16.psf: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to read glyph data from zap-vga16.psf: %r\n", res);
+    for (;;);
   }
 
   // Close the font file.
   res = uefi_call_wrapper(zap_file->Close, 1, zap_file);
   if (res != EFI_SUCCESS)
   {
-    Print(L"failed to close zap-vga16.psf: %r\n", res);
-    return;
+    Print(L"[ERROR] failed to close zap-vga16.psf: %r\n", res);
+    for (;;);
   }
 }
 

@@ -11,6 +11,7 @@
 #include "osdev64/paging.h"
 #include "osdev64/descriptor.h"
 #include "osdev64/acpi.h"
+#include "osdev64/util.h"
 
 #include "klibc/stdio.h"
 
@@ -44,21 +45,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   char vendor[13];
 
   // Check for CPUID.
-  if (rflags & BM_21)
-  {
-    fprintf(stddbg, "[CPUID] available\n");
-  }
-  else
+  if (!(rflags & BM_21))
   {
     k_set_rflags(rflags | BM_21);
     rflags = k_get_rflags();
     if (rflags & BM_21)
     {
-      fprintf(stddbg, "[CPUID] enabled\n");
+      fprintf(stddbg, "[INFO] CPUID enabled\n");
     }
     else
     {
-      fprintf(stddbg, "[CPUID] unavailable\n");
+      fprintf(stddbg, "[ERROR] CPUID unavailable\n");
       for (;;);
     }
   }
@@ -66,59 +63,59 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Vendor Identification String
   k_cpuid_vendor(vendor);
   vendor[12] = '\0';
-  fprintf(stddbg, "[CPUID] Vendor: %s\n", vendor);
+  fprintf(stddbg, "[INFO] Vendor: %s\n", vendor);
 
   // Check for max extension.
   if (max_e >= 0x80000008)
   {
-    fprintf(stddbg, "[CPUID] Max Extension: %llX\n", max_e);
+    fprintf(stddbg, "[INFO] Max Extension: %llX\n", max_e);
   }
   else
   {
-    fprintf(stddbg, "[CPUID] Max Extension too low: %llu\n", max_e);
+    fprintf(stddbg, "[ERROR] Max Extension too low: %llu\n", max_e);
     for (;;);
   }
 
   // Get MAXPHYADDR from CPUID.80000008H:EAX[bits 7-0]
   maxphysaddr = k_cpuid_rax(0x80000008) & 0xFF;
-  fprintf(stddbg, "[CPUID] MAXPHYSADDR: %llu\n", maxphysaddr);
+  fprintf(stddbg, "[INFO] MAXPHYSADDR: %llu\n", maxphysaddr);
 
   // Check for MSR support.
   if (!(rdx_features & BM_5))
   {
-    fprintf(stddbg, "[CPUID] MSRs are not supported\n");
+    fprintf(stddbg, "[ERROR] MSRs are not supported\n");
     for (;;);
   }
 
   // Check for MTRR support.
   if (!(rdx_features & BM_12))
   {
-    fprintf(stddbg, "[CPUID] MTRRs are not supported\n");
+    fprintf(stddbg, "[ERROR] MTRRs are not supported\n");
     for (;;);
   }
 
   // Check for PAT support.
   if (!(rdx_features & BM_16))
   {
-    fprintf(stddbg, "[CPUID] The PAT is not supported\n");
+    fprintf(stddbg, "[ERROR] PAT is not supported\n");
     for (;;);
   }
 
   // Write some bits from CR0 and CR4
-  fprintf(stddbg, "[CR0] PE:    %c\n", (cr0 & BM_0) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR0] NW:    %c\n", (cr0 & BM_29) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR0] CD:    %c\n", (cr0 & BM_30) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR0] PG:    %c\n", (cr0 & BM_31) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR4] PSE:   %c\n", (cr4 & BM_4) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR4] PAE:   %c\n", (cr4 & BM_5) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR4] PGE:   %c\n", (cr4 & BM_7) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR4] PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
-  fprintf(stddbg, "[CR4] PKE:   %c\n", (cr4 & BM_22) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR0.PE:    %c\n", (cr0 & BM_0) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR0.NW:    %c\n", (cr0 & BM_29) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR0.CD:    %c\n", (cr0 & BM_30) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR0.PG:    %c\n", (cr0 & BM_31) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR4.PSE:   %c\n", (cr4 & BM_4) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR4.PAE:   %c\n", (cr4 & BM_5) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR4.PGE:   %c\n", (cr4 & BM_7) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR4.PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
+  fprintf(stddbg, "[INFO] CR4.PKE:   %c\n", (cr4 & BM_22) ? 'Y' : 'N');
 
   // Terminate UEFI boot services.
   if (!k_uefi_exit())
   {
-    fprintf(stddbg, "[UEFI] Failed to exit UEFI boot services.\n");
+    fprintf(stddbg, "[ERROR] Failed to exit UEFI boot services.\n");
     for (;;);
   }
 
@@ -153,7 +150,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   }
 
   // Replace UEFI's paging with our own.
-  k_paging_init();
+  // TODO: figure out how to deal with MTRRs.
+  // k_paging_init();
 
   // Enable interrupts.
   k_enable_interrupts();
@@ -229,7 +227,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Test an exception handler.
   // k_cause_exception();
 
-  fprintf(stddbg, "\n\nInitialization complete.\n");
+  fprintf(stddbg, "[INFO] Initialization complete.\n");
 
   // The main loop.
   for (;;);

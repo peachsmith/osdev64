@@ -364,22 +364,24 @@ void k_paging_init()
   }
 
   // Disable MTRRs if they're enabled
-  if (mtrr_enabled)
-  {
-    k_set_msr(IA32_MTRR_DEF_TYPE, mtrrdef & ~BM_11);
+  // NOTE: This is a workaround for having to verify the memory types
+  // of various regions of physical address space when mapping addresses.
+  // if (mtrr_enabled)
+  // {
+  //   k_set_msr(IA32_MTRR_DEF_TYPE, mtrrdef & ~BM_11);
 
-    // Verify that we successfully updated the IA32_MTRR_DEF_TYPE register.
-    uint64_t mtrr_still_enabled = k_get_msr(IA32_MTRR_DEF_TYPE);
-    if (mtrr_still_enabled & BM_11)
-    {
-      fprintf(stddbg, "[MTRR] failed to disable MTRRs\n");
-      for (;;);
-    }
-    else
-    {
-      fprintf(stddbg, "[MTRR] successfully disabled MTRRs\n");
-    }
-  }
+  //   // Verify that we successfully updated the IA32_MTRR_DEF_TYPE register.
+  //   uint64_t mtrr_still_enabled = k_get_msr(IA32_MTRR_DEF_TYPE);
+  //   if (mtrr_still_enabled & BM_11)
+  //   {
+  //     fprintf(stddbg, "[MTRR] failed to disable MTRRs\n");
+  //     for (;;);
+  //   }
+  //   else
+  //   {
+  //     fprintf(stddbg, "[MTRR] successfully disabled MTRRs\n");
+  //   }
+  // }
 
   // Read the PAT
   uint64_t pat = k_get_msr(IA32_PAT);

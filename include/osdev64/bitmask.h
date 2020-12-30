@@ -1,5 +1,5 @@
-#ifndef JEP_UTIL_H
-#define JEP_UTIL_H
+#ifndef JEP_BITMASK_H
+#define JEP_BITMASK_H
 
 #include <stdint.h>
 
