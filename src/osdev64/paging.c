@@ -3,11 +3,14 @@
 #include "osdev64/cpuid.h"
 #include "osdev64/control.h"
 #include "osdev64/msr.h"
+#include "osdev64/memory.h"
 
 #include "klibc/stdio.h"
 
 #include <stdint.h>
 
+
+extern uint64_t g_total_ram;
 
 // PML4
 pml4e pml4[512] __attribute__((aligned(0x1000)));
@@ -254,168 +257,249 @@ void k_paging_init()
   uint64_t has_gib_pages = k_cpuid_rdx(0x80000001) & BM_26;
   fprintf(stddbg, "[CPUID] 1 GiB Pages: %c\n", has_gib_pages ? 'Y' : 'N');
 
-  // Determine how many bits to check in the variable range MTRRs.
-  uint64_t mask_bits = (k_cpuid_rax(0x80000008) & 0xFF) - 12;
-  uint64_t var_mask = 0;
-  for (int i = 0; i < mask_bits; i++)
-  {
-    var_mask |= (i << (12 + i));
-  }
-
-  // Available MTRR features
-  uint64_t mtrrcap = k_get_msr(IA32_MTRRCAP);
-  uint64_t vcnt = mtrrcap & 0xFF;
-  uint64_t has_fixed = mtrrcap & BM_8;
-  uint64_t has_wc = mtrrcap & BM_10;
-  uint64_t has_smrr = mtrrcap & BM_11;
-  fprintf(stddbg, "[MTRR] VCNT:  %-llu\n", vcnt);
-  fprintf(stddbg, "[MTRR] Fixed: %c\n", has_fixed ? 'Y' : 'N');
-  fprintf(stddbg, "[MTRR] WC:    %c\n", has_wc ? 'Y' : 'N');
-  fprintf(stddbg, "[MTRR] SMRR:  %c\n", has_smrr ? 'Y' : 'N');
-
-  // Current MTRR configuration
-  uint64_t mtrrdef = k_get_msr(IA32_MTRR_DEF_TYPE);
-  uint64_t def_type = mtrrdef & 0xFF;
-  uint64_t fixed_enabled = mtrrdef & BM_10;
-  uint64_t mtrr_enabled = mtrrdef & BM_11;
-  fprintf(stddbg, "[MTRR] Default Type:  %s\n", mtrr_type_to_str(def_type));
-  fprintf(stddbg, "[MTRR] Fixed Enabled: %c\n", fixed_enabled ? 'Y' : 'N');
-  fprintf(stddbg, "[MTRR] MTRR Enabled:  %c\n", mtrr_enabled ? 'Y' : 'N');
-
-  if (fixed_enabled)
-  {
-    uint64_t fix_regs[11];
-
-    fix_regs[0] = k_get_msr(IA32_MTRR_FIX64K_00000);
-    fix_regs[1] = k_get_msr(IA32_MTRR_FIX16K_80000);
-    fix_regs[2] = k_get_msr(IA32_MTRR_FIX16K_A0000);
-    fix_regs[3] = k_get_msr(IA32_MTRR_FIX4K_C0000);
-    fix_regs[4] = k_get_msr(IA32_MTRR_FIX4K_C8000);
-    fix_regs[5] = k_get_msr(IA32_MTRR_FIX4K_D0000);
-    fix_regs[6] = k_get_msr(IA32_MTRR_FIX4K_D8000);
-    fix_regs[7] = k_get_msr(IA32_MTRR_FIX4K_E0000);
-    fix_regs[8] = k_get_msr(IA32_MTRR_FIX4K_E8000);
-    fix_regs[9] = k_get_msr(IA32_MTRR_FIX4K_F0000);
-    fix_regs[10] = k_get_msr(IA32_MTRR_FIX4K_F8000);
-
-    for (int i = 0; i < 11; i++)
-    {
-      fprintf(
-        stddbg,
-        "[MTRR] %s %s, %s, %s, %s, %s, %s, %s, %s\n",
-        fix_names[i],
-        mtrr_type_to_str((fix_regs[i] >> 56) & 7),
-        mtrr_type_to_str((fix_regs[i] >> 48) & 7),
-        mtrr_type_to_str((fix_regs[i] >> 40) & 7),
-        mtrr_type_to_str((fix_regs[i] >> 32) & 7),
-        mtrr_type_to_str((fix_regs[i] >> 24) & 7),
-        mtrr_type_to_str((fix_regs[i] >> 16) & 7),
-        mtrr_type_to_str((fix_regs[i] >> 8) & 7),
-        mtrr_type_to_str(fix_regs[i] & 7)
-      );
-    }
-  }
-
-  if (vcnt > 0)
-  {
-    uint64_t var_regs[20];
-
-    var_regs[0] = k_get_msr(IA32_MTRR_PHYSBASE0);
-    var_regs[1] = k_get_msr(IA32_MTRR_PHYSMASK0);
-    var_regs[2] = k_get_msr(IA32_MTRR_PHYSBASE1);
-    var_regs[3] = k_get_msr(IA32_MTRR_PHYSMASK1);
-    var_regs[4] = k_get_msr(IA32_MTRR_PHYSBASE2);
-    var_regs[5] = k_get_msr(IA32_MTRR_PHYSMASK2);
-    var_regs[6] = k_get_msr(IA32_MTRR_PHYSBASE3);
-    var_regs[7] = k_get_msr(IA32_MTRR_PHYSMASK3);
-    var_regs[8] = k_get_msr(IA32_MTRR_PHYSBASE4);
-    var_regs[9] = k_get_msr(IA32_MTRR_PHYSMASK4);
-    var_regs[10] = k_get_msr(IA32_MTRR_PHYSBASE5);
-    var_regs[11] = k_get_msr(IA32_MTRR_PHYSMASK5);
-    var_regs[12] = k_get_msr(IA32_MTRR_PHYSBASE6);
-    var_regs[13] = k_get_msr(IA32_MTRR_PHYSMASK6);
-    var_regs[14] = k_get_msr(IA32_MTRR_PHYSBASE7);
-    var_regs[15] = k_get_msr(IA32_MTRR_PHYSMASK7);
-    var_regs[16] = k_get_msr(IA32_MTRR_PHYSBASE8);
-    var_regs[17] = k_get_msr(IA32_MTRR_PHYSMASK8);
-    var_regs[18] = k_get_msr(IA32_MTRR_PHYSBASE9);
-    var_regs[19] = k_get_msr(IA32_MTRR_PHYSMASK9);
-
-
-
-    for (int i = 0; i < vcnt; i++)
-    {
-      if (var_regs[i * 2 + 1] & BM_11)
-      {
-        uint64_t physbase = var_regs[i * 2] & var_mask;
-        uint64_t physmask = var_regs[i * 2 + 1] & var_mask;
-
-        fprintf(stddbg, "[MTRR] n: %d, Start: %.16llX, ", i, physbase);
-
-        uint64_t addr_test = physbase;
-        while ((addr_test & physmask) == physbase)
-        {
-          addr_test += 4096;
-        }
-        fprintf(stddbg, "End: %.16llX, ", addr_test - 1);
-        fprintf(stddbg, "Type: %s\n", mtrr_type_to_str(var_regs[i * 2] & 0xFF));
-      }
-    }
-  }
-
-  // Disable MTRRs if they're enabled
-  // NOTE: This is a workaround for having to verify the memory types
-  // of various regions of physical address space when mapping addresses.
-  // if (mtrr_enabled)
+  // // Determine how many bits to check in the variable range MTRRs.
+  // uint64_t mask_bits = (k_cpuid_rax(0x80000008) & 0xFF) - 12;
+  // uint64_t var_mask = 0;
+  // for (int i = 0; i < mask_bits; i++)
   // {
-  //   k_set_msr(IA32_MTRR_DEF_TYPE, mtrrdef & ~BM_11);
+  //   var_mask |= (i << (12 + i));
+  // }
 
-  //   // Verify that we successfully updated the IA32_MTRR_DEF_TYPE register.
-  //   uint64_t mtrr_still_enabled = k_get_msr(IA32_MTRR_DEF_TYPE);
-  //   if (mtrr_still_enabled & BM_11)
+  // // Available MTRR features
+  // uint64_t mtrrcap = k_get_msr(IA32_MTRRCAP);
+  // uint64_t vcnt = mtrrcap & 0xFF;
+  // uint64_t has_fixed = mtrrcap & BM_8;
+  // uint64_t has_wc = mtrrcap & BM_10;
+  // uint64_t has_smrr = mtrrcap & BM_11;
+  // fprintf(stddbg, "[MTRR] VCNT:  %-llu\n", vcnt);
+  // fprintf(stddbg, "[MTRR] Fixed: %c\n", has_fixed ? 'Y' : 'N');
+  // fprintf(stddbg, "[MTRR] WC:    %c\n", has_wc ? 'Y' : 'N');
+  // fprintf(stddbg, "[MTRR] SMRR:  %c\n", has_smrr ? 'Y' : 'N');
+
+  // // Current MTRR configuration
+  // uint64_t mtrrdef = k_get_msr(IA32_MTRR_DEF_TYPE);
+  // uint64_t def_type = mtrrdef & 0xFF;
+  // uint64_t fixed_enabled = mtrrdef & BM_10;
+  // uint64_t mtrr_enabled = mtrrdef & BM_11;
+  // fprintf(stddbg, "[MTRR] Default Type:  %s\n", mtrr_type_to_str(def_type));
+  // fprintf(stddbg, "[MTRR] Fixed Enabled: %c\n", fixed_enabled ? 'Y' : 'N');
+  // fprintf(stddbg, "[MTRR] MTRR Enabled:  %c\n", mtrr_enabled ? 'Y' : 'N');
+
+  // if (fixed_enabled)
+  // {
+  //   uint64_t fix_regs[11];
+
+  //   fix_regs[0] = k_get_msr(IA32_MTRR_FIX64K_00000);
+  //   fix_regs[1] = k_get_msr(IA32_MTRR_FIX16K_80000);
+  //   fix_regs[2] = k_get_msr(IA32_MTRR_FIX16K_A0000);
+  //   fix_regs[3] = k_get_msr(IA32_MTRR_FIX4K_C0000);
+  //   fix_regs[4] = k_get_msr(IA32_MTRR_FIX4K_C8000);
+  //   fix_regs[5] = k_get_msr(IA32_MTRR_FIX4K_D0000);
+  //   fix_regs[6] = k_get_msr(IA32_MTRR_FIX4K_D8000);
+  //   fix_regs[7] = k_get_msr(IA32_MTRR_FIX4K_E0000);
+  //   fix_regs[8] = k_get_msr(IA32_MTRR_FIX4K_E8000);
+  //   fix_regs[9] = k_get_msr(IA32_MTRR_FIX4K_F0000);
+  //   fix_regs[10] = k_get_msr(IA32_MTRR_FIX4K_F8000);
+
+  //   for (int i = 0; i < 11; i++)
   //   {
-  //     fprintf(stddbg, "[MTRR] failed to disable MTRRs\n");
-  //     for (;;);
+  //     fprintf(
+  //       stddbg,
+  //       "[MTRR] %s %s, %s, %s, %s, %s, %s, %s, %s\n",
+  //       fix_names[i],
+  //       mtrr_type_to_str((fix_regs[i] >> 56) & 7),
+  //       mtrr_type_to_str((fix_regs[i] >> 48) & 7),
+  //       mtrr_type_to_str((fix_regs[i] >> 40) & 7),
+  //       mtrr_type_to_str((fix_regs[i] >> 32) & 7),
+  //       mtrr_type_to_str((fix_regs[i] >> 24) & 7),
+  //       mtrr_type_to_str((fix_regs[i] >> 16) & 7),
+  //       mtrr_type_to_str((fix_regs[i] >> 8) & 7),
+  //       mtrr_type_to_str(fix_regs[i] & 7)
+  //     );
   //   }
-  //   else
+  // }
+
+  // if (vcnt > 0)
+  // {
+  //   uint64_t var_regs[20];
+
+  //   var_regs[0] = k_get_msr(IA32_MTRR_PHYSBASE0);
+  //   var_regs[1] = k_get_msr(IA32_MTRR_PHYSMASK0);
+  //   var_regs[2] = k_get_msr(IA32_MTRR_PHYSBASE1);
+  //   var_regs[3] = k_get_msr(IA32_MTRR_PHYSMASK1);
+  //   var_regs[4] = k_get_msr(IA32_MTRR_PHYSBASE2);
+  //   var_regs[5] = k_get_msr(IA32_MTRR_PHYSMASK2);
+  //   var_regs[6] = k_get_msr(IA32_MTRR_PHYSBASE3);
+  //   var_regs[7] = k_get_msr(IA32_MTRR_PHYSMASK3);
+  //   var_regs[8] = k_get_msr(IA32_MTRR_PHYSBASE4);
+  //   var_regs[9] = k_get_msr(IA32_MTRR_PHYSMASK4);
+  //   var_regs[10] = k_get_msr(IA32_MTRR_PHYSBASE5);
+  //   var_regs[11] = k_get_msr(IA32_MTRR_PHYSMASK5);
+  //   var_regs[12] = k_get_msr(IA32_MTRR_PHYSBASE6);
+  //   var_regs[13] = k_get_msr(IA32_MTRR_PHYSMASK6);
+  //   var_regs[14] = k_get_msr(IA32_MTRR_PHYSBASE7);
+  //   var_regs[15] = k_get_msr(IA32_MTRR_PHYSMASK7);
+  //   var_regs[16] = k_get_msr(IA32_MTRR_PHYSBASE8);
+  //   var_regs[17] = k_get_msr(IA32_MTRR_PHYSMASK8);
+  //   var_regs[18] = k_get_msr(IA32_MTRR_PHYSBASE9);
+  //   var_regs[19] = k_get_msr(IA32_MTRR_PHYSMASK9);
+
+
+
+  //   for (int i = 0; i < vcnt; i++)
   //   {
-  //     fprintf(stddbg, "[MTRR] successfully disabled MTRRs\n");
+  //     if (var_regs[i * 2 + 1] & BM_11)
+  //     {
+  //       uint64_t physbase = var_regs[i * 2] & var_mask;
+  //       uint64_t physmask = var_regs[i * 2 + 1] & var_mask;
+
+  //       fprintf(stddbg, "[MTRR] n: %d, Start: %.16llX, ", i, physbase);
+
+  //       uint64_t addr_test = physbase;
+  //       while ((addr_test & physmask) == physbase)
+  //       {
+  //         addr_test += 4096;
+  //       }
+  //       fprintf(stddbg, "End: %.16llX, ", addr_test - 1);
+  //       fprintf(stddbg, "Type: %s\n", mtrr_type_to_str(var_regs[i * 2] & 0xFF));
+  //     }
   //   }
   // }
 
   // Read the PAT
-  uint64_t pat = k_get_msr(IA32_PAT);
-  fprintf(stddbg, "[PAT] PA0: %s\n", pat_type_to_str(pat & 7));
-  fprintf(stddbg, "[PAT] PA1: %s\n", pat_type_to_str((pat >> 8) & 7));
-  fprintf(stddbg, "[PAT] PA2: %s\n", pat_type_to_str((pat >> 16) & 7));
-  fprintf(stddbg, "[PAT] PA3: %s\n", pat_type_to_str((pat >> 24) & 7));
-  fprintf(stddbg, "[PAT] PA4: %s\n", pat_type_to_str((pat >> 32) & 7));
-  fprintf(stddbg, "[PAT] PA5: %s\n", pat_type_to_str((pat >> 40) & 7));
-  fprintf(stddbg, "[PAT] PA6: %s\n", pat_type_to_str((pat >> 48) & 7));
-  fprintf(stddbg, "[PAT] PA7: %s\n", pat_type_to_str((pat >> 56) & 7));
+  // uint64_t pat = k_get_msr(IA32_PAT);
+  // fprintf(stddbg, "[PAT] PA0: %s\n", pat_type_to_str(pat & 7));
+  // fprintf(stddbg, "[PAT] PA1: %s\n", pat_type_to_str((pat >> 8) & 7));
+  // fprintf(stddbg, "[PAT] PA2: %s\n", pat_type_to_str((pat >> 16) & 7));
+  // fprintf(stddbg, "[PAT] PA3: %s\n", pat_type_to_str((pat >> 24) & 7));
+  // fprintf(stddbg, "[PAT] PA4: %s\n", pat_type_to_str((pat >> 32) & 7));
+  // fprintf(stddbg, "[PAT] PA5: %s\n", pat_type_to_str((pat >> 40) & 7));
+  // fprintf(stddbg, "[PAT] PA6: %s\n", pat_type_to_str((pat >> 48) & 7));
+  // fprintf(stddbg, "[PAT] PA7: %s\n", pat_type_to_str((pat >> 56) & 7));
 
 
-  // Identity map 512 GiB of address space in the PDPT.
-  uint64_t phys = 0;
-  for (uint64_t i = 0; i < 512; i++)
+  fprintf(stddbg, "Total RAM detected: %llu\n", g_total_ram);
+
+
+  // TODO: allocate dynamic memory for paging structures
+
+  // Calculate the paging structures required to map all of RAM.
+  uint64_t counter = 0;
+  uint64_t ptn = 0;   // number of page tables
+  uint64_t pdn = 1;   // number of page directories
+  uint64_t pdptn = 1; // number of page directory pointer tables
+  while (counter < g_total_ram)
   {
-    pdpt[i] = make_pdpte(i * 0x40000000);
+    if (!(counter % 0x200000))
+    {
+      // If the counter reaches a multiple of 2 MiB,
+      // increment the number of page tables.
+      ptn++;
+
+      // If the number of page tables reaches a multiple
+      // of 512, increment the number of page directories.
+      if (!(ptn % 512))
+      {
+        pdn++;
+      }
+
+      // If the number of page directories reaches a multiple
+      // of 512, increment the number of PDPTs.
+      if (!(pdn % 512))
+      {
+        pdptn++;
+      }
+    }
+    counter += 0x1000;
   }
 
-  // Put the PDPT in the PML4.
-  pml4[0] = make_pml4e((uint64_t)(pdpt));
-
-  // Mark the rest of the entries in the PML4 as not present.
-  for (int i = 1; i < 512; i++)
+  if (!(pdn % 512))
   {
-    pml4[i] = pml4[0] & ~((uint64_t)1);
+    pdptn--;
   }
 
-  uint64_t cr3 = k_get_cr3();
+  if (!(ptn % 512))
+  {
+    pdn--;
+  }
 
-  // Put the address of our PML4 in CR3.
-  cr3 = (uint64_t)pml4;
 
-  // Update CR3.
-  k_set_cr3(cr3);
+  fprintf(stddbg, "paging structures required:\n");
+  fprintf(stddbg, "  PDPT: %llu\n", pdptn);
+  fprintf(stddbg, "  PD: %llu\n", pdn);
+  fprintf(stddbg, "  PT: %llu\n", ptn);
+
+  // memory needed for paging structures
+  uint64_t ps_mem = 4096 + pdptn * 4096 + pdn * 4096 + ptn * 4096;
+  fprintf(stddbg, "memory for paging structures: %llu\n", ps_mem);
+
+  // Get memory for the page tables.
+  char* pt_mem = (char*)k_memory_alloc_pages(ptn);
+  if (pt_mem == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate memory for page tables\n");
+    for (;;);
+  }
+
+  // Get memory for the page page directories.
+  char* pd_mem = (char*)k_memory_alloc_pages(pdn);
+  if (pd_mem == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate memory for page directories\n");
+    for (;;);
+  }
+
+  // Get memory for the PDPTs.
+  char* pdpt_mem = (char*)k_memory_alloc_pages(pdptn);
+  if (pdpt_mem == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate memory for PDPTs\n");
+    for (;;);
+  }
+
+  // Print up to the first 10 base addresses of the page tables.
+  for (int i = 0; i < ptn && i < 10; i++)
+  {
+    fprintf(stddbg, "PT %d: %p\n", i, pt_mem + (i * 0x1000));
+  }
+
+  // Print up to the first 10 base addresses of the page directories.
+  for (int i = 0; i < pdn && i < 10; i++)
+  {
+    fprintf(stddbg, "PD %d: %p\n", i, pd_mem + (i * 0x1000));
+  }
+
+  // Print up to the first 10 base addresses of the PDPTs.
+  for (int i = 0; i < pdptn && i < 10; i++)
+  {
+    fprintf(stddbg, "PDPT %d: %p\n", i, pdpt_mem + (i * 0x1000));
+  }
+
+  fprintf(stddbg, "----------\n");
+
+  k_memory_print_ledger();
+
+  // // Identity map 512 GiB of address space in the PDPT.
+  // uint64_t phys = 0;
+  // for (uint64_t i = 0; i < 512; i++)
+  // {
+  //   pdpt[i] = make_pdpte(i * 0x40000000);
+  // }
+
+  // // Put the PDPT in the PML4.
+  // pml4[0] = make_pml4e((uint64_t)(pdpt));
+
+  // // Mark the rest of the entries in the PML4 as not present.
+  // for (int i = 1; i < 512; i++)
+  // {
+  //   pml4[i] = pml4[0] & ~((uint64_t)1);
+  // }
+
+  // uint64_t cr3 = k_get_cr3();
+
+  // // Put the address of our PML4 in CR3.
+  // cr3 = (uint64_t)pml4;
+
+  // // Update CR3.
+  // k_set_cr3(cr3);
 }

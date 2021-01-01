@@ -62,10 +62,6 @@ void install_isr(uint64_t r, int i)
   {
     lo |= ((uint64_t)1 << 32);
   }
-  else
-  {
-    lo |= ((uint64_t)0 << 32);
-  }
 
   // Bits [43:40] are the type configuration for a 32-bit interrupt gate.
   // We're currently using the bits 1 1 1 0

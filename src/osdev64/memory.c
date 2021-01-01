@@ -36,6 +36,8 @@ pool_entry g_ram_pool[RAM_POOL_MAX];
 // RAM ledger
 ledger_entry* g_ram_ledger;
 
+uint64_t g_total_ram = 0;
+
 
 // char string representations of UEFI memory types
 static char* c_EfiReservedMemoryType = "Reserved";
@@ -153,16 +155,13 @@ static void print_mmap()
     g_mem_map.version);
 
   EFI_MEMORY_DESCRIPTOR* d;
-  void* start = (void*)(g_mem_map.buffer);
-  void* end = start + g_mem_map.map_size;
+  char* start = (char*)(g_mem_map.buffer);
+  char* end = start + g_mem_map.map_size;
 
-  for (; start < end; start += g_mem_map.desc_size)
+  for (; start + g_mem_map.desc_size <= end; start += g_mem_map.desc_size)
   {
     d = (EFI_MEMORY_DESCRIPTOR*)start;
-    if (d->Type == EfiConventionalMemory && g_pool_count < RAM_POOL_MAX)
-    {
-      fprintf(stddbg, "%-20s %p %ld \n", efi_mem_str(d->Type), d->PhysicalStart, d->NumberOfPages);
-    }
+    fprintf(stddbg, "%-20s %p %ld \n", efi_mem_str(d->Type), d->PhysicalStart, d->NumberOfPages);
   }
 }
 
@@ -171,28 +170,60 @@ void k_memory_init()
 {
   ledger_entry root;        // root page reservation
   EFI_MEMORY_DESCRIPTOR* d; // UEFI memory descriptor
-  void* start;              // base address of memory map
-  void* end;                // end of memory map
+  char* start;              // base address of memory map
+  char* end;                // end of memory map
 
   // Get the memory map from the firmware.
   k_uefi_get_mem_map();
 
-
   // Fill the RAM pool.
-  start = (void*)(g_mem_map.buffer);
+  start = (char*)(g_mem_map.buffer);
   end = start + g_mem_map.map_size;
 
-  for (; start < end; start += g_mem_map.desc_size)
+  for (; start + g_mem_map.desc_size <= end; start += g_mem_map.desc_size)
   {
     d = (EFI_MEMORY_DESCRIPTOR*)start;
 
-    // The memory type should be EfiConventionalMemory and
-    // we should have less than RAM_POOL_MAX regions collected.
-    if (d->Type == EfiConventionalMemory && g_pool_count < RAM_POOL_MAX)
+    g_total_ram += d->NumberOfPages * 0x1000;
+
+    // The memory type should be either EfiConventionalMemory,
+    // EfiBootServicesCode, EfiBootServicesData,
+    // EfiLoaderCode, or EfiLoaderData.
+    if ((
+      d->Type == EfiConventionalMemory
+      || d->Type == EfiBootServicesCode
+      || d->Type == EfiBootServicesData
+      || d->Type == EfiLoaderCode
+      || d->Type == EfiLoaderData
+      )
+      && g_pool_count < RAM_POOL_MAX)
     {
       g_ram_pool[g_pool_count].address = (uint64_t)(d->PhysicalStart);
-      g_ram_pool[g_pool_count++].pages = (uint64_t)(d->NumberOfPages);
+      g_ram_pool[g_pool_count].pages = (uint64_t)(d->NumberOfPages);
+
+      // Don't allow an entry at address 0.
+      // If the base of the region is 0, attempt to use
+      // 0x1000 as the base address instead.
+      if (g_ram_pool[g_pool_count].address == 0)
+      {
+        if (g_ram_pool[g_pool_count].pages > 1)
+        {
+          g_ram_pool[g_pool_count].address += 0x1000;
+          g_ram_pool[g_pool_count].pages--;
+          g_pool_count++;
+        }
+      }
+      else
+      {
+        g_pool_count++;
+      }
     }
+  }
+
+  // Round the total RAM up to the nearest GiB to account for holes.
+  while (g_total_ram % 0x40000000)
+  {
+    g_total_ram += 0x1000;
   }
 
   // Ensure that all RAM pool entries are 4KiB aligned.
@@ -206,6 +237,28 @@ void k_memory_init()
     }
   }
 
+  // Sort the memory regions in ascending order of size
+  // so smaller regions are used first for smaller allocations.
+  // We use bubble sort since this code only runs once and doesn't
+  // need to be particularly fast. We're probably not ever going
+  // to have a million entries in the pool.
+  int sorted = 0;
+  while (!sorted)
+  {
+    sorted = 1;
+    for (int i = 0; i < g_pool_count; i++)
+    {
+      if (g_ram_pool[i].pages > g_ram_pool[i + 1].pages
+        && i < g_pool_count - 1
+        )
+      {
+        sorted = 0;
+        pool_entry tmp = g_ram_pool[i];
+        g_ram_pool[i] = g_ram_pool[i + 1];
+        g_ram_pool[i + 1] = tmp;
+      }
+    }
+  }
 
   // Create the page reservation ledger.
   for (int i = 0; i < g_pool_count; i++)
@@ -297,6 +350,8 @@ void* k_memory_alloc_pages(size_t n)
     }
   }
 
+  fprintf(stddbg, "[ERROR] failed to allocate %llu pages\n", n);
+
   return NULL;
 }
 
@@ -339,7 +394,7 @@ void k_memory_print_pool()
 
   for (int i = 0; i < g_pool_count; i++)
   {
-    fprintf(stddbg, "| %p %.16llu |\n", g_ram_pool[i].address, g_ram_pool[i].pages);
+    fprintf(stddbg, "| %p %16llu |\n", g_ram_pool[i].address, g_ram_pool[i].pages);
   }
 
   fprintf(stddbg, "+-----------------------------------+\n");

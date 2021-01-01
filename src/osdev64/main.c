@@ -35,6 +35,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_memory_init();      // memory management
   // TODO: ACPI
 
+  // Terminate UEFI boot services.
+  if (!k_uefi_exit())
+  {
+    fprintf(stddbg, "[ERROR] Failed to exit UEFI boot services.\n");
+    for (;;);
+  }
+
   // CPU information
   uint64_t cr0 = k_get_cr0();
   uint64_t cr4 = k_get_cr4();
@@ -112,13 +119,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   fprintf(stddbg, "[INFO] CR4.PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
   fprintf(stddbg, "[INFO] CR4.PKE:   %c\n", (cr4 & BM_22) ? 'Y' : 'N');
 
-  // Terminate UEFI boot services.
-  if (!k_uefi_exit())
-  {
-    fprintf(stddbg, "[ERROR] Failed to exit UEFI boot services.\n");
-    for (;;);
-  }
-
   // END Stage 1 initialization
   //==============================
 
@@ -151,7 +151,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // Replace UEFI's paging with our own.
   // TODO: figure out how to deal with MTRRs.
-  // k_paging_init();
+  k_paging_init();
 
   // Enable interrupts.
   k_enable_interrupts();
@@ -194,11 +194,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     50, 120, 200 // r, g, b
   );
 
-  // // Print the physical RAM pool.
+  // Print the physical RAM pool.
   // k_memory_print_pool();
 
-  // // Allocate three separate regions of memory where
-  // // each region is one page.
+  // Allocate three separate regions of memory where
+  // each region is one page.
+  // fprintf(stddbg, "creating 3 separate 1 page reservations\n");
   // char* my_ram = (char*)k_memory_alloc_pages(1);
   // char* my_ram2 = (char*)k_memory_alloc_pages(1);
   // char* my_ram3 = (char*)k_memory_alloc_pages(1);
@@ -206,7 +207,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // k_memory_print_ledger();
 
   // // Free the second region of memory.
-  // fprintf(stddbg, "freeing my_ram2\n");
+  // fprintf(stddbg, "freeing 1 page\n");
   // k_memory_free_pages((void*)my_ram2);
   // k_memory_print_ledger();
 
@@ -225,7 +226,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
 
   // Test an exception handler.
-  // k_cause_exception();
+  k_cause_exception();
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 

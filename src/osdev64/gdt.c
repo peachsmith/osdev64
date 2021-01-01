@@ -2,16 +2,20 @@
 #include "osdev64/uefi.h"
 #include "osdev64/bitmask.h"
 #include "osdev64/descriptor.h"
+#include "osdev64/memory.h"
+
+#include "klibc/stdio.h"
 
 // GDT
-seg_desc g_gdt[GDT_COUNT];
+// Currently expects 5 entries
+seg_desc* g_gdt;
 
 // TSS
-uint32_t g_tss[TSS_COUNT];
+// uint32_t g_tss[TSS_COUNT];
+uint32_t* g_tss;
 
 // IST1 stack
-// TODO: get this from RAM
-unsigned char g_ist1[8192]__attribute__((aligned(16)));
+unsigned char* g_ist1;
 
 /**
  * Creates a segment descriptor which describes a 64-bit code or data
@@ -84,15 +88,37 @@ void k_ltr(uint16_t);
 
 void k_load_gdt()
 {
-  g_gdt[0] = 0; // null descriptor
+  // Reserve some memory for the GDT.
+  // 4 KiB should be more than enough.
+  g_gdt = (seg_desc*)k_memory_alloc_pages(1);
+  if (g_gdt == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate memory for GDT\n");
+    for (;;);
+  }
+
+  uint16_t gdt_count = 0;
+  uint16_t tss_count = 0;
+
+  g_gdt[gdt_count++] = 0; // null descriptor
 
   // code segment descriptor
   // type: execute/read, conforming, not yet accessed
-  g_gdt[1] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_ERC);
+  g_gdt[gdt_count++] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_ERC);
 
   // data segment descriptor
   // type: read/write, expand down, not yet accessed
-  g_gdt[2] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_RWD);
+  g_gdt[gdt_count++] = build_cd_descriptor(0, 0x0FFFFF, CD_SEG_RWD);
+
+
+  // Reserve memory for the TSS.
+  // The TSS contains 26 32-bit entries, so 4 KiB should be plenty.
+  g_tss = (uint32_t*)k_memory_alloc_pages(1);
+  if (g_tss == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate memory for TSS\n");
+    for (;;);
+  }
 
   // Initialize all the values of the TSS to 0.
   for (int i = 0; i < 26; i++)
@@ -100,7 +126,14 @@ void k_load_gdt()
     g_tss[i] = 0;
   }
 
-  // Put the address of IST1 in the TSS?
+  // Reserve two pages for IST1.
+  // Since a stack grows down (top of stack at lower address),
+  // the beginning of the IST stack is the base of the second page.
+  // So if we allocated two pages starting at address 0xA000, then
+  // the beginning of the stack would be 0xB000.
+  g_ist1 = (unsigned char*)k_memory_alloc_pages(2);
+
+  // Put IST1 in the TSS.
   g_tss[9] = (uint32_t)(((uint64_t)(g_ist1 + 4096) & 0xFFFFFFFF));
   g_tss[10] = (uint32_t)(((uint64_t)(g_ist1 + 4096) & 0xFFFFFFFF00000000) >> 32);
 
@@ -125,10 +158,10 @@ void k_load_gdt()
   tss_hi |= (((uint64_t)g_tss & 0xFFFFFFFF00000000) >> 32);
 
   // Put the TSS descriptor in the GDT.
-  g_gdt[3] = tss_lo;
-  g_gdt[4] = tss_hi;
+  g_gdt[gdt_count++] = tss_lo;
+  g_gdt[gdt_count++] = tss_hi;
 
-  uint16_t limit = sizeof(g_gdt) - 1;
+  uint16_t limit = (sizeof(seg_desc) * gdt_count) - 1;
 
   // load the GDT
   k_lgdt(limit, g_gdt);
