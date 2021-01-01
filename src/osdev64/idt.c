@@ -1,6 +1,10 @@
 #include "osdev64/core.h"
 #include "osdev64/bitmask.h"
 #include "osdev64/descriptor.h"
+#include "osdev64/memory.h"
+
+
+#include "klibc/stdio.h"
 
 // The IDT contains interrupt gate descriptors.
 // Each descriptor locates an ISR and specifies the offset of the segment
@@ -38,11 +42,10 @@ void isr28();
 void isr29();
 void isr30();
 void isr31();
-// void isr32();
 
 
 // the IDT
-int_desc g_idt[IDT_COUNT];
+int_desc* g_idt;
 
 
 // Inserts an ISR into the IDT
@@ -89,6 +92,16 @@ void k_lidt(uint16_t, int_desc*);
 
 void k_load_idt()
 {
+  // Reserve memory for the IDT.
+  // 4 KiB should be sufficient, since we allow up to 256
+  // 128-bit entries, which works out to be exactly 4096 bytes.
+  g_idt = (int_desc*)k_memory_alloc_pages(1);
+  if (g_idt == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocated memory for IDT\n");
+    for (;;);
+  }
+
   install_isr((uint64_t)isr0, 0);
   install_isr((uint64_t)isr1, 1);
   install_isr((uint64_t)isr2, 2);
@@ -121,9 +134,8 @@ void k_load_idt()
   install_isr((uint64_t)isr29, 29);
   install_isr((uint64_t)isr30, 30);
   install_isr((uint64_t)isr31, 31);
-  // install_isr((uint64_t)isr32, 32);
 
-  uint16_t limit = sizeof(g_idt) - 1;
+  uint16_t limit = (sizeof(int_desc) * 64) - 1;
 
   k_lidt(limit, g_idt);
 }

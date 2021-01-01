@@ -403,16 +403,22 @@ void k_memory_print_pool()
 
 void k_memory_print_ledger()
 {
+  fprintf(stddbg, "+------------------------------------------------------+\n");
+  fprintf(stddbg, "| start             end               pages            |\n");
+  fprintf(stddbg, "+------------------------------------------------------+\n");
+
   for (int i = 0; i < RAM_LEDGER_MAX; i++)
   {
     if (!g_ram_ledger[i].avail)
     {
       fprintf(stddbg,
-        "%p %p %llu\n",
+        "| %p  %p  %-16llu |\n",
         g_ram_ledger[i].address,
         g_ram_ledger[i].address + (g_ram_ledger[i].pages * 0x1000) - 1,
         g_ram_ledger[i].pages
       );
     }
   }
+
+  fprintf(stddbg, "+------------------------------------------------------+\n");
 }

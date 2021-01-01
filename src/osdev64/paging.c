@@ -377,12 +377,6 @@ void k_paging_init()
   // fprintf(stddbg, "[PAT] PA6: %s\n", pat_type_to_str((pat >> 48) & 7));
   // fprintf(stddbg, "[PAT] PA7: %s\n", pat_type_to_str((pat >> 56) & 7));
 
-
-  fprintf(stddbg, "Total RAM detected: %llu\n", g_total_ram);
-
-
-  // TODO: allocate dynamic memory for paging structures
-
   // Calculate the paging structures required to map all of RAM.
   uint64_t counter = 0;
   uint64_t ptn = 0;   // number of page tables
@@ -413,25 +407,30 @@ void k_paging_init()
     counter += 0x1000;
   }
 
+  // If we have an even multiple of 512 page directories,
+  // then we preemptively incremented the PDPT count, so
+  // we correct that here.
   if (!(pdn % 512))
   {
     pdptn--;
   }
 
+  // Correct the page directory count like we did with the
+  // PDPT count
   if (!(ptn % 512))
   {
     pdn--;
   }
 
 
-  fprintf(stddbg, "paging structures required:\n");
-  fprintf(stddbg, "  PDPT: %llu\n", pdptn);
-  fprintf(stddbg, "  PD: %llu\n", pdn);
-  fprintf(stddbg, "  PT: %llu\n", ptn);
+  // fprintf(stddbg, "paging structures required:\n");
+  // fprintf(stddbg, "  PDPT: %llu\n", pdptn);
+  // fprintf(stddbg, "  PD: %llu\n", pdn);
+  // fprintf(stddbg, "  PT: %llu\n", ptn);
 
   // memory needed for paging structures
-  uint64_t ps_mem = 4096 + pdptn * 4096 + pdn * 4096 + ptn * 4096;
-  fprintf(stddbg, "memory for paging structures: %llu\n", ps_mem);
+  // uint64_t ps_mem = 4096 + pdptn * 4096 + pdn * 4096 + ptn * 4096;
+  // fprintf(stddbg, "memory for paging structures: %llu\n", ps_mem);
 
   // Get memory for the page tables.
   char* pt_mem = (char*)k_memory_alloc_pages(ptn);
@@ -456,28 +455,6 @@ void k_paging_init()
     fprintf(stddbg, "[ERROR] failed to allocate memory for PDPTs\n");
     for (;;);
   }
-
-  // Print up to the first 10 base addresses of the page tables.
-  for (int i = 0; i < ptn && i < 10; i++)
-  {
-    fprintf(stddbg, "PT %d: %p\n", i, pt_mem + (i * 0x1000));
-  }
-
-  // Print up to the first 10 base addresses of the page directories.
-  for (int i = 0; i < pdn && i < 10; i++)
-  {
-    fprintf(stddbg, "PD %d: %p\n", i, pd_mem + (i * 0x1000));
-  }
-
-  // Print up to the first 10 base addresses of the PDPTs.
-  for (int i = 0; i < pdptn && i < 10; i++)
-  {
-    fprintf(stddbg, "PDPT %d: %p\n", i, pdpt_mem + (i * 0x1000));
-  }
-
-  fprintf(stddbg, "----------\n");
-
-  k_memory_print_ledger();
 
   // // Identity map 512 GiB of address space in the PDPT.
   // uint64_t phys = 0;

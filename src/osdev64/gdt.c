@@ -98,7 +98,6 @@ void k_load_gdt()
   }
 
   uint16_t gdt_count = 0;
-  uint16_t tss_count = 0;
 
   g_gdt[gdt_count++] = 0; // null descriptor
 
@@ -121,7 +120,7 @@ void k_load_gdt()
   }
 
   // Initialize all the values of the TSS to 0.
-  for (int i = 0; i < 26; i++)
+  for (int i = 0; i < TSS_COUNT; i++)
   {
     g_tss[i] = 0;
   }
@@ -132,6 +131,11 @@ void k_load_gdt()
   // So if we allocated two pages starting at address 0xA000, then
   // the beginning of the stack would be 0xB000.
   g_ist1 = (unsigned char*)k_memory_alloc_pages(2);
+  if (g_ist1 == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate memory for IST1\n");
+    for (;;);
+  }
 
   // Put IST1 in the TSS.
   g_tss[9] = (uint32_t)(((uint64_t)(g_ist1 + 4096) & 0xFFFFFFFF));

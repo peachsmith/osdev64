@@ -226,7 +226,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
 
   // Test an exception handler.
-  k_cause_exception();
+  // k_cause_exception();
+
+  fprintf(stddbg, "RAM Pool:\n");
+  k_memory_print_pool();
+
+  fprintf(stddbg, "RAM Ledger:\n");
+  k_memory_print_ledger();
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
