@@ -4,12 +4,15 @@
 // Global definitions used by various interfaces.
 
 
-// maximum number of pool entries
+// maximum number of RAM pool entries
 #define RAM_POOL_MAX 32
 
 
-// maximum number of ledger entries
+// maximum number of RAM ledger entries
 #define RAM_LEDGER_MAX 1000
+
+// maximum number of virtual address map ledger entries
+#define MAP_LEDGER_MAX 1000
 
 
 // the number of 64-bit entries in the GDT

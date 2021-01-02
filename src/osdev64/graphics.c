@@ -32,6 +32,8 @@
 // The main graphics information
 extern k_graphics g_graphics;
 
+// virtual address of framebuffer
+volatile uint32_t* volatile g_framebuffer;
 
 // string representations of UEFI pixel formats
 static WCHAR* wc_PixelRedGreenBlueReserved8BitPerColor = L"RGB 8";
@@ -124,6 +126,24 @@ static int point_in_triangle(
 void k_graphics_init()
 {
   k_uefi_get_graphics();
+}
+
+
+uint64_t k_graphics_get_phys_base()
+{
+  return g_graphics.base;
+}
+
+
+uint64_t k_graphics_get_size()
+{
+  return (uint64_t)(g_graphics.size);
+}
+
+
+void k_graphics_set_virt_base(uint64_t base)
+{
+  g_framebuffer = (uint32_t*)base;
 }
 
 

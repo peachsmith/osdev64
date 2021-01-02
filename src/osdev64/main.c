@@ -153,6 +153,14 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Replace UEFI's paging with our own.
   k_paging_init();
 
+  // Map the framebuffer in our virtual address space.
+  uint64_t fb_start = k_graphics_get_phys_base();
+  uint64_t fb_size = k_graphics_get_size();
+  uint64_t fb_end = fb_start + fb_size;
+  fprintf(stddbg, "[MAIN] framebuffer start: %llX, end: %llX, size: %llu\n", fb_start, fb_end, fb_size);
+  
+  k_paging_map_range(fb_start, fb_end);
+
   // Enable interrupts.
   k_enable_interrupts();
 
@@ -231,11 +239,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Test an exception handler.
   // k_cause_exception();
 
-  fprintf(stddbg, "RAM Pool:\n");
-  k_memory_print_pool();
+  // fprintf(stddbg, "RAM Pool:\n");
+  // k_memory_print_pool();
 
-  fprintf(stddbg, "RAM Ledger:\n");
-  k_memory_print_ledger();
+  // fprintf(stddbg, "RAM Ledger:\n");
+  // k_memory_print_ledger();
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 

@@ -52,12 +52,6 @@
 
 ;
 
-/**
- * Initializes paging.
- * This function overrides any paging established by the firmware.
- */
-void k_paging_init();
-
 
 /**
  * Page Map Level 4 Entry (PML4E)
@@ -150,5 +144,31 @@ typedef uint64_t pde;
  * ---------------------------------------------------------------------------
  */
 typedef uint64_t pte;
+
+
+/**
+ * Initializes paging.
+ * This function overrides any paging established by the firmware.
+ */
+void k_paging_init();
+
+/**
+ * Maps a range of physical addresses to a range of virtual addresses.
+ * The two arguments specify the lowest and highest addresses in the
+ * physical address range to be mapped.
+ * Upon success, this function returns the base address of a virtual
+ * address range.
+ * On failure, 0 is returned.
+ *
+ * Params:
+ *   uint64_t - the lowest address in the range of physical addresses
+ *   uint64_t - the highest address in the range of physical addresses
+ *
+ * Returns:
+ *   uint64_t - the base address of the range of virtual addresses
+ *
+ */
+uint64_t k_paging_map_range(uint64_t start, uint64_t end);
+
 
 #endif

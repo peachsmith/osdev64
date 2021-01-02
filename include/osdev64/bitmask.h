@@ -4,14 +4,14 @@
 #include <stdint.h>
 
 // bits [7:0]
-#define BM_0 0x1
-#define BM_1 0x2
-#define BM_2 0x4
-#define BM_3 0x8
-#define BM_4 0x10
-#define BM_5 0x20
-#define BM_6 0x40
-#define BM_7 0x80
+#define BM_0 ((uint64_t)0x1)
+#define BM_1 ((uint64_t)0x2)
+#define BM_2 ((uint64_t)0x4)
+#define BM_3 ((uint64_t)0x8)
+#define BM_4 ((uint64_t)0x10)
+#define BM_5 ((uint64_t)0x20)
+#define BM_6 ((uint64_t)0x40)
+#define BM_7 ((uint64_t)0x80)
 
 // bits [15:8]
 #define BM_8  ((uint64_t)0x100)
@@ -82,5 +82,36 @@
 #define BM_61 ((uint64_t)0x2000000000000000)
 #define BM_62 ((uint64_t)0x4000000000000000)
 #define BM_63 ((uint64_t)0x8000000000000000)
+
+
+// multiple bits
+#define BM_2_BITS ((uint64_t)0x3)
+#define BM_3_BITS ((uint64_t)0x7)
+#define BM_4_BITS ((uint64_t)0xF)
+
+#define BM_5_BITS ((uint64_t)0x1F)
+#define BM_6_BITS ((uint64_t)0x3F)
+#define BM_7_BITS ((uint64_t)0x7F)
+#define BM_8_BITS ((uint64_t)0xFF)
+
+#define BM_9_BITS ((uint64_t)0x1FF)
+#define BM_10_BITS ((uint64_t)0x3FF)
+#define BM_11_BITS ((uint64_t)0x7FF)
+#define BM_12_BITS ((uint64_t)0xFFF)
+
+#define BM_13_BITS ((uint64_t)0x1FFF)
+#define BM_14_BITS ((uint64_t)0x3FFF)
+#define BM_15_BITS ((uint64_t)0x7FFF)
+#define BM_16_BITS ((uint64_t)0xFFFF)
+
+#define BM_17_BITS ((uint64_t)0x1FFFF)
+#define BM_18_BITS ((uint64_t)0x3FFFF)
+#define BM_19_BITS ((uint64_t)0x7FFFF)
+#define BM_20_BITS ((uint64_t)0xFFFFF)
+
+#define BM_21_BITS ((uint64_t)0x1FFFFF)
+#define BM_22_BITS ((uint64_t)0x3FFFFF)
+#define BM_23_BITS ((uint64_t)0x7FFFFF)
+#define BM_24_BITS ((uint64_t)0xFFFFFF)
 
 #endif
