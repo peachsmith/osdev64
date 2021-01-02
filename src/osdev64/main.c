@@ -12,6 +12,7 @@
 #include "osdev64/descriptor.h"
 #include "osdev64/acpi.h"
 #include "osdev64/util.h"
+#include "osdev64/mtrr.h"
 
 #include "klibc/stdio.h"
 
@@ -150,7 +151,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   }
 
   // Replace UEFI's paging with our own.
-  // TODO: figure out how to deal with MTRRs.
   k_paging_init();
 
   // Enable interrupts.
@@ -164,35 +164,38 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   //==============================
   // BEGIN demo code
 
+  // TODO: map frame buffer using our paging structures
+  // The plan is for MMIO ranges to start at approximately 512 GiB.
+
   // draw an outline of a rectangle
-  k_draw_rect(
-    250, 250,    // x, y
-    50, 50,      // w, h
-    200, 120, 50 // r, g, b
-  );
+  // k_draw_rect(
+  //   250, 250,    // x, y
+  //   50, 50,      // w, h
+  //   200, 120, 50 // r, g, b
+  // );
 
-  // draw a filled rectangle
-  k_fill_rect(
-    303, 250,    // x, y
-    50, 50,      // w, h
-    200, 120, 50 // r, g, b
-  );
+  // // draw a filled rectangle
+  // k_fill_rect(
+  //   303, 250,    // x, y
+  //   50, 50,      // w, h
+  //   200, 120, 50 // r, g, b
+  // );
 
-  // draw an outline of a triangle
-  k_draw_triangle(
-    300, 353,    // x1, y1
-    250, 353,    // x2, y2
-    275, 303,    // x3, y3
-    50, 120, 200 // r, g, b
-  );
+  // // draw an outline of a triangle
+  // k_draw_triangle(
+  //   300, 353,    // x1, y1
+  //   250, 353,    // x2, y2
+  //   275, 303,    // x3, y3
+  //   50, 120, 200 // r, g, b
+  // );
 
-  // draw a filled triangle
-  k_fill_triangle(
-    353, 353,    // x1, y1
-    303, 353,    // x2, y2
-    328, 303,    // x3, y3
-    50, 120, 200 // r, g, b
-  );
+  // // draw a filled triangle
+  // k_fill_triangle(
+  //   353, 353,    // x1, y1
+  //   303, 353,    // x2, y2
+  //   328, 303,    // x3, y3
+  //   50, 120, 200 // r, g, b
+  // );
 
   // Print the physical RAM pool.
   // k_memory_print_pool();
