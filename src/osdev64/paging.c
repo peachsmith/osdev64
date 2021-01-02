@@ -236,22 +236,14 @@ pte make_pte(uint64_t page_addr)
 
 void k_paging_init()
 {
-  // The UEFI firmware should have identity mapped  the first 4 GiB
-  // of address space. We will attempt to do that here as well.
-
-  // One way to check for 1 GiB page support is to use
-  // CPUID.80000001H:EDX.Page1GB [bit 26]
-  uint64_t has_gib_pages = k_cpuid_rdx(0x80000001) & BM_26;
-  fprintf(stddbg, "[CPUID] 1 GiB Pages: %c\n", has_gib_pages ? 'Y' : 'N');
-
   // Calculate the paging structures required to map all of RAM.
-  uint64_t counter = 0;
+  uint64_t ram_counter = 0;
   uint64_t ptn = 0;   // number of page tables
   uint64_t pdn = 1;   // number of page directories
   uint64_t pdptn = 1; // number of page directory pointer tables
-  while (counter < g_total_ram)
+  while (ram_counter < g_total_ram)
   {
-    if (!(counter % 0x200000))
+    if (!(ram_counter % 0x200000))
     {
       // If the counter reaches a multiple of 2 MiB,
       // increment the number of page tables.
@@ -271,7 +263,7 @@ void k_paging_init()
         pdptn++;
       }
     }
-    counter += 0x1000;
+    ram_counter += 0x1000;
   }
 
   // If we have an even multiple of 512 page directories,
@@ -288,16 +280,6 @@ void k_paging_init()
   {
     pdn--;
   }
-
-
-  // fprintf(stddbg, "paging structures required:\n");
-  // fprintf(stddbg, "  PDPT: %llu\n", pdptn);
-  // fprintf(stddbg, "  PD: %llu\n", pdn);
-  // fprintf(stddbg, "  PT: %llu\n", ptn);
-
-  // memory needed for paging structures
-  // uint64_t ps_mem = 4096 + pdptn * 4096 + pdn * 4096 + ptn * 4096;
-  // fprintf(stddbg, "memory for paging structures: %llu\n", ps_mem);
 
   // Get memory for the page tables.
   g_pt_mem = (pte*)k_memory_alloc_pages(ptn);
