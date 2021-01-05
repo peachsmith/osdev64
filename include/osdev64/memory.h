@@ -26,10 +26,13 @@
  * Initializes the memory manager.
  * This function must be called before other functions in this interface
  * are called.
+ * This function also calls the UEFI function ExitBootServices, so once
+ * this function is called, UEFI boot service will no longer be available.
  *
  * The following actions are performed:
  *   1. obtain the memory map from the firmware
  *   2. create the RAM pool
+ *   3. exit UEFI boot services
  *   3. create the RAM ledger
  */
 void k_memory_init();

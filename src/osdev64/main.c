@@ -36,12 +36,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_memory_init();      // memory management
   // TODO: ACPI
 
-  // Terminate UEFI boot services.
-  if (!k_uefi_exit())
-  {
-    fprintf(stddbg, "[ERROR] Failed to exit UEFI boot services.\n");
-    for (;;);
-  }
+  fprintf(stddbg, "[INFO] graphics, serial, console, and memory have been initialized.\n");
 
   // CPU information
   uint64_t cr0 = k_get_cr0();
@@ -158,8 +153,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   uint64_t fb_size = k_graphics_get_size();
   uint64_t fb_end = fb_start + fb_size;
   fprintf(stddbg, "[MAIN] framebuffer start: %llX, end: %llX, size: %llu\n", fb_start, fb_end, fb_size);
-  
-  k_paging_map_range(fb_start, fb_end);
+
+  uint64_t fb_virt = k_paging_map_range(fb_start, fb_end);
+  if (!fb_virt)
+  {
+    fprintf(stddbg, "failed to map framebuffer\n");
+    for (;;);
+  }
+
+  fprintf(stddbg, "virtual framebuffer base: %p\n", fb_virt);
+
+  k_graphics_set_virt_base(fb_virt);
 
   // Enable interrupts.
   k_enable_interrupts();
@@ -176,34 +180,34 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // The plan is for MMIO ranges to start at approximately 512 GiB.
 
   // draw an outline of a rectangle
-  // k_draw_rect(
-  //   250, 250,    // x, y
-  //   50, 50,      // w, h
-  //   200, 120, 50 // r, g, b
-  // );
+  k_draw_rect(
+    250, 250,    // x, y
+    50, 50,      // w, h
+    200, 120, 50 // r, g, b
+  );
 
-  // // draw a filled rectangle
-  // k_fill_rect(
-  //   303, 250,    // x, y
-  //   50, 50,      // w, h
-  //   200, 120, 50 // r, g, b
-  // );
+  // draw a filled rectangle
+  k_fill_rect(
+    303, 250,    // x, y
+    50, 50,      // w, h
+    200, 120, 50 // r, g, b
+  );
 
-  // // draw an outline of a triangle
-  // k_draw_triangle(
-  //   300, 353,    // x1, y1
-  //   250, 353,    // x2, y2
-  //   275, 303,    // x3, y3
-  //   50, 120, 200 // r, g, b
-  // );
+  // draw an outline of a triangle
+  k_draw_triangle(
+    300, 353,    // x1, y1
+    250, 353,    // x2, y2
+    275, 303,    // x3, y3
+    50, 120, 200 // r, g, b
+  );
 
-  // // draw a filled triangle
-  // k_fill_triangle(
-  //   353, 353,    // x1, y1
-  //   303, 353,    // x2, y2
-  //   328, 303,    // x3, y3
-  //   50, 120, 200 // r, g, b
-  // );
+  // draw a filled triangle
+  k_fill_triangle(
+    353, 353,    // x1, y1
+    303, 353,    // x2, y2
+    328, 303,    // x3, y3
+    50, 120, 200 // r, g, b
+  );
 
   // Print the physical RAM pool.
   // k_memory_print_pool();

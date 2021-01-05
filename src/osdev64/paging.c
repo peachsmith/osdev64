@@ -46,13 +46,49 @@ map_ledger_entry* g_map_ledger;
 //                    0x  40000000 1 GiB
 uint64_t g_dyn_base = 0x8000000000;
 
+
+// PDPT used for dynamic mapping
+pdpte* g_dyn_pdpt;
+
+// bitmap for tracking page directories for dynamic mapping
+uint64_t g_dyn_pd_map[8];
+
+// bitmap for tracking page directories for dynamic mapping
+uint64_t* g_dyn_pt_map;
+
+
+// NOTE:
 // page sizes in hexadecimal
 // 1 GiB = 0x40000000
 // 2 MiB = 0x200000
 // 4 KiB = 0x1000
 
-
+// NOTE:
 // 1 GiB is 512 2 MiB pages
+
+
+uint64_t get_bit(uint64_t* map, uint64_t bit)
+{
+  uint64_t i = bit / 64; // which index in the array
+  uint64_t b = bit % 64; // which bit in the uint64_t
+
+  return (map[i] & ((uint64_t)1 << b));
+}
+
+uint64_t set_bit(uint64_t* map, uint64_t bit, int val)
+{
+  uint64_t i = bit / 64; // which index in the array
+  uint64_t b = bit % 64; // which bit in the uint64_t
+
+  if (val)
+  {
+    map[i] |= ((uint64_t)1 << b);
+  }
+  else
+  {
+    map[i] &= ~((uint64_t)1 << b);
+  }
+}
 
 /**
  * Creates a PML4E to hold the address of a PDPT.
@@ -263,6 +299,10 @@ void k_paging_init()
     for (;;);
   }
 
+
+  //=============================================
+  // BEGIN static mapping initialization
+
   // Calculate the paging structures required to map all of RAM.
   uint64_t ram_counter = 0;
   uint64_t ptn = 0;   // number of page tables
@@ -340,8 +380,7 @@ void k_paging_init()
     for (;;);
   }
 
-  // Fully populate each page table to identity map RAM.
-  // Every page table should be populated with present pages.
+  // Fill the page tables with base addresses of pages.
   uint64_t addr = 0;
   for (int i = 0; i < ptn * 512; i++)
   {
@@ -349,69 +388,65 @@ void k_paging_init()
     addr += 0x1000;
   }
 
-  // Fill each page directory with the addresses of our page tables.
-  // Every page directory should be populated with present page tables.
+  // Fill the page directories with addresses of page tables.
   for (int i = 0; i < pdn; i++)
   {
     for (int j = 0; j < 512; j++)
     {
       uint64_t pd_offset = 512 * i + j;
-      uint64_t pt_offset = 512 * pd_offset;
 
-      g_pd_mem[pd_offset] = make_pde(&g_pt_mem[pt_offset]);
+      if (pd_offset < ptn)
+      {
+        g_pd_mem[pd_offset] = make_pde(&g_pt_mem[512 * pd_offset]);
+      }
+      else
+      {
+        g_pd_mem[pd_offset] = 0;
+      }
     }
   }
 
-  // Fill each PDPT with the addresses of our page directories.
-  // Once all of our page directories are entered into the PDPTs,
-  // we fill the remaining slots in the PDPTs with non present PDPTEs.
+  // Fill the PDPTs with addresses of page directories.
   for (int i = 0; i < pdptn; i++)
   {
     for (int j = 0; j < 512; j++)
     {
       uint64_t pdpt_offset = 512 * i + j;
 
-      // If we've already entered all of our page directories into
-      // the PDPTs, start using 0 as the offset for the PD memory
-      // since we're going to mark the PDPTE as not present anyway.
-      uint64_t pd_offset = pdpt_offset < pdn ? 512 * pdpt_offset : 0;
-
-      g_pdpt_mem[pdpt_offset] = make_pdpte(&g_pd_mem[pd_offset]);
-
-      // If we've already entered all of our page directories into
-      // the PDPTs, start marking the remaining PDPTEs as not present.
-      if (pdpt_offset >= pdn)
+      if (pdpt_offset < pdn)
       {
-        g_pdpt_mem[pdpt_offset] &= ~BM_0;
+        g_pdpt_mem[pdpt_offset] = make_pdpte(&g_pd_mem[512 * pdpt_offset]);
+      }
+      else
+      {
+        g_pdpt_mem[pdpt_offset] = 0;
       }
     }
   }
 
-  // Fill the PML4 with the addresses of our PDPTs.
-  // Once all of our PSPTs are entered into the PML4,
-  // we fill the remaining slots in the PML4 with non present PML4Es.
+  // Fill the PML4 with addresses of PDPTs.
   for (int i = 0; i < 512; i++)
   {
-    // If we've already entered all of our PDPTs into
-    // the PML4, start using 0 as the offset for the PDPT memory
-    // since we're going to mark the PML4E as not present anyway.
-    uint64_t pdpt_offset = i < pdptn ? 512 * i : 0;
-
-    g_pml4_mem[i] = make_pml4e(&g_pdpt_mem[pdpt_offset]);
-
-    // If we've already entered all of our PDPTs into
-    // the PML4, start marking the remaining PDPTEs as not present.
-    if (i >= pdptn)
+    if (i < pdptn)
     {
-      g_pml4_mem[i] &= ~BM_0;
+      g_pml4_mem[i] = make_pml4e(&g_pdpt_mem[512 * i]);
+    }
+    else
+    {
+      g_pml4_mem[i] = 0;
     }
   }
 
   // Update CR3 with the address of the PML4.
   k_set_cr3((uint64_t)g_pml4_mem);
 
+  // END static mapping initialization
+  //=============================================
 
-  fprintf(stddbg, "sizeof map_ledger_entry: %llu\n", sizeof(map_ledger_entry));
+
+  //=============================================
+  // BEGIN dynamic mapping initialization
+
 
   // Create the virtual address map ledger
   g_map_ledger = (map_ledger_entry*)k_memory_alloc_pages(8);
@@ -426,6 +461,49 @@ void k_paging_init()
   {
     g_map_ledger[i].avail = 1;
   }
+
+
+  // Get memory for the dynamic page table bitmap
+  g_dyn_pt_map = (uint64_t*)k_memory_alloc_pages(8);
+  if (g_dyn_pt_map == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate memory for dynamic page table bitmap.\n");
+    for (;;);
+  }
+
+  // Set all the entries in the dynamic page table bitmap to 0.
+  for (int i = 0; i < 4096; i++)
+  {
+    g_dyn_pt_map[i] = 0;
+  }
+
+  // Set all the entries in the dynamic page directory bitmap to 0.
+  for (int i = 0; i < 8; i++)
+  {
+    g_dyn_pd_map[i] = 0;
+  }
+
+
+  // Create the PDPT for dynamic mapping
+  g_dyn_pdpt = (pdpte*)k_memory_alloc_pages(1);
+  if (g_dyn_pdpt == NULL)
+  {
+    fprintf(stddbg, "failed to allocate memory for PDPT for dynamic mapping\n");
+    for (;;);
+  }
+
+  // Set all entries in the dynamic PDPT to 0.
+  for (int i = 0; i < 512; i++)
+  {
+    g_dyn_pdpt[i] = 0;
+  }
+
+  // Put the dynamic PDPT in the PML4.
+  g_pml4_mem[1] = make_pml4e(g_dyn_pdpt);
+
+
+  // END dynamic mapping initialization
+  //=============================================
 }
 
 
@@ -449,13 +527,18 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
   uint64_t virt_start;
   uint64_t virt_end;
 
+  // virtual address offset
+  uint64_t virt_offset = 0;
+
   // Round the starting and ending addresses down to the nearest 4 KiB
   // boundary.
-  for (;phys_start % 0x1000; phys_start--);
+  for (;phys_start % 0x1000; phys_start--) virt_offset++;
   for (;phys_end % 0x1000; phys_end--);
 
   // Determine the size of the range.
   uint64_t size = phys_end - phys_start;
+
+  fprintf(stddbg, "[PAGING] mapping offset: %llu\n", virt_offset);
 
   fprintf(stddbg, "[PAGING] phys start: %llX, end: %llX, size: %llu\n", phys_start, phys_end, size);
 
@@ -523,7 +606,7 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
   }
 
 
-  fprintf(stddbg, "mapping %llu bytes would require %llu PTs, %llu PDs, and %llu PDPTs\n", size, ptn, pdn, pdptn);
+  // fprintf(stddbg, "mapping %llu bytes would require %llu PTs, %llu PDs, and %llu PDPTs\n", size, ptn, pdn, pdptn);
 
 
   // A virtual address is 48 bits with the following structure:
@@ -555,23 +638,100 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
     return 0;
   }
 
-  fprintf(stddbg,
-    "virtual start: %llX\nPML4: %llu, PDPT: %llu, PD: %llu, PT: %llu offset: %llu\n",
-    virt_start,
-    pml4_start,
-    pdpt_start,
-    pd_start,
-    pt_start,
-    pt_offset
-  );
+  // fprintf(stddbg,
+  //   "virtual start: %llX\nPML4: %llu, PDPT: %llu, PD: %llu, PT: %llu offset: %llu\n",
+  //   virt_start,
+  //   pml4_start,
+  //   pdpt_start,
+  //   pd_start,
+  //   pt_start,
+  //   pt_offset
+  // );
 
-  fprintf(stddbg,
-    "virtual end:   %llX\nPML4: %llu, PDPT: %llu, PD: %llu, PT: %llu offset: %llu\n",
-    virt_end,
-    (virt_end & (BM_9_BITS << 39)) >> 39,
-    (virt_end & (BM_9_BITS << 30)) >> 30,
-    (virt_end & (BM_9_BITS << 21)) >> 21,
-    (virt_end & (BM_9_BITS << 12)) >> 12,
-    virt_end & BM_12_BITS
-  );
+  // fprintf(stddbg,
+  //   "virtual end:   %llX\nPML4: %llu, PDPT: %llu, PD: %llu, PT: %llu offset: %llu\n",
+  //   virt_end,
+  //   (virt_end & (BM_9_BITS << 39)) >> 39,
+  //   (virt_end & (BM_9_BITS << 30)) >> 30,
+  //   (virt_end & (BM_9_BITS << 21)) >> 21,
+  //   (virt_end & (BM_9_BITS << 12)) >> 12,
+  //   virt_end & BM_12_BITS
+  // );
+
+  uint64_t addr = phys_start;
+
+  // Allocate page directories
+  for (uint64_t i = pdpt_start; i <= pdpt_end; i++)
+  {
+    // Ensure that the page directory exists.
+    if (!get_bit(g_dyn_pd_map, i))
+    {
+      fprintf(stddbg, "[DEBUG] creating new page directory\n");
+
+      pde* new_dir = (pde*)k_memory_alloc_pages(1);
+      if (new_dir == NULL)
+      {
+        fprintf(stddbg, "failed to allocate memory for dynamic page directory\n");
+        return 0;
+      }
+
+      g_dyn_pdpt[i] = make_pdpte(new_dir);
+
+      set_bit(g_dyn_pd_map, i, 1);
+
+      // Allocate page tables
+      pte* new_tabs = (pte*)k_memory_alloc_pages(512);
+      if (new_tabs == NULL)
+      {
+        fprintf(stddbg, "failed to allocate memory for dynamic page tables\n");
+        return 0;
+      }
+
+      // Fill the new page directory.
+      for (int j = 0; j < 512; j++)
+      {
+        for (int k = 0; k < 512; k++)
+        {
+          new_tabs[512 * j + k] = 0;
+        }
+
+        new_dir[j] = make_pde(&new_tabs[512 * j]);
+      }
+    }
+
+    // Extract the directory address from the PDPTE.
+    pde* dir = (pde*)(g_dyn_pdpt[i] & (BM_40_BITS << 12));
+
+    // Populate the page directory.
+    for (uint64_t j = pd_start; j <= (i < pdpt_end ? 511 : pd_end); j++)
+    {
+      // Extract the table address from the directory.
+      pte* tab = (pte*)(dir[j] & (BM_40_BITS << 12));
+
+      // Populate the page table.
+      for (uint64_t k = 0; k <= (i < pdpt_end || j < pd_end ? 511 : pt_end); k++)
+      {
+        if (addr <= phys_end)
+        {
+          fprintf(stddbg,
+            "[DEBUG] mapping physical %p to virtual: %p\n",
+            addr,
+            (((uint64_t)1 << 39) | (i << 30) | (j << 21) | (k << 12))
+          );
+
+          tab[k] = make_pte(addr);
+          addr += 0x1000;
+        }
+        else
+        {
+          fprintf(stddbg, "[DEBUG] we somehow still have page table entries left over\n");
+        }
+      }
+    }
+  }
+
+  // Update the global dynamic mapping base address.
+  g_dyn_base = virt_end + 0x1000;
+
+  return virt_start + virt_offset;
 }

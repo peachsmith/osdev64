@@ -114,4 +114,24 @@
 #define BM_23_BITS ((uint64_t)0x7FFFFF)
 #define BM_24_BITS ((uint64_t)0xFFFFFF)
 
+#define BM_25_BITS ((uint64_t)0x1FFFFFF)
+#define BM_26_BITS ((uint64_t)0x3FFFFFF)
+#define BM_27_BITS ((uint64_t)0x7FFFFFF)
+#define BM_28_BITS ((uint64_t)0xFFFFFFF)
+
+#define BM_29_BITS ((uint64_t)0x1FFFFFFF)
+#define BM_30_BITS ((uint64_t)0x3FFFFFFF)
+#define BM_31_BITS ((uint64_t)0x7FFFFFFF)
+#define BM_32_BITS ((uint64_t)0xFFFFFFFF)
+
+#define BM_33_BITS ((uint64_t)0x1FFFFFFFF)
+#define BM_34_BITS ((uint64_t)0x3FFFFFFFF)
+#define BM_35_BITS ((uint64_t)0x7FFFFFFFF)
+#define BM_36_BITS ((uint64_t)0xFFFFFFFFF)
+
+#define BM_37_BITS ((uint64_t)0x1FFFFFFFFF)
+#define BM_38_BITS ((uint64_t)0x3FFFFFFFFF)
+#define BM_39_BITS ((uint64_t)0x7FFFFFFFFF)
+#define BM_40_BITS ((uint64_t)0xFFFFFFFFFF)
+
 #endif

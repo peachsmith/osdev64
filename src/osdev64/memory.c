@@ -220,6 +220,16 @@ void k_memory_init()
     }
   }
 
+  // Terminate UEFI boot services.
+  // We do this immediately after obtaining the memory map
+  // so that we can use the regions marked as BootServiceCode,
+  // BootServiceData, etc.
+  if (!k_uefi_exit())
+  {
+    fprintf(stddbg, "[ERROR] Failed to exit UEFI boot services.\n");
+    for (;;);
+  }
+
   // Round the total RAM up to the nearest GiB to account for holes.
   while (g_total_ram % 0x40000000)
   {
