@@ -9,7 +9,7 @@
 
 
 // maximum number of RAM ledger entries
-#define RAM_LEDGER_MAX 1000
+#define RAM_LEDGER_MAX 5000
 
 // maximum number of virtual address map ledger entries
 #define MAP_LEDGER_MAX 1000

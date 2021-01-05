@@ -29,7 +29,7 @@ void gp_fault_handler()
 void page_fault_handler()
 {
   fprintf(stddbg, "page fault\n");
-  // fprintf(stderr, "page fault\n");
+  fprintf(stderr, "page fault\n");
   for (;;);
 }
 

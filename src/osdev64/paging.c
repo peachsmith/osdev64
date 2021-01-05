@@ -103,7 +103,7 @@ uint64_t set_bit(uint64_t* map, uint64_t bit, int val)
  * Returns:
  *   pml4e - a PML4 entry
  */
-pml4e make_pml4e(pdpte* pdpt_addr)
+static inline pml4e make_pml4e(pdpte* pdpt_addr)
 {
   pml4e p = 0;
 
@@ -150,7 +150,7 @@ pml4e make_pml4e(pdpte* pdpt_addr)
  * Returns:
  *   pdpte - a PDPT entry
  */
-pdpte make_pdpte(pde* pd_addr)
+static inline pdpte make_pdpte(pde* pd_addr)
 {
   pdpte p = 0;
   uint64_t bit_mask = 0x1; // single bit mask
@@ -199,7 +199,7 @@ pdpte make_pdpte(pde* pd_addr)
  * Returns:
  *   pde - a page directory entry pointing to a page table
  */
-pde make_pde(pte* pt_addr)
+static inline pde make_pde(pte* pt_addr)
 {
   pde p = 0;
 
@@ -248,7 +248,7 @@ pde make_pde(pte* pt_addr)
  * Returns:
  *   pte - a page table entry
  */
-pte make_pte(uint64_t page_addr)
+static inline pte make_pte(uint64_t page_addr)
 {
   pte p = 0;
 
@@ -538,15 +538,13 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
   // Determine the size of the range.
   uint64_t size = phys_end - phys_start;
 
-  fprintf(stddbg, "[PAGING] mapping offset: %llu\n", virt_offset);
-
-  fprintf(stddbg, "[PAGING] phys start: %llX, end: %llX, size: %llu\n", phys_start, phys_end, size);
-
   // Determine the virtual address range
   virt_start = g_dyn_base;
   virt_end = virt_start + size;
 
-  fprintf(stddbg, "[PAGING] virt start: %llX, end: %llX, size: %llu\n", virt_start, virt_end, size);
+  // for debugging
+  // fprintf(stddbg, "[PAGING] phys start: %llX, end: %llX, size: %llu\n", phys_start, phys_end, size);
+  // fprintf(stddbg, "[PAGING] virt start: %llX, end: %llX, size: %llu\n", virt_start, virt_end, size);
 
   // Create a new entry in the ledger
   for (int i = 0, entry = 0; i < MAP_LEDGER_MAX && !entry; i++)
@@ -606,9 +604,6 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
   }
 
 
-  // fprintf(stddbg, "mapping %llu bytes would require %llu PTs, %llu PDs, and %llu PDPTs\n", size, ptn, pdn, pdptn);
-
-
   // A virtual address is 48 bits with the following structure:
   // 
   //    [47:39]      [38:30]     [29:21]    [20:12]     [11:0]
@@ -637,26 +632,6 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
   {
     return 0;
   }
-
-  // fprintf(stddbg,
-  //   "virtual start: %llX\nPML4: %llu, PDPT: %llu, PD: %llu, PT: %llu offset: %llu\n",
-  //   virt_start,
-  //   pml4_start,
-  //   pdpt_start,
-  //   pd_start,
-  //   pt_start,
-  //   pt_offset
-  // );
-
-  // fprintf(stddbg,
-  //   "virtual end:   %llX\nPML4: %llu, PDPT: %llu, PD: %llu, PT: %llu offset: %llu\n",
-  //   virt_end,
-  //   (virt_end & (BM_9_BITS << 39)) >> 39,
-  //   (virt_end & (BM_9_BITS << 30)) >> 30,
-  //   (virt_end & (BM_9_BITS << 21)) >> 21,
-  //   (virt_end & (BM_9_BITS << 12)) >> 12,
-  //   virt_end & BM_12_BITS
-  // );
 
   uint64_t addr = phys_start;
 
@@ -709,22 +684,19 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
       pte* tab = (pte*)(dir[j] & (BM_40_BITS << 12));
 
       // Populate the page table.
-      for (uint64_t k = 0; k <= (i < pdpt_end || j < pd_end ? 511 : pt_end); k++)
+      for (uint64_t k = pt_start; k <= (i < pdpt_end || j < pd_end ? 511 : pt_end); k++)
       {
         if (addr <= phys_end)
         {
-          fprintf(stddbg,
-            "[DEBUG] mapping physical %p to virtual: %p\n",
-            addr,
-            (((uint64_t)1 << 39) | (i << 30) | (j << 21) | (k << 12))
-          );
+          // for debugging
+          // fprintf(stddbg,
+          //   "[DEBUG] mapping physical %p to virtual: %p\n",
+          //   addr,
+          //   (((uint64_t)1 << 39) | (i << 30) | (j << 21) | (k << 12))
+          // );
 
           tab[k] = make_pte(addr);
           addr += 0x1000;
-        }
-        else
-        {
-          fprintf(stddbg, "[DEBUG] we somehow still have page table entries left over\n");
         }
       }
     }

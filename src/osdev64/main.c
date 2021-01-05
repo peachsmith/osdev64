@@ -105,15 +105,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   }
 
   // Write some bits from CR0 and CR4
-  fprintf(stddbg, "[INFO] CR0.PE:    %c\n", (cr0 & BM_0) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR0.NW:    %c\n", (cr0 & BM_29) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR0.CD:    %c\n", (cr0 & BM_30) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR0.PG:    %c\n", (cr0 & BM_31) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR4.PSE:   %c\n", (cr4 & BM_4) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR4.PAE:   %c\n", (cr4 & BM_5) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR4.PGE:   %c\n", (cr4 & BM_7) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR4.PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
-  fprintf(stddbg, "[INFO] CR4.PKE:   %c\n", (cr4 & BM_22) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR0.PE:    %c\n", (cr0 & BM_0) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR0.NW:    %c\n", (cr0 & BM_29) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR0.CD:    %c\n", (cr0 & BM_30) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR0.PG:    %c\n", (cr0 & BM_31) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR4.PSE:   %c\n", (cr4 & BM_4) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR4.PAE:   %c\n", (cr4 & BM_5) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR4.PGE:   %c\n", (cr4 & BM_7) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR4.PCIDE: %c\n", (cr4 & BM_17) ? 'Y' : 'N');
+  fprintf(stddbg, "[DEBUG] CR4.PKE:   %c\n", (cr4 & BM_22) ? 'Y' : 'N');
 
   // END Stage 1 initialization
   //==============================
@@ -145,23 +145,19 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     k_set_cr4(cr4);
   }
 
-  // Replace UEFI's paging with our own.
+  // Create a new virtual address space.
   k_paging_init();
 
-  // Map the framebuffer in our virtual address space.
+  // Map the framebuffer to some high virtual address.
   uint64_t fb_start = k_graphics_get_phys_base();
   uint64_t fb_size = k_graphics_get_size();
   uint64_t fb_end = fb_start + fb_size;
-  fprintf(stddbg, "[MAIN] framebuffer start: %llX, end: %llX, size: %llu\n", fb_start, fb_end, fb_size);
-
   uint64_t fb_virt = k_paging_map_range(fb_start, fb_end);
   if (!fb_virt)
   {
-    fprintf(stddbg, "failed to map framebuffer\n");
+    fprintf(stddbg, "[ERROR] failed to map framebuffer\n");
     for (;;);
   }
-
-  fprintf(stddbg, "virtual framebuffer base: %p\n", fb_virt);
 
   k_graphics_set_virt_base(fb_virt);
 
@@ -250,6 +246,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // k_memory_print_ledger();
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
+
+  printf("Hello, World!\n");
 
   // The main loop.
   for (;;);

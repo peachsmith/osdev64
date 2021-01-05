@@ -274,12 +274,12 @@ void k_memory_init()
   for (int i = 0; i < g_pool_count; i++)
   {
     // Look for a region that contains at least 8 pages.
-    if (g_ram_pool[i].pages >= 8)
+    if (g_ram_pool[i].pages >= 100)
     {
       // Populate the root memory reservation.
       root.i = i;
       root.address = g_ram_pool[i].address;
-      root.pages = 8;
+      root.pages = 100;
       root.avail = 0;
 
       // Set the base address of the reservation array.

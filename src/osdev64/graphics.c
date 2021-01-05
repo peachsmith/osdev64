@@ -127,6 +127,7 @@ static int point_in_triangle(
 void k_graphics_init()
 {
   k_uefi_get_graphics();
+  g_framebuffer = (volatile uint32_t*)g_graphics.base;
 }
 
 
@@ -145,25 +146,17 @@ uint64_t k_graphics_get_size()
 void k_graphics_set_virt_base(uint64_t base)
 {
   g_framebuffer = (volatile uint32_t*)base;
-  fprintf(stddbg, "[DEBUG] setting virtual framebuffer to %p\n", base);
 }
 
 
 void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b)
 {
-  volatile uint32_t* volatile base;
-  uint64_t offset;
+  volatile uint32_t* volatile dest;
   uint32_t color;
 
-  // Get the base address of the framebuffer
-  // base = (volatile uint32_t*)g_graphics.base;
-  base = g_framebuffer;
-
-  // Calculate the offset.
-  offset = (x + y * g_graphics.pps);
-
   // Calculate the destination address of the pixel.
-  base += offset;
+  // As a reminder, "pps" is "pixels per scanline".
+  dest = g_framebuffer + (x + y * g_graphics.pps);
 
   // Determine the color value.
   switch (g_graphics.format)
@@ -182,7 +175,7 @@ void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b)
   }
 
   // Write the pixel to the framebuffer.
-  *base = color;
+  *dest = color;
 }
 
 
