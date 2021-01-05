@@ -68,7 +68,7 @@
  * 6       ignored
  * 7       reserved (must be 0)
  * [11:8]  ignored
- * [51:12] physical address of PDPT
+ * [51:12] physical address of PDPT (4KiB aligned)
  * [62:52] ignored
  * 63      execute-disable (only applied if IA32_EFER.NXE = 1)
  * ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ typedef uint64_t pdpte;
  * 6       ignored
  * 7       page size (must be 1 if pointing to a 2 MiB page)
  * [11:8]  ignored
- * [51:12] address of page directory (4KiB aligned)
+ * [51:12] address of page table (4KiB aligned)
  * [29:13] reserved (must be 0)
  * [51:30] physical address of a page table
  * [62:52] ignored
