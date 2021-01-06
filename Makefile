@@ -41,6 +41,7 @@ isr.o \
 exceptions.o \
 mtrr.o \
 util.o \
+apic.o \
 klibc.o
 
 
@@ -79,6 +80,7 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/exceptions.c -o exceptions.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/mtrr.c -o mtrr.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/util.c -o util.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/apic.c -o apic.o
 
 	$(LD) -shared -Bsymbolic -L$(GNUEFI_DIR)/x86_64/gnuefi -L$(GNUEFI_DIR)/x86_64/lib -T$(GNUEFI_DIR)/gnuefi/elf_x86_64_efi.lds $(OBJECTS) -o main.so -lgnuefi -lefi
 

@@ -69,3 +69,12 @@ objcopy -N memcpy libefi.a
 
 integer arguments:
 %rdi, %rsi, %rdx, %rcx, %r8 and %r9
+
+
+#=================================#
+# Virtual Machine                 #
+#=================================#
+
+Mount all shared folders to /home/<user>/shares
+/usr/bin/vmhgfs-fuse .host:/ /home/<user>/shares -o subtype=vmhgfs-fuse,allow_other
+

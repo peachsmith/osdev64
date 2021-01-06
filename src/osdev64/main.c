@@ -13,6 +13,7 @@
 #include "osdev64/acpi.h"
 #include "osdev64/util.h"
 #include "osdev64/mtrr.h"
+#include "osdev64/apic.h"
 
 #include "klibc/stdio.h"
 
@@ -34,7 +35,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_serial_com1_init(); // serial output
   k_console_init();     // text output
   k_memory_init();      // memory management
-  // TODO: ACPI
+  k_acpi_init();        // ACPI tables
 
   fprintf(stddbg, "[INFO] graphics, serial, console, and memory have been initialized.\n");
 
@@ -161,6 +162,21 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_graphics_set_virt_base(fb_virt);
 
+  // Read the MADT to get APIC addresses
+  k_acpi_read_madt();
+
+  // Get the local APIC ID.
+  uint64_t lapic_id = k_lapic_get_id();
+  printf("Local APIC ID: %llu\n", lapic_id);
+
+  // Get the local APIC version.
+  uint64_t lapic_ver = k_lapic_get_version();
+  printf("Local APIC version: 0x%llX\n", lapic_ver);
+
+  // Get the local APIC max LVT.
+  uint64_t lapic_maxlvt = k_lapic_get_maxlvt();
+  printf("Local APIC max LVT: %llu\n", lapic_maxlvt);
+
   // Enable interrupts.
   k_enable_interrupts();
 
@@ -244,6 +260,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // fprintf(stddbg, "RAM Ledger:\n");
   // k_memory_print_ledger();
+
+  // Print the MADT
+  k_acpi_print_madt();
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
