@@ -38,6 +38,8 @@ acpi.o \
 gdt.o \
 idt.o \
 isr.o \
+pic.o \
+pit.o \
 exceptions.o \
 mtrr.o \
 util.o \
@@ -77,6 +79,8 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/gdt.c -o gdt.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/idt.c -o idt.o
 	$(AS) --64 src/osdev64/isr.s -o isr.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/pic.c -o pic.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/pit.c -o pit.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/exceptions.c -o exceptions.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/mtrr.c -o mtrr.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/util.c -o util.o

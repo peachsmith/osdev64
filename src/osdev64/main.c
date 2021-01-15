@@ -13,6 +13,8 @@
 #include "osdev64/acpi.h"
 #include "osdev64/util.h"
 #include "osdev64/mtrr.h"
+#include "osdev64/pic.h"
+#include "osdev64/pit.h"
 #include "osdev64/apic.h"
 
 #include "klibc/stdio.h"
@@ -177,8 +179,21 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   uint64_t lapic_maxlvt = k_lapic_get_maxlvt();
   printf("Local APIC max LVT: %llu\n", lapic_maxlvt);
 
+
+  // Enable the PIC
+  k_pic_init();
+
+  // Enable the PIT to start generating timer IRQs.
+  k_pit_init();
+
   // Enable interrupts.
   k_enable_interrupts();
+
+
+  // TODO:
+  // detect local and I/O APICs
+  // disable the PIC
+  // handle timer IRQ with APIC
 
 
   // END Stage 2 initialization

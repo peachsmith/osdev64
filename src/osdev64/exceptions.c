@@ -33,16 +33,6 @@ void page_fault_handler()
   for (;;);
 }
 
-/**
- * Generic exception handler
- */
-void generic_handler()
-{
-  fprintf(stddbg, "generic fault\n");
-  fprintf(stderr, "generic fault\n");
-  for (;;);
-}
-
 void my_irq()
 {
   printf("Hello from an IRQ handler!\n");

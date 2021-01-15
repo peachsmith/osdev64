@@ -33,7 +33,27 @@
 .global isr29
 .global isr30
 .global isr31
-.global isr32
+
+
+.global generic_isr
+
+# PIC IRQ handlers
+.global pic_irq_0
+.global pic_irq_1
+.global pic_irq_2
+.global pic_irq_3
+.global pic_irq_4
+.global pic_irq_5
+.global pic_irq_6
+.global pic_irq_7
+.global pic_irq_8
+.global pic_irq_9
+.global pic_irq_10
+.global pic_irq_11
+.global pic_irq_12
+.global pic_irq_13
+.global pic_irq_14
+.global pic_irq_15
 
 
 
@@ -42,7 +62,10 @@
 .extern gp_fault_handler
 .extern page_fault_handler
 .extern generic_handler
-.extern my_irq
+.extern pic_handler
+
+# used to send the EOI to the PIC
+.extern k_pic_send_eoi
 
 
 
@@ -179,7 +202,139 @@ isr30:
 isr31:
   iretq
 
-isr32:
+
+
+generic_isr:
   cld
-  call my_irq
+  call generic_handler
+  iretq
+
+
+
+pic_irq_0:
+  cld
+  call pic_handler
+  cld
+  mov $0x0, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_1:
+  cld
+  call pic_handler
+  cld
+  mov $0x1, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_2:
+  cld
+  call pic_handler
+  cld
+  mov $0x2, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_3:
+  cld
+  call pic_handler
+  cld
+  mov $0x3, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_4:
+  cld
+  call pic_handler
+  cld
+  mov $0x4, %rdi
+  call k_pic_send_eoi
+  iretq
+  
+pic_irq_5:
+  cld
+  call pic_handler
+  cld
+  mov $0x5, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_6:
+  cld
+  call pic_handler
+  cld
+  mov $0x6, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_7:
+  cld
+  call pic_handler
+  cld
+  mov $0x7, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_8:
+  cld
+  call pic_handler
+  cld
+  mov $0x8, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_9:
+  cld
+  call pic_handler
+  cld
+  mov $0x9, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_10:
+  cld
+  call pic_handler
+  cld
+  mov $0xA, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_11:
+  cld
+  call pic_handler
+  cld
+  mov $0xB, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_12:
+  cld
+  call pic_handler
+  cld
+  mov $0xC, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_13:
+  cld
+  call pic_handler
+  cld
+  mov $0xD, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_14:
+  cld
+  call pic_handler
+  cld
+  mov $0xE, %rdi
+  call k_pic_send_eoi
+  iretq
+
+pic_irq_15:
+  cld
+  call pic_handler
+  cld
+  mov $0xF, %rdi
+  call k_pic_send_eoi
   iretq

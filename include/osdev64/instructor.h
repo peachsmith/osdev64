@@ -49,4 +49,11 @@ void k_enable_interrupts();
  */
 void k_cause_exception();
 
+
+/**
+ * Does some stuff.
+ * Currently, this is used to raise interrupts to debug ISRs.
+ */
+void k_nonsense();
+
 #endif

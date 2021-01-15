@@ -13,6 +13,7 @@
 .global k_lidt
 .global k_ltr
 .global k_cause_exception
+.global k_nonsense
 
 .global k_xor
 .global k_get_cr0
@@ -396,5 +397,15 @@ k_set_msr:
 
   wrmsr                  # Write the MSR
 
+  leaveq
+  retq
+
+
+k_nonsense:
+  push %rbp
+  mov %rsp, %rbp
+
+  int $0x20
+  
   leaveq
   retq

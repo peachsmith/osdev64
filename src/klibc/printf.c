@@ -91,7 +91,6 @@ int vfprintf(FILE* stream, const char* format, va_list args)
       // Get the precision from the argument list.
       if (t.flags & FMT_PREC)
       {
-        k_serial_com1_puts("we should NOT be here getting the precision\n");
         t.prec = va_arg(args, size_t);
       }
 
