@@ -173,11 +173,22 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // Get the local APIC version.
   uint64_t lapic_ver = k_lapic_get_version();
-  printf("Local APIC version: 0x%llX\n", lapic_ver);
+  printf("Local APIC Version: 0x%llX\n", lapic_ver);
 
   // Get the local APIC max LVT.
   uint64_t lapic_maxlvt = k_lapic_get_maxlvt();
-  printf("Local APIC max LVT: %llu\n", lapic_maxlvt);
+  printf("Local APIC Max LVT: %llu\n", lapic_maxlvt);
+
+  // Get the I/O APIC version.
+  uint64_t ioapic_ver = k_ioapic_get_version();
+  printf("I/O APIC Version: 0x%llX\n", ioapic_ver);
+
+  // Get the I/O APIC max redirects - 1.
+  uint64_t ioapic_max = k_ioapic_get_max_redirect();
+  printf("I/O APIC Max Redirects: %llu\n", ioapic_max);
+
+
+  printf("---------------------------------------\n");
 
 
   // Enable the PIC
@@ -203,38 +214,35 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   //==============================
   // BEGIN demo code
 
-  // TODO: map frame buffer using our paging structures
-  // The plan is for MMIO ranges to start at approximately 512 GiB.
+  // // draw an outline of a rectangle
+  // k_draw_rect(
+  //   250, 250,    // x, y
+  //   50, 50,      // w, h
+  //   200, 120, 50 // r, g, b
+  // );
 
-  // draw an outline of a rectangle
-  k_draw_rect(
-    250, 250,    // x, y
-    50, 50,      // w, h
-    200, 120, 50 // r, g, b
-  );
+  // // draw a filled rectangle
+  // k_fill_rect(
+  //   303, 250,    // x, y
+  //   50, 50,      // w, h
+  //   200, 120, 50 // r, g, b
+  // );
 
-  // draw a filled rectangle
-  k_fill_rect(
-    303, 250,    // x, y
-    50, 50,      // w, h
-    200, 120, 50 // r, g, b
-  );
+  // // draw an outline of a triangle
+  // k_draw_triangle(
+  //   300, 353,    // x1, y1
+  //   250, 353,    // x2, y2
+  //   275, 303,    // x3, y3
+  //   50, 120, 200 // r, g, b
+  // );
 
-  // draw an outline of a triangle
-  k_draw_triangle(
-    300, 353,    // x1, y1
-    250, 353,    // x2, y2
-    275, 303,    // x3, y3
-    50, 120, 200 // r, g, b
-  );
-
-  // draw a filled triangle
-  k_fill_triangle(
-    353, 353,    // x1, y1
-    303, 353,    // x2, y2
-    328, 303,    // x3, y3
-    50, 120, 200 // r, g, b
-  );
+  // // draw a filled triangle
+  // k_fill_triangle(
+  //   353, 353,    // x1, y1
+  //   303, 353,    // x2, y2
+  //   328, 303,    // x3, y3
+  //   50, 120, 200 // r, g, b
+  // );
 
   // Print the physical RAM pool.
   // k_memory_print_pool();

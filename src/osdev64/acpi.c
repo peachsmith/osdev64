@@ -12,7 +12,84 @@ unsigned char* g_madt = NULL;
 volatile unsigned char* volatile g_lapic = NULL;
 
 // IO APIC base
-volatile unsigned char* volatile g_ioapic = NULL;
+volatile uint32_t* volatile g_ioapic = NULL;
+
+
+
+static char* iso_bus = "bus";
+static char* iso_res = "res";
+static char* iso_high = "high";
+static char* iso_low = "low";
+static char* iso_edge = "edge";
+static char* iso_level = "level";
+static char* iso_err = "err";
+
+/**
+ * Converts an ISO polarity flag into a string.
+ * The flags are assumed to be shifted all the way to the right.
+ * So if the flags come from bits [3:2], then they should be
+ * shifted to the right by 2.
+ *
+ * Params:
+ *   uint64_t - the flags from the MADT entry
+ *
+ * Returns:
+ *   char* - a pointer to a NUL-terminated string
+ */
+static inline char* iso_polarity_str(uint64_t f)
+{
+  switch (f)
+  {
+  case 0:
+    return iso_bus;
+
+  case 1:
+    return iso_high;
+
+  case 2:
+    return iso_res;
+
+  case 3:
+    return iso_low;
+
+  default: // invalid flag value
+    return iso_err;
+  }
+}
+
+/**
+ * Converts an ISO trigger mode flag into a string.
+ * The flags are assumed to be shifted all the way to the right.
+ * So if the flags come from bits [3:2], then they should be
+ * shifted to the right by 2.
+ *
+ * Params:
+ *   uint64_t - the flags from the MADT entry
+ *
+ * Returns:
+ *   char* - a pointer to a NUL-terminated string
+ */
+static inline char* iso_trigger_str(uint64_t f)
+{
+  switch (f)
+  {
+  case 0:
+    return iso_bus;
+
+  case 1:
+    return iso_edge;
+
+  case 2:
+    return iso_res;
+
+  case 3:
+    return iso_level;
+
+  default: // invalid flag value
+    return iso_err;
+  }
+}
+
 
 void k_acpi_init()
 {
@@ -292,7 +369,7 @@ void k_acpi_read_madt()
     printf("[ERROR] failed to map IO APIC virtual base\n");
     for (;;);
   }
-  g_ioapic = (volatile unsigned char*)ioapic_virt;
+  g_ioapic = (volatile uint32_t*)ioapic_virt;
 }
 
 void k_acpi_print_madt()
@@ -330,7 +407,7 @@ void k_acpi_print_madt()
   // The index i represents the byte offset from the start of the
   // entry list.
   // The entry list starts at offset 44.
-  for (uint32_t i = 0, counter = 0; i < table_len - 44; counter++)
+  for (uint32_t i = 0; i < table_len - 44;)
   {
     unsigned char* entry = &g_madt[44 + i];
 
@@ -340,38 +417,88 @@ void k_acpi_print_madt()
     switch (entry_type)
     {
     case 0:
-      printf("[MADT] Entry %3u: Local APIC\n", counter);
+    {
       uint8_t lapic_ver = *((uint8_t*)(entry + 3));
-      printf("[MADT] Local APIC ID: %u\n", lapic_ver);
-      break;
+      printf("[MADT] Local APIC: { ID: %u }\n", lapic_ver);
+    }
+    break;
 
     case 1:
-      printf("[MADT] Entry %3u: I/O APIC\n", counter);
+    {
+      uint8_t id = *((uint8_t*)(entry + 2));
+      uint64_t ioapic32 = (uint64_t)(*((uint32_t*)(entry + 4)));
+      uint32_t gsi = *((uint32_t*)(entry + 8));
 
-      uint32_t ioapic32 = *((uint32_t*)(entry + 4));
-      uint32_t intr_base = *((uint32_t*)(entry + 8));
+      if (gsi == 0)
+      {
 
-      printf("[MADT] I/O APIC Base: %X\n", (uint64_t)ioapic32);
-      printf("[MADT] Global System Interrupt Base: %u\n", intr_base);
+        // Read the IOAPICVER register to get the version and max
+        // redirection entries - 1.
+        *g_ioapic = (uint32_t)1;
+        uint64_t ioapicver = (uint64_t)(*(volatile uint32_t*)((uint64_t)g_ioapic + 0x10));
 
-      break;
+        uint64_t version = ioapicver & BM_8_BITS;
+        uint64_t max = (ioapicver & (BM_8_BITS << 16)) >> 16;
+
+        printf("[MADT] I/O APIC: { ID: %u, Base: %X, GSI: %u, Ver: 0x%-3X, Max: %3u }\n",
+          id,
+          (uint64_t)ioapic32,
+          gsi,
+          version,
+          max
+        );
+      }
+    }
+    break;
 
     case 2:
-      printf("[MADT] Entry %3u: Interrupt Source Override\n", counter);
-      break;
+    {
+      uint8_t bus_src = *((uint8_t*)(entry + 2));
+      uint8_t irq_src = *((uint8_t*)(entry + 3));
+      uint32_t gsi = *((uint32_t*)(entry + 4));
+      uint16_t flags = *((uint16_t*)(entry + 8));
+
+      // polarity and trigger mode
+      uint64_t pol = ((uint64_t)flags & BM_2_BITS);
+      uint64_t trig = ((uint64_t)flags & (BM_2_BITS << 2)) >> 2;
+
+      printf("[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %5s, Trig: %5s }\n",
+        bus_src,
+        irq_src,
+        gsi,
+        iso_polarity_str(pol),
+        iso_trigger_str(trig)
+      );
+    }
+    break;
 
     case 4:
-      printf("[MADT] Entry %3u: Non-Maskable Interrupts\n", counter);
-      break;
+    {
+      uint8_t id = *((uint8_t*)(entry + 2));
+      uint8_t flags = *((uint8_t*)(entry + 3));
+      uint8_t lint = *((uint8_t*)(entry + 4));
+
+      // polarity and trigger mode
+      uint64_t pol = ((uint64_t)flags & BM_2_BITS);
+      uint64_t trig = ((uint64_t)flags & (BM_2_BITS << 2)) >> 2;
+      printf("[MADT] NMI: { ID: %3X, Pol: %5s, Trig: %5s, LINT: %u }\n",
+        id,
+        iso_polarity_str(pol),
+        iso_trigger_str(trig),
+        lint
+      );
+    }
+    break;
 
     case 5:
-      printf("[MADT] Entry %3u: Local APIC Address Override\n", counter);
+    {
       uint64_t lapic_ovr = *((uint64_t*)(entry + 4));
-      printf("[MADT] Local APIC Override Base: %p\n", lapic_ovr);
-      break;
+      printf("[MADT] Local APIC Override: { Addr: %p }\n", lapic_ovr);
+    }
+    break;
 
     default:
-      printf("[MADT] Entry %3u: Unknown: %u ", counter, entry_type);
+      printf("[MADT] Unknown: { type: %u } ", entry_type);
       break;
     }
 
