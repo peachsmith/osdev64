@@ -59,6 +59,24 @@
 .global pic_irq_14
 .global pic_irq_15
 
+# APIC IRQ handlers
+.global apic_irq_0
+.global apic_irq_1
+.global apic_irq_2
+.global apic_irq_3
+.global apic_irq_4
+.global apic_irq_5
+.global apic_irq_6
+.global apic_irq_7
+.global apic_irq_8
+.global apic_irq_9
+.global apic_irq_10
+.global apic_irq_11
+.global apic_irq_12
+.global apic_irq_13
+.global apic_irq_14
+.global apic_irq_15
+
 
 
 # handler functions implemented in C
@@ -346,6 +364,110 @@ pic_irq_15:
   mov $0xF, %rdi
   call k_pic_send_eoi
   iretq
+
+
+
+
+
+apic_irq_0:
+  cld
+  mov $0x0, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_1:
+  cld
+  mov $0x1, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_2:
+  cld
+  mov $0x2, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_3:
+  cld
+  mov $0x3, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_4:
+  cld
+  mov $0x4, %rdi
+  call apic_generic_legacy_handler
+  iretq
+  
+apic_irq_5:
+  cld
+  mov $0x5, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_6:
+  cld
+  mov $0x6, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_7:
+  cld
+  mov $0x7, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_8:
+  cld
+  mov $0x8, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_9:
+  cld
+  mov $0x9, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_10:
+  cld
+  mov $0xA, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_11:
+  cld
+  mov $0xB, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_12:
+  cld
+  mov $0xC, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_13:
+  cld
+  mov $0xD, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_14:
+  cld
+  mov $0xE, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+apic_irq_15:
+  cld
+  mov $0xF, %rdi
+  call apic_generic_legacy_handler
+  iretq
+
+
+
+
 
 
 apic_generic_isr:

@@ -11,7 +11,9 @@
 // Local APIC register address offsets.
 #define LAPIC_ID ((uint64_t)0x20)
 #define LAPIC_VERSION ((uint64_t)0x30)
+#define LAPIC_EOI ((uint64_t)0xB0)
 #define LAPIC_SPURIOUS ((uint64_t)0xF0)
+
 #define LAPIC_ISR0 ((uint64_t)0x100)
 #define LAPIC_ISR1 ((uint64_t)0x110)
 #define LAPIC_ISR2 ((uint64_t)0x120)
@@ -136,6 +138,24 @@ void apic_spurious_isr();
 void apic_pit_irq();
 void apic_generic_legacy_irq();
 
+// PIC IRQ handlers
+void apic_irq_0();
+void apic_irq_1();
+void apic_irq_2();
+void apic_irq_3();
+void apic_irq_4();
+void apic_irq_5();
+void apic_irq_6();
+void apic_irq_7();
+void apic_irq_8();
+void apic_irq_9();
+void apic_irq_10();
+void apic_irq_11();
+void apic_irq_12();
+void apic_irq_13();
+void apic_irq_14();
+void apic_irq_15();
+
 void apic_generic_handler()
 {
   fprintf(stddbg, "[INT] APIC generic interrupt handler\n");
@@ -216,34 +236,42 @@ void apic_pit_handler()
   fprintf(stddbg, "[INT] APIC PIT IRQ handler\n");
 }
 
-void apic_generic_legacy_handler()
+void apic_generic_legacy_handler(uint64_t irq)
 {
-  fprintf(stddbg, "[INT] APIC generic legacy IRQ handler\n");
+  fprintf(stddbg, "[INT] APIC legacy IRQ %llu\n", irq);
 
   uint32_t isr0 = lapic_read(LAPIC_ISR0);
   uint32_t isr1 = lapic_read(LAPIC_ISR1);
 
-  fprintf(stddbg, "ISR0: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr0 & (0x80000000 >> i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
+  // fprintf(stddbg, "ISR0: ");
+  // for (int i = 0; i < 32; i++)
+  // {
+  //   fputc((isr0 & (0x80000000 >> i)) ? '1' : '0', stddbg);
+  // }
+  // fputc('\n', stddbg);
 
-  fprintf(stddbg, "ISR1: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr1 & (0x80000000 >> i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
+  // fprintf(stddbg, "ISR1: ");
+  // for (int i = 0; i < 32; i++)
+  // {
+  //   fputc((isr1 & (0x80000000 >> i)) ? '1' : '0', stddbg);
+  // }
+  // fputc('\n', stddbg);
 
-  fprintf(stddbg, "TEST: ");
-  uint32_t toot = ((1 << 3) | (1 << 10));
-  for (int i = 0; i < 32; i++)
+  // fprintf(stddbg, "TEST: ");
+  // uint32_t toot = ((1 << 3) | (1 << 10));
+  // for (int i = 0; i < 32; i++)
+  // {
+  //   fputc((toot & (0x80000000 >> i)) ? '1' : '0', stddbg);
+  // }
+  // fputc('\n', stddbg);
+
+  // Send the EOI to the local APIC.
+  uint32_t n = (uint32_t)irq;
+  uint32_t check = 1 << 16;
+  if (isr1 & (check << n))
   {
-    fputc((toot & (0x80000000 >> i)) ? '1' : '0', stddbg);
+    lapic_write(LAPIC_EOI, 0);
   }
-  fputc('\n', stddbg);
 }
 
 
@@ -501,16 +529,34 @@ static void ioapic_set_irq(uint8_t irq, uint8_t isr)
 
 void k_ioapic_configure()
 {
+  // Install the legacy IRQ handlers
+  k_install_isr((uint64_t)apic_irq_0, 48);
+  k_install_isr((uint64_t)apic_irq_1, 49);
+  k_install_isr((uint64_t)apic_irq_2, 50);
+  k_install_isr((uint64_t)apic_irq_3, 51);
+  k_install_isr((uint64_t)apic_irq_4, 52);
+  k_install_isr((uint64_t)apic_irq_5, 53);
+  k_install_isr((uint64_t)apic_irq_6, 54);
+  k_install_isr((uint64_t)apic_irq_7, 55);
+  k_install_isr((uint64_t)apic_irq_8, 56);
+  k_install_isr((uint64_t)apic_irq_9, 57);
+  k_install_isr((uint64_t)apic_irq_10, 58);
+  k_install_isr((uint64_t)apic_irq_11, 59);
+  k_install_isr((uint64_t)apic_irq_12, 60);
+  k_install_isr((uint64_t)apic_irq_13, 61);
+  k_install_isr((uint64_t)apic_irq_14, 62);
+  k_install_isr((uint64_t)apic_irq_15, 63);
+
   // Set the IRQ redirects.
   // The PIC IRQs were mapped to ISR 0x20 through 0x2F
   // So we'll start at 0x30.
   for (uint8_t i = 0; i < 24; i++)
   {
     ioapic_set_irq(i, 0x30 + i);
-    if (i < 0x10)
-    {
-      k_install_isr((uint64_t)apic_generic_legacy_handler, 0x30 + i);
-    }
+    // if (i < 0x10)
+    // {
+    //   k_install_isr((uint64_t)apic_generic_legacy_handler, 0x30 + i);
+    // }
   }
 
   // Looks for ISOs in the MADT and install the
