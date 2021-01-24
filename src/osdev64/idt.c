@@ -102,7 +102,7 @@ void k_install_isr(uint64_t r, int i)
 // an assmebly procedure that executes the LIDT instruction
 void k_lidt(uint16_t, int_desc*);
 
-void k_load_idt()
+void k_idt_init()
 {
   // Reserve memory for the IDT.
   // 4 KiB should be sufficient, since we allow up to 256

@@ -196,13 +196,13 @@ typedef uint64_t sg_seg_type;
  * 3. data descriptor (offset 0x10)
  * 4. TSS descriptor  (offset 0x18)
  */
-void k_load_gdt();
+void k_gdt_init();
 
 /**
  * Populates an IDT and loads it into the IDTR register.
  * The IDT initialized by this function should contain descriptors for
  * functions that handle the first 32 interrupts (INT0 through INT31).
  */
-void k_load_idt();
+void k_idt_init();
 
 #endif

@@ -16,6 +16,9 @@
 // MTRR default memory type and feature enable/disable flags
 #define IA32_MTRR_DEF_TYPE (uint64_t)0x2FF
 
+// Local APIC address
+#define IA32_APIC_BASE (uint64_t)0x0B
+
 // fixed range MTRRs
 #define IA32_MTRR_FIX64K_00000 (uint64_t)0x250
 #define IA32_MTRR_FIX16K_80000 (uint64_t)0x258
@@ -74,7 +77,7 @@ uint64_t k_get_mtrrcap();
  * Returns:
  *   uint64_t - the contents of the MSR.
  */
-uint64_t k_get_msr(uint64_t);
+uint64_t k_msr_get(uint64_t);
 
 /**
  * Sets the value of an MSR specified by the argument.
@@ -86,6 +89,6 @@ uint64_t k_get_msr(uint64_t);
  * Returns:
  *   uint64_t - the contents of the MSR.
  */
-void k_set_msr(uint64_t, uint64_t);
+void k_msr_set(uint64_t, uint64_t);
 
 #endif

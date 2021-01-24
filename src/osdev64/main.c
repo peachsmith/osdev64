@@ -128,11 +128,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Disable interrupts.
   k_disable_interrupts();
 
-  // Load the GDT.
-  k_load_gdt();
+  // Build the initial GDT.
+  k_gdt_init();
 
-  // Load the IDT.
-  k_load_idt();
+  // Build the initial IDT.
+  k_idt_init();
 
   // Clear CR4.PCIDE
   if (cr4 & CR4_PCIDE)
@@ -164,48 +164,59 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_graphics_set_virt_base(fb_virt);
 
-  // Read the MADT to get APIC addresses
-  k_acpi_read_madt();
-
-  // Get the local APIC ID.
-  uint64_t lapic_id = k_lapic_get_id();
-  printf("Local APIC ID: %llu\n", lapic_id);
-
-  // Get the local APIC version.
-  uint64_t lapic_ver = k_lapic_get_version();
-  printf("Local APIC Version: 0x%llX\n", lapic_ver);
-
-  // Get the local APIC max LVT.
-  uint64_t lapic_maxlvt = k_lapic_get_maxlvt();
-  printf("Local APIC Max LVT: %llu\n", lapic_maxlvt);
-
-  // Get the I/O APIC version.
-  uint64_t ioapic_ver = k_ioapic_get_version();
-  printf("I/O APIC Version: 0x%llX\n", ioapic_ver);
-
-  // Get the I/O APIC max redirects - 1.
-  uint64_t ioapic_max = k_ioapic_get_max_redirect();
-  printf("I/O APIC Max Redirects: %llu\n", ioapic_max);
-
-
-  printf("---------------------------------------\n");
-
-
-  // Enable the PIC
+  // Initialize the PIC.
   k_pic_init();
 
-  // Enable the PIT to start generating timer IRQs.
+  // Initialize the PIT to start generating timer IRQs.
   k_pit_init();
+
+  // Initialize the APIC interface.
+  k_apic_init();
+
+  // If APICs are available, disable the PIC and
+  // configure the APICs to handle interrupts.
+  if (k_apic_available())
+  {
+    // Get the local APIC ID.
+    uint32_t lapic_id = k_lapic_get_id();
+    printf("Local APIC ID: %u\n", lapic_id);
+
+    // Get the local APIC version.
+    uint32_t lapic_ver = k_lapic_get_version();
+    printf("Local APIC Version: 0x%X\n", lapic_ver);
+
+    // Get the local APIC max LVT.
+    uint32_t lapic_maxlvt = k_lapic_get_maxlvt();
+    printf("Local APIC Max LVT: %u\n", lapic_maxlvt);
+
+    // Get the I/O APIC version.
+    uint32_t ioapic_ver = k_ioapic_get_version();
+    printf("I/O APIC Version: 0x%X\n", ioapic_ver);
+
+    // Get the I/O APIC max redirects - 1.
+    uint32_t ioapic_max = k_ioapic_get_max_redirect();
+    printf("I/O APIC Max Redirects: %u\n", ioapic_max);
+
+
+
+    // Disable the PIC since we're using APIC.
+    k_pic_disable();
+
+    // Enable the local APIC.
+    k_lapic_enable();
+
+    // Configure the IRQ redirection in the I/O APIC.
+    k_ioapic_configure();
+
+    printf("---------------------------------------\n");
+  }
+  else
+  {
+    printf("APIC unavailable\n");
+  }
 
   // Enable interrupts.
   k_enable_interrupts();
-
-
-  // TODO:
-  // detect local and I/O APICs
-  // disable the PIC
-  // handle timer IRQ with APIC
-
 
   // END Stage 2 initialization
   //==============================
@@ -288,8 +299,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_acpi_print_madt();
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
-
-  printf("Hello, World!\n");
 
   // The main loop.
   for (;;);

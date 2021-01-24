@@ -9,13 +9,14 @@
 unsigned char* g_madt = NULL;
 
 // Local APIC Base
-volatile unsigned char* volatile g_lapic = NULL;
+// volatile unsigned char* volatile g_lapic = NULL;
 
 // IO APIC base
-volatile uint32_t* volatile g_ioapic = NULL;
+// volatile uint32_t* volatile g_ioapic = NULL;
 
 
 
+// ISO polarity and trigger types
 static char* iso_bus = "bus";
 static char* iso_res = "res";
 static char* iso_high = "high";
@@ -89,6 +90,8 @@ static inline char* iso_trigger_str(uint64_t f)
     return iso_err;
   }
 }
+
+
 
 
 void k_acpi_init()
@@ -257,121 +260,6 @@ void k_acpi_init()
 }
 
 
-void k_acpi_read_madt()
-{
-  if (g_madt == NULL)
-  {
-    printf("[MADT] No MADT detected\n");
-    return;
-  }
-
-  uint64_t lapic_base = 0;
-  uint64_t ioapic_base = 0;
-
-  uint32_t table_len = *(uint32_t*)(g_madt + 4);
-  uint32_t lapic32 = *(uint32_t*)(g_madt + 36);
-  uint32_t flags = *(uint32_t*)(g_madt + 40);
-
-  // Set the local APIC base to be the value we found before the
-  // MADT entries list. We may replace this with a 
-  lapic_base = (uint64_t)lapic32;
-
-  // Calculate the checksum.
-  unsigned char madt_check = 0;
-  for (uint32_t i = 0; i < table_len; i++)
-  {
-    madt_check += g_madt[i];
-  }
-
-  // Print the entries of the MADT.
-  // The index i represents the byte offset from the start of the
-  // entry list.
-  // The entry list starts at offset 44.
-  for (uint32_t i = 0, counter = 0; i < table_len - 44; counter++)
-  {
-    unsigned char* entry = &g_madt[44 + i];
-
-    uint8_t entry_type = *(uint8_t*)(entry);
-    uint8_t entry_len = *(uint8_t*)(entry + 1);
-
-    switch (entry_type)
-    {
-    case 0:
-      // Local APIC
-      break;
-
-    case 1:
-    {
-      // I/O APIC
-      uint32_t ioapic32 = *(uint32_t*)(entry + 4);
-      uint32_t intr_base = *(uint32_t*)(entry + 8);
-
-      // For now, we only care about the APIC that handles
-      // the first few IRQ.
-      if (intr_base == 0)
-      {
-        ioapic_base = (uint64_t)ioapic32;
-      }
-    }
-
-    break;
-
-    case 2:
-      // Interrupt Source Override
-      break;
-
-    case 4:
-      // Non-Maskable Interrupts
-      break;
-
-    case 5:
-    {
-      // Local APIC Address Override
-      lapic_base = *(uint64_t*)(entry + 4);
-    }
-    break;
-
-    default:
-      // Unknown
-      break;
-    }
-
-    i += entry_len;
-  }
-
-
-  // Ensure that we found the base addresses of the local and IO APICs.
-  if (lapic_base == 0)
-  {
-    printf("[ERROR] could not find local APIC physical base\n");
-    for (;;);
-  }
-
-  if (ioapic_base == 0)
-  {
-    printf("[ERROR] could not find IO APIC physical base\n");
-    for (;;);
-  }
-
-  // Map the local APIC into virtual address space.
-  uint64_t lapic_virt = k_paging_map_range(lapic_base, lapic_base + 0x3F0);
-  if (lapic_virt == 0)
-  {
-    printf("[ERROR] failed to map local APIC virtual base\n");
-    for (;;);
-  }
-  g_lapic = (volatile unsigned char*)lapic_virt;
-
-  // Map the IO APIC into virtual address space.
-  uint64_t ioapic_virt = k_paging_map_range(ioapic_base, ioapic_base + 0x3F0);
-  if (ioapic_virt == 0)
-  {
-    printf("[ERROR] failed to map IO APIC virtual base\n");
-    for (;;);
-  }
-  g_ioapic = (volatile uint32_t*)ioapic_virt;
-}
-
 void k_acpi_print_madt()
 {
   if (g_madt == NULL)
@@ -431,21 +319,10 @@ void k_acpi_print_madt()
 
       if (gsi == 0)
       {
-
-        // Read the IOAPICVER register to get the version and max
-        // redirection entries - 1.
-        *g_ioapic = (uint32_t)1;
-        uint64_t ioapicver = (uint64_t)(*(volatile uint32_t*)((uint64_t)g_ioapic + 0x10));
-
-        uint64_t version = ioapicver & BM_8_BITS;
-        uint64_t max = (ioapicver & (BM_8_BITS << 16)) >> 16;
-
-        printf("[MADT] I/O APIC: { ID: %u, Base: %X, GSI: %u, Ver: 0x%-3X, Max: %3u }\n",
+        printf("[MADT] I/O APIC: { ID: %u, Base: %X, GSI: %u }\n",
           id,
           (uint64_t)ioapic32,
-          gsi,
-          version,
-          max
+          gsi
         );
       }
     }

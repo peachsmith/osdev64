@@ -27,8 +27,8 @@
 .global k_cpuid_rax
 .global k_cpuid_rdx
 .global k_cpuid_vendor
-.global k_get_msr
-.global k_set_msr
+.global k_msr_get
+.global k_msr_set
 
 
 
@@ -365,7 +365,7 @@ k_cpuid_vendor:
   leaveq
   retq
 
-k_get_msr:
+k_msr_get:
   push %rbp
   mov %rsp, %rbp
 
@@ -383,7 +383,7 @@ k_get_msr:
   leaveq
   retq
 
-k_set_msr:
+k_msr_set:
   push %rbp
   mov %rsp, %rbp
 

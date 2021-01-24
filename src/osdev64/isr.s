@@ -36,6 +36,10 @@
 
 
 .global generic_isr
+.global apic_generic_isr
+.global apic_spurious_isr
+.global apic_pit_irq
+.global apic_generic_legacy_irq
 
 # PIC IRQ handlers
 .global pic_irq_0
@@ -63,6 +67,10 @@
 .extern page_fault_handler
 .extern generic_handler
 .extern pic_handler
+.extern apic_generic_handler
+.extern apic_spurious_handler
+.extern apic_pit_handler
+.extern apic_generic_legacy_handler
 
 # used to send the EOI to the PIC
 .extern k_pic_send_eoi
@@ -337,4 +345,25 @@ pic_irq_15:
   cld
   mov $0xF, %rdi
   call k_pic_send_eoi
+  iretq
+
+
+apic_generic_isr:
+  cld
+  call apic_generic_handler
+  iretq
+
+apic_spurious_isr:
+  cld
+  call apic_spurious_handler
+  iretq
+
+apic_pit_irq:
+  cld
+  call apic_pit_handler
+  iretq
+
+apic_generic_legacy_irq:
+  cld
+  call apic_generic_legacy_handler
   iretq

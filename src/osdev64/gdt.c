@@ -86,7 +86,7 @@ void k_lgdt(uint16_t, seg_desc*);
 // an assembly procedure that executes the LTR instruction
 void k_ltr(uint16_t);
 
-void k_load_gdt()
+void k_gdt_init()
 {
   // Reserve some memory for the GDT.
   // 4 KiB should be more than enough.

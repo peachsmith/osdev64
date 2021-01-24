@@ -118,7 +118,7 @@ void k_mtrr_print_all()
   }
 
   // Available MTRR features
-  uint64_t mtrrcap = k_get_msr(IA32_MTRRCAP);
+  uint64_t mtrrcap = k_msr_get(IA32_MTRRCAP);
   uint64_t vcnt = mtrrcap & 0xFF;
   uint64_t has_fixed = mtrrcap & BM_8;
   uint64_t has_wc = mtrrcap & BM_10;
@@ -129,7 +129,7 @@ void k_mtrr_print_all()
   fprintf(stddbg, "[MTRR] SMRR:  %c\n", has_smrr ? 'Y' : 'N');
 
   // Current MTRR configuration
-  uint64_t mtrrdef = k_get_msr(IA32_MTRR_DEF_TYPE);
+  uint64_t mtrrdef = k_msr_get(IA32_MTRR_DEF_TYPE);
   uint64_t def_type = mtrrdef & 0xFF;
   uint64_t fixed_enabled = mtrrdef & BM_10;
   uint64_t mtrr_enabled = mtrrdef & BM_11;
@@ -141,17 +141,17 @@ void k_mtrr_print_all()
   {
     uint64_t fix_regs[11];
 
-    fix_regs[0] = k_get_msr(IA32_MTRR_FIX64K_00000);
-    fix_regs[1] = k_get_msr(IA32_MTRR_FIX16K_80000);
-    fix_regs[2] = k_get_msr(IA32_MTRR_FIX16K_A0000);
-    fix_regs[3] = k_get_msr(IA32_MTRR_FIX4K_C0000);
-    fix_regs[4] = k_get_msr(IA32_MTRR_FIX4K_C8000);
-    fix_regs[5] = k_get_msr(IA32_MTRR_FIX4K_D0000);
-    fix_regs[6] = k_get_msr(IA32_MTRR_FIX4K_D8000);
-    fix_regs[7] = k_get_msr(IA32_MTRR_FIX4K_E0000);
-    fix_regs[8] = k_get_msr(IA32_MTRR_FIX4K_E8000);
-    fix_regs[9] = k_get_msr(IA32_MTRR_FIX4K_F0000);
-    fix_regs[10] = k_get_msr(IA32_MTRR_FIX4K_F8000);
+    fix_regs[0] = k_msr_get(IA32_MTRR_FIX64K_00000);
+    fix_regs[1] = k_msr_get(IA32_MTRR_FIX16K_80000);
+    fix_regs[2] = k_msr_get(IA32_MTRR_FIX16K_A0000);
+    fix_regs[3] = k_msr_get(IA32_MTRR_FIX4K_C0000);
+    fix_regs[4] = k_msr_get(IA32_MTRR_FIX4K_C8000);
+    fix_regs[5] = k_msr_get(IA32_MTRR_FIX4K_D0000);
+    fix_regs[6] = k_msr_get(IA32_MTRR_FIX4K_D8000);
+    fix_regs[7] = k_msr_get(IA32_MTRR_FIX4K_E0000);
+    fix_regs[8] = k_msr_get(IA32_MTRR_FIX4K_E8000);
+    fix_regs[9] = k_msr_get(IA32_MTRR_FIX4K_F0000);
+    fix_regs[10] = k_msr_get(IA32_MTRR_FIX4K_F8000);
 
     for (int i = 0; i < 11; i++)
     {
@@ -175,26 +175,26 @@ void k_mtrr_print_all()
   {
     uint64_t var_regs[20];
 
-    var_regs[0] = k_get_msr(IA32_MTRR_PHYSBASE0);
-    var_regs[1] = k_get_msr(IA32_MTRR_PHYSMASK0);
-    var_regs[2] = k_get_msr(IA32_MTRR_PHYSBASE1);
-    var_regs[3] = k_get_msr(IA32_MTRR_PHYSMASK1);
-    var_regs[4] = k_get_msr(IA32_MTRR_PHYSBASE2);
-    var_regs[5] = k_get_msr(IA32_MTRR_PHYSMASK2);
-    var_regs[6] = k_get_msr(IA32_MTRR_PHYSBASE3);
-    var_regs[7] = k_get_msr(IA32_MTRR_PHYSMASK3);
-    var_regs[8] = k_get_msr(IA32_MTRR_PHYSBASE4);
-    var_regs[9] = k_get_msr(IA32_MTRR_PHYSMASK4);
-    var_regs[10] = k_get_msr(IA32_MTRR_PHYSBASE5);
-    var_regs[11] = k_get_msr(IA32_MTRR_PHYSMASK5);
-    var_regs[12] = k_get_msr(IA32_MTRR_PHYSBASE6);
-    var_regs[13] = k_get_msr(IA32_MTRR_PHYSMASK6);
-    var_regs[14] = k_get_msr(IA32_MTRR_PHYSBASE7);
-    var_regs[15] = k_get_msr(IA32_MTRR_PHYSMASK7);
-    var_regs[16] = k_get_msr(IA32_MTRR_PHYSBASE8);
-    var_regs[17] = k_get_msr(IA32_MTRR_PHYSMASK8);
-    var_regs[18] = k_get_msr(IA32_MTRR_PHYSBASE9);
-    var_regs[19] = k_get_msr(IA32_MTRR_PHYSMASK9);
+    var_regs[0] = k_msr_get(IA32_MTRR_PHYSBASE0);
+    var_regs[1] = k_msr_get(IA32_MTRR_PHYSMASK0);
+    var_regs[2] = k_msr_get(IA32_MTRR_PHYSBASE1);
+    var_regs[3] = k_msr_get(IA32_MTRR_PHYSMASK1);
+    var_regs[4] = k_msr_get(IA32_MTRR_PHYSBASE2);
+    var_regs[5] = k_msr_get(IA32_MTRR_PHYSMASK2);
+    var_regs[6] = k_msr_get(IA32_MTRR_PHYSBASE3);
+    var_regs[7] = k_msr_get(IA32_MTRR_PHYSMASK3);
+    var_regs[8] = k_msr_get(IA32_MTRR_PHYSBASE4);
+    var_regs[9] = k_msr_get(IA32_MTRR_PHYSMASK4);
+    var_regs[10] = k_msr_get(IA32_MTRR_PHYSBASE5);
+    var_regs[11] = k_msr_get(IA32_MTRR_PHYSMASK5);
+    var_regs[12] = k_msr_get(IA32_MTRR_PHYSBASE6);
+    var_regs[13] = k_msr_get(IA32_MTRR_PHYSMASK6);
+    var_regs[14] = k_msr_get(IA32_MTRR_PHYSBASE7);
+    var_regs[15] = k_msr_get(IA32_MTRR_PHYSMASK7);
+    var_regs[16] = k_msr_get(IA32_MTRR_PHYSBASE8);
+    var_regs[17] = k_msr_get(IA32_MTRR_PHYSMASK8);
+    var_regs[18] = k_msr_get(IA32_MTRR_PHYSBASE9);
+    var_regs[19] = k_msr_get(IA32_MTRR_PHYSMASK9);
 
 
 
@@ -219,7 +219,7 @@ void k_mtrr_print_all()
   }
 
   // Read the PAT
-  uint64_t pat = k_get_msr(IA32_PAT);
+  uint64_t pat = k_msr_get(IA32_PAT);
   fprintf(stddbg, "[PAT] PA0: %s\n", pat_type_to_str(pat & 7));
   fprintf(stddbg, "[PAT] PA1: %s\n", pat_type_to_str((pat >> 8) & 7));
   fprintf(stddbg, "[PAT] PA2: %s\n", pat_type_to_str((pat >> 16) & 7));
