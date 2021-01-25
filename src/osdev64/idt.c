@@ -61,7 +61,7 @@ int_desc* g_idt;
 
 
 // Inserts an ISR into the IDT
-void k_install_isr(uint64_t r, int i)
+void k_install_isr(void (isr)(), int i)
 {
   int_desc lo = 0; // low 64 bits of descriptor
   int_desc hi = 0; // high 64 bits of descriptor
@@ -90,6 +90,7 @@ void k_install_isr(uint64_t r, int i)
   lo |= BM_47;
 
   // The ISR address is placed in bits [15:0], [63:48], and [95:64]
+  uint64_t r = (uint64_t)isr;
   lo |= (r & 0xFFFF);                     // [15:0]
   lo |= ((r & 0xFFFF0000) << 32);         // [63:48]
   hi |= ((r & 0xFFFFFFFF00000000) >> 32); // [95:64]
@@ -114,42 +115,42 @@ void k_idt_init()
     for (;;);
   }
 
-  k_install_isr((uint64_t)isr0, 0);
-  k_install_isr((uint64_t)isr1, 1);
-  k_install_isr((uint64_t)isr2, 2);
-  k_install_isr((uint64_t)isr3, 3);
-  k_install_isr((uint64_t)isr4, 4);
-  k_install_isr((uint64_t)isr5, 5);
-  k_install_isr((uint64_t)isr6, 6);
-  k_install_isr((uint64_t)isr7, 7);
-  k_install_isr((uint64_t)isr8, 8);
-  k_install_isr((uint64_t)isr9, 9);
-  k_install_isr((uint64_t)isr10, 10);
-  k_install_isr((uint64_t)isr11, 11);
-  k_install_isr((uint64_t)isr12, 12);
-  k_install_isr((uint64_t)isr13, 13);
-  k_install_isr((uint64_t)isr14, 14);
-  k_install_isr((uint64_t)isr15, 15);
-  k_install_isr((uint64_t)isr16, 16);
-  k_install_isr((uint64_t)isr17, 17);
-  k_install_isr((uint64_t)isr18, 18);
-  k_install_isr((uint64_t)isr19, 19);
-  k_install_isr((uint64_t)isr20, 20);
-  k_install_isr((uint64_t)isr21, 21);
-  k_install_isr((uint64_t)isr22, 22);
-  k_install_isr((uint64_t)isr23, 23);
-  k_install_isr((uint64_t)isr24, 24);
-  k_install_isr((uint64_t)isr25, 25);
-  k_install_isr((uint64_t)isr26, 26);
-  k_install_isr((uint64_t)isr27, 27);
-  k_install_isr((uint64_t)isr28, 28);
-  k_install_isr((uint64_t)isr29, 29);
-  k_install_isr((uint64_t)isr30, 30);
-  k_install_isr((uint64_t)isr31, 31);
+  k_install_isr(isr0, 0);
+  k_install_isr(isr1, 1);
+  k_install_isr(isr2, 2);
+  k_install_isr(isr3, 3);
+  k_install_isr(isr4, 4);
+  k_install_isr(isr5, 5);
+  k_install_isr(isr6, 6);
+  k_install_isr(isr7, 7);
+  k_install_isr(isr8, 8);
+  k_install_isr(isr9, 9);
+  k_install_isr(isr10, 10);
+  k_install_isr(isr11, 11);
+  k_install_isr(isr12, 12);
+  k_install_isr(isr13, 13);
+  k_install_isr(isr14, 14);
+  k_install_isr(isr15, 15);
+  k_install_isr(isr16, 16);
+  k_install_isr(isr17, 17);
+  k_install_isr(isr18, 18);
+  k_install_isr(isr19, 19);
+  k_install_isr(isr20, 20);
+  k_install_isr(isr21, 21);
+  k_install_isr(isr22, 22);
+  k_install_isr(isr23, 23);
+  k_install_isr(isr24, 24);
+  k_install_isr(isr25, 25);
+  k_install_isr(isr26, 26);
+  k_install_isr(isr27, 27);
+  k_install_isr(isr28, 28);
+  k_install_isr(isr29, 29);
+  k_install_isr(isr30, 30);
+  k_install_isr(isr31, 31);
 
   for (int i = 32; i < 256; i++)
   {
-    k_install_isr((uint64_t)generic_isr, i);
+    k_install_isr(generic_isr, i);
   }
 
   uint16_t limit = (sizeof(int_desc) * 512) - 1;

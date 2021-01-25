@@ -38,8 +38,8 @@
 .global generic_isr
 .global apic_generic_isr
 .global apic_spurious_isr
-.global apic_pit_irq
-.global apic_generic_legacy_irq
+.global apic_pit_isr
+.global apic_generic_legacy_isr
 
 # PIC IRQ handlers
 .global pic_irq_0
@@ -480,12 +480,12 @@ apic_spurious_isr:
   call apic_spurious_handler
   iretq
 
-apic_pit_irq:
+apic_pit_isr:
   cld
   call apic_pit_handler
   iretq
 
-apic_generic_legacy_irq:
+apic_generic_legacy_isr:
   cld
   call apic_generic_legacy_handler
   iretq

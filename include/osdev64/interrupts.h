@@ -15,9 +15,9 @@ void k_load_idt();
  * Interrupts 0 through 31 are reserved by the CPU for exceptions.
  *
  * Params:
- *   uint64_t - the address of the ISR function
+ *   void (isr)() - the address of the ISR function
  *   int - the interrupt number
  */
-void k_install_isr(uint64_t r, int i);
+void k_install_isr(void (isr)(), int i);
 
 #endif

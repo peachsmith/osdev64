@@ -41,6 +41,15 @@ volatile uint32_t* volatile g_ioapic = NULL;
 
 
 
+// polarity
+static const uint16_t polarity_high = 1;
+static const uint16_t polarity_low = 3;
+
+// trigger mode
+static const uint16_t trigger_edge = 1;
+static const uint16_t trigger_level = 3;
+
+
 //============================================================
 // Functions for reading and writing APIC registers
 //============================================================
@@ -135,8 +144,8 @@ static uint32_t ioapic_write(uint32_t index, uint32_t value)
 
 void apic_generic_isr();
 void apic_spurious_isr();
-void apic_pit_irq();
-void apic_generic_legacy_irq();
+void apic_pit_isr();
+void apic_generic_legacy_isr();
 
 // PIC IRQ handlers
 void apic_irq_0();
@@ -159,71 +168,6 @@ void apic_irq_15();
 void apic_generic_handler()
 {
   fprintf(stddbg, "[INT] APIC generic interrupt handler\n");
-
-  uint32_t isr0 = lapic_read(LAPIC_ISR0);
-  uint32_t isr1 = lapic_read(LAPIC_ISR1);
-  uint32_t isr2 = lapic_read(LAPIC_ISR2);
-  uint32_t isr3 = lapic_read(LAPIC_ISR3);
-  uint32_t isr4 = lapic_read(LAPIC_ISR4);
-  uint32_t isr5 = lapic_read(LAPIC_ISR5);
-  uint32_t isr6 = lapic_read(LAPIC_ISR6);
-  uint32_t isr7 = lapic_read(LAPIC_ISR7);
-
-  fprintf(stddbg, "ISR0: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr0 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
-
-  fprintf(stddbg, "ISR1: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr1 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
-
-  fprintf(stddbg, "ISR2: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr2 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
-
-  fprintf(stddbg, "ISR3: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr3 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
-
-  fprintf(stddbg, "ISR4: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr4 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
-
-  fprintf(stddbg, "ISR5: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr5 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
-
-  fprintf(stddbg, "ISR6: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr6 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
-
-  fprintf(stddbg, "ISR7: ");
-  for (int i = 0; i < 32; i++)
-  {
-    fputc((isr7 & (1 << i)) ? '1' : '0', stddbg);
-  }
-  fputc('\n', stddbg);
 }
 
 void apic_spurious_handler()
@@ -234,22 +178,24 @@ void apic_spurious_handler()
 void apic_pit_handler()
 {
   fprintf(stddbg, "[INT] APIC PIT IRQ handler\n");
+
+  // TODO: figure out why the IRQ mapping appears to be wrong.
+  // Check the local APIC's in-service trgister (ISR) to see if we need
+  // to send an EOI. The legacy IRQs should have been mapped starting at
+  // interrupt 0x30. So the 16 IRQs would correspond to bits [63:48] of
+  // the local APIC's ISR.
+  uint32_t isr1 = lapic_read(LAPIC_ISR1);
+  if (isr1 & (0x10000 << 10)) // TODO: replace 10 with the IRQ n
+  {
+    lapic_write(LAPIC_EOI, 0);
+  }
 }
 
-void apic_generic_legacy_handler(uint64_t irq)
+void apic_generic_legacy_handler(uint8_t irqn)
 {
-  fprintf(stddbg, "[INT] APIC legacy IRQ %llu\n", irq);
+  fprintf(stddbg, "[INT] APIC legacy IRQ %u\n", irqn);
 
-  uint32_t isr0 = lapic_read(LAPIC_ISR0);
-  uint32_t isr1 = lapic_read(LAPIC_ISR1);
-
-  // fprintf(stddbg, "ISR0: ");
-  // for (int i = 0; i < 32; i++)
-  // {
-  //   fputc((isr0 & (0x80000000 >> i)) ? '1' : '0', stddbg);
-  // }
-  // fputc('\n', stddbg);
-
+  // For printing the ISR bits (0x80000000 == (1 << 31))
   // fprintf(stddbg, "ISR1: ");
   // for (int i = 0; i < 32; i++)
   // {
@@ -257,18 +203,12 @@ void apic_generic_legacy_handler(uint64_t irq)
   // }
   // fputc('\n', stddbg);
 
-  // fprintf(stddbg, "TEST: ");
-  // uint32_t toot = ((1 << 3) | (1 << 10));
-  // for (int i = 0; i < 32; i++)
-  // {
-  //   fputc((toot & (0x80000000 >> i)) ? '1' : '0', stddbg);
-  // }
-  // fputc('\n', stddbg);
-
-  // Send the EOI to the local APIC.
-  uint32_t n = (uint32_t)irq;
-  uint32_t check = 1 << 16;
-  if (isr1 & (check << n))
+  // Check the local APIC's in-service trgister (ISR) to see if we need
+  // to send an EOI. The legacy IRQs should have been mapped starting at
+  // interrupt 0x30. So the 16 IRQs would correspond to bits [63:48] of
+  // the local APIC's ISR.
+  uint32_t isr1 = lapic_read(LAPIC_ISR1);
+  if (isr1 & (0x10000 << irqn))
   {
     lapic_write(LAPIC_EOI, 0);
   }
@@ -405,11 +345,11 @@ void k_lapic_enable()
   // Install the APIC version of the generic ISRs.
   for (int i = 0x30; i < 0xFF; i++)
   {
-    k_install_isr((uint64_t)apic_generic_isr, i);
+    k_install_isr(apic_generic_isr, i);
   }
 
   // Install the spurious interrupt handler at index 255;
-  k_install_isr((uint64_t)apic_spurious_isr, 0xFF);
+  k_install_isr(apic_spurious_isr, 0xFF);
 
   // Ensure that the physical address of the local APIC
   // is in the IA32_APIC_BASE MSR.
@@ -524,39 +464,137 @@ static void ioapic_set_irq(uint8_t irq, uint8_t isr)
   lo_contents |= isr;
 
   ioapic_write(lo_index, lo_contents);
-
 }
+
+/**
+ * Applies an interrupt source override (ISO).
+ *
+ * Params:
+ *   uint8_t - the bus-relative IRQ
+ *   uint8_t - the index in the IDT of the ISR to handle the interrupt
+ *   uint16_t - the polarity from the flags in the MADT entry
+ *   uint16_t - the trigger mode from the flags in the MADT entry
+ */
+static void ioapic_set_iso(
+  uint8_t irq,
+  uint8_t isr,
+  uint16_t polarity,
+  uint16_t trigger
+)
+{
+  uint32_t lo_index = irq * 2;
+  uint32_t hi_index = irq * 2 + 1;
+
+  // Get the current APIC ID
+  uint32_t lapic_id = k_lapic_get_id();
+
+  // Currently, the I/O APIC registers only have 4 bits for the
+  // local APIC ID.
+  // In theory, some chips can have up to 255 processors.
+  // TODO: figure out how to handle this scenario.
+  if (lapic_id > 0xF)
+  {
+    fprintf(stddbg, "[ERROR] local APIC ID is more than 4 bits\n");
+    for (;;);
+  }
+
+  fprintf(stddbg, "[ISO] IRQ: %u, ISR: %u\n", irq, isr);
+
+
+  // Put the local APIC ID in bits [59:56].
+  // This is bits [31:24] of the high register.
+  uint32_t hi_contents = ioapic_read(hi_index);
+
+  // Clear bits [31:24] and set the local APIC address.
+  hi_contents &= ~0xFF000000;
+  hi_contents |= (lapic_id << 24);
+
+  ioapic_write(hi_index, hi_contents);
+
+
+  // Most of the IRQ description goes in the low register.
+  uint32_t lo_contents = ioapic_read(lo_index);
+
+  // Clear bits [10:8] to indicate fixed delivery mode.
+  lo_contents &= ~(0x700);
+
+  // Clear bit 11 to indicate physical destination mode.
+  lo_contents &= ~(0x800);
+
+  // Bit 13 is the polarity. (1 for low, 0 for high)
+  if (polarity == polarity_low)
+  {
+    fprintf(stddbg, "polarity: low\n");
+    lo_contents |= 0x2000;
+  }
+  else if (polarity == polarity_high)
+  {
+    fprintf(stddbg, "polarity: high\n");
+    lo_contents &= ~(0x2000);
+  }
+  else
+  {
+    fprintf(stddbg, "polarity: assuming bus\n");
+  }
+
+
+  // Bit 15 is the trigger mode. (1 for level, 0 for edge)
+  if (trigger == trigger_level)
+  {
+    fprintf(stddbg, "trigger: level\n");
+    lo_contents |= 0x8000;
+  }
+  else if (trigger == trigger_edge)
+  {
+    fprintf(stddbg, "trigger: edge\n");
+    lo_contents &= ~(0x8000);
+  }
+  else
+  {
+    fprintf(stddbg, "trigger: assuming bus\n");
+  }
+
+  // Clear bit 16 to unmask the IRQ.
+  lo_contents &= ~(0x10000);
+
+  // Clear bits [7:0] in preparation for the new ISR index.
+  lo_contents &= ~0xFF;
+
+  // Set the index of the ISR in bits [7:0].
+  lo_contents |= isr;
+
+  ioapic_write(lo_index, lo_contents);
+}
+
 
 void k_ioapic_configure()
 {
+  uint8_t irq_base = 0x30;
+
   // Install the legacy IRQ handlers
-  k_install_isr((uint64_t)apic_irq_0, 48);
-  k_install_isr((uint64_t)apic_irq_1, 49);
-  k_install_isr((uint64_t)apic_irq_2, 50);
-  k_install_isr((uint64_t)apic_irq_3, 51);
-  k_install_isr((uint64_t)apic_irq_4, 52);
-  k_install_isr((uint64_t)apic_irq_5, 53);
-  k_install_isr((uint64_t)apic_irq_6, 54);
-  k_install_isr((uint64_t)apic_irq_7, 55);
-  k_install_isr((uint64_t)apic_irq_8, 56);
-  k_install_isr((uint64_t)apic_irq_9, 57);
-  k_install_isr((uint64_t)apic_irq_10, 58);
-  k_install_isr((uint64_t)apic_irq_11, 59);
-  k_install_isr((uint64_t)apic_irq_12, 60);
-  k_install_isr((uint64_t)apic_irq_13, 61);
-  k_install_isr((uint64_t)apic_irq_14, 62);
-  k_install_isr((uint64_t)apic_irq_15, 63);
+  k_install_isr(apic_irq_0, irq_base);
+  k_install_isr(apic_irq_1, irq_base + 1);
+  k_install_isr(apic_irq_2, irq_base + 2);
+  k_install_isr(apic_irq_3, irq_base + 3);
+  k_install_isr(apic_irq_4, irq_base + 4);
+  k_install_isr(apic_irq_5, irq_base + 5);
+  k_install_isr(apic_irq_6, irq_base + 6);
+  k_install_isr(apic_irq_7, irq_base + 7);
+  k_install_isr(apic_irq_8, irq_base + 8);
+  k_install_isr(apic_irq_9, irq_base + 9);
+  k_install_isr(apic_irq_10, irq_base + 10);
+  k_install_isr(apic_irq_11, irq_base + 11);
+  k_install_isr(apic_irq_12, irq_base + 12);
+  k_install_isr(apic_irq_13, irq_base + 13);
+  k_install_isr(apic_irq_14, irq_base + 14);
+  k_install_isr(apic_irq_15, irq_base + 15);
 
   // Set the IRQ redirects.
   // The PIC IRQs were mapped to ISR 0x20 through 0x2F
   // So we'll start at 0x30.
   for (uint8_t i = 0; i < 24; i++)
   {
-    ioapic_set_irq(i, 0x30 + i);
-    // if (i < 0x10)
-    // {
-    //   k_install_isr((uint64_t)apic_generic_legacy_handler, 0x30 + i);
-    // }
+    ioapic_set_irq(i, irq_base + i);
   }
 
   // Looks for ISOs in the MADT and install the
@@ -565,9 +603,8 @@ void k_ioapic_configure()
   for (uint32_t i = 0; i < table_len - 44;)
   {
     unsigned char* entry = &g_madt[44 + i];
-
-    uint8_t entry_type = *(uint8_t*)(entry);
-    uint8_t entry_len = *(uint8_t*)(entry + 1);
+    unsigned char entry_type = *entry;
+    unsigned char entry_len = *(entry + 1);
 
     switch (entry_type)
     {
@@ -577,29 +614,22 @@ void k_ioapic_configure()
       uint8_t bus_src = *((uint8_t*)(entry + 2));
       uint8_t irq_src = *((uint8_t*)(entry + 3));
       uint32_t gsi = *((uint32_t*)(entry + 4));
-      // uint16_t flags = *((uint16_t*)(entry + 8));
-
-      printf("[APIC] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u }\n",
-        bus_src,
-        irq_src,
-        gsi
-      );
+      uint16_t flags = *((uint16_t*)(entry + 8));
 
       // polarity and trigger mode
-      // uint64_t pol = ((uint64_t)flags & BM_2_BITS);
-      // uint64_t trig = ((uint64_t)flags & (BM_2_BITS << 2)) >> 2;
+      uint16_t pol = (flags & 0x3);
+      uint16_t trig = (flags & 0xC) >> 2;
 
-      // printf("[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %5s, Trig: %5s }\n",
-      //   bus_src,
-      //   irq_src,
-      //   gsi,
-      //   iso_polarity_str(pol),
-      //   iso_trigger_str(trig)
-      // );
+      printf("[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %3u, Trig: %3u }\n",
+        bus_src,
+        irq_src,
+        gsi,
+        pol,
+        trig
+      );
 
-      // Add a redirection entry to send but-relative IRQ0 to
-      // the specified global system interrupt.
-      ioapic_set_irq(irq_src, 0x30 + gsi);
+      // Add the redirection entry to the IRQ.
+      // ioapic_set_iso(irq_src, irq_base + gsi, pol, trig);
 
       // Timer IRQ
       if (irq_src == 0)
@@ -607,7 +637,7 @@ void k_ioapic_configure()
         printf("[APIC] installing the APIC PIT ISR\n");
 
         // Install the ISR for handling the timer IRQ.
-        k_install_isr((uint64_t)apic_pit_irq, 0x30 + gsi); // 0x30 + gsi);
+        k_install_isr(apic_pit_isr, irq_base + gsi);
       }
     }
     break;

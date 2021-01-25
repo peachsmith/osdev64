@@ -57,22 +57,22 @@ void k_pic_init()
 
 
   // First, we install the PIC IRQ handlers
-  k_install_isr((uint64_t)pic_irq_0, 32);
-  k_install_isr((uint64_t)pic_irq_1, 33);
-  k_install_isr((uint64_t)pic_irq_2, 34);
-  k_install_isr((uint64_t)pic_irq_3, 35);
-  k_install_isr((uint64_t)pic_irq_4, 36);
-  k_install_isr((uint64_t)pic_irq_5, 37);
-  k_install_isr((uint64_t)pic_irq_6, 38);
-  k_install_isr((uint64_t)pic_irq_7, 39);
-  k_install_isr((uint64_t)pic_irq_8, 40);
-  k_install_isr((uint64_t)pic_irq_9, 41);
-  k_install_isr((uint64_t)pic_irq_10, 42);
-  k_install_isr((uint64_t)pic_irq_11, 43);
-  k_install_isr((uint64_t)pic_irq_12, 44);
-  k_install_isr((uint64_t)pic_irq_13, 45);
-  k_install_isr((uint64_t)pic_irq_14, 46);
-  k_install_isr((uint64_t)pic_irq_15, 47);
+  k_install_isr(pic_irq_0, 32);
+  k_install_isr(pic_irq_1, 33);
+  k_install_isr(pic_irq_2, 34);
+  k_install_isr(pic_irq_3, 35);
+  k_install_isr(pic_irq_4, 36);
+  k_install_isr(pic_irq_5, 37);
+  k_install_isr(pic_irq_6, 38);
+  k_install_isr(pic_irq_7, 39);
+  k_install_isr(pic_irq_8, 40);
+  k_install_isr(pic_irq_9, 41);
+  k_install_isr(pic_irq_10, 42);
+  k_install_isr(pic_irq_11, 43);
+  k_install_isr(pic_irq_12, 44);
+  k_install_isr(pic_irq_13, 45);
+  k_install_isr(pic_irq_14, 46);
+  k_install_isr(pic_irq_15, 47);
 
 
   // Get the masks. (probably unnecessary)
