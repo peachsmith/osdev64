@@ -405,7 +405,7 @@ k_nonsense:
   push %rbp
   mov %rsp, %rbp
 
-  int $0x20
+  int $0x30
   
   leaveq
   retq

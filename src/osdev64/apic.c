@@ -42,12 +42,14 @@ volatile uint32_t* volatile g_ioapic = NULL;
 
 
 // polarity
-static const uint16_t polarity_high = 1;
-static const uint16_t polarity_low = 3;
+static const uint16_t POLARITY_BUS = 0;
+static const uint16_t POLARITY_HIGH = 1;
+static const uint16_t POLARITY_LOW = 3;
 
 // trigger mode
-static const uint16_t trigger_edge = 1;
-static const uint16_t trigger_level = 3;
+static const uint16_t TRIGGER_BUS = 0;
+static const uint16_t TRIGGER_EDGE = 1;
+static const uint16_t TRIGGER_LEVEL = 3;
 
 
 //============================================================
@@ -146,8 +148,9 @@ void apic_generic_isr();
 void apic_spurious_isr();
 void apic_pit_isr();
 void apic_generic_legacy_isr();
+void debug_isr();
 
-// PIC IRQ handlers
+// APIC IRQ handlers
 void apic_irq_0();
 void apic_irq_1();
 void apic_irq_2();
@@ -212,6 +215,21 @@ void apic_generic_legacy_handler(uint8_t irqn)
   {
     lapic_write(LAPIC_EOI, 0);
   }
+  else
+  {
+    for (uint32_t i = 0x10; i < 0x20; i++)
+    {
+      if (isr1 & (1 << i))
+      {
+        fprintf(stddbg, "[APIC] ISR bit %u is set\n", i - 0x10);
+      }
+    }
+  }
+}
+
+void debug_handler()
+{
+  fprintf(stddbg, "[DEBUG] this is a debug handler\n");
 }
 
 
@@ -404,70 +422,7 @@ uint32_t k_lapic_get_maxlvt()
 //============================================================
 
 /**
- * Sets an IRQ redirect for the current I/O APIC.
- *
- * Params:
- *   uint8_t - the IRQ number to redirect
- *   uint8_t - the index of the ISR in the IDT
- */
-static void ioapic_set_irq(uint8_t irq, uint8_t isr)
-{
-  uint32_t lo_index = irq * 2;
-  uint32_t hi_index = irq * 2 + 1;
-
-  // Get the current APIC ID
-  uint32_t lapic_id = k_lapic_get_id();
-
-  // Currently, the I/O APIC registers only have 4 bits for the
-  // local APIC ID.
-  // In theory, some chips can have up to 255 processors.
-  // TODO: figure out how to handle this scenario.
-  if (lapic_id > 0xF)
-  {
-    fprintf(stddbg, "[ERROR] local APIC ID is more than 4 bits\n");
-    for (;;);
-  }
-
-
-  // Put the local APIC ID in bits [59:56].
-  // This is bits [31:24] of the high register.
-  uint32_t hi_contents = ioapic_read(hi_index);
-
-  // Clear bits [31:24] and set the local APIC address.
-  hi_contents &= ~0xFF000000;
-  hi_contents |= (lapic_id << 24);
-
-  ioapic_write(hi_index, hi_contents);
-
-
-  // Most of the IRQ description goes in the low register.
-  uint32_t lo_contents = ioapic_read(lo_index);
-
-  // Clear bits [10:8] to indicate fixed delivery mode.
-  // TODO: add doc comments for delivery mode.
-  lo_contents &= ~(0x700);
-
-  // Clear bit 11 to indicate physical destination mode.
-  lo_contents &= ~(0x800);
-
-  // Bits [15:12] are ignored for now.
-  // Bit 13 is the polarity. (1 for low, 0 for high)
-  // Bit 15 is the trigger mode. (1 for level, 0 for edge)
-
-  // Clear bit 16 to unmask the IRQ.
-  lo_contents &= ~(0x10000);
-
-  // Clear bits [7:0] in preparation for the new ISR index.
-  lo_contents &= ~0xFF;
-
-  // Set the index of the ISR in bits [7:0].
-  lo_contents |= isr;
-
-  ioapic_write(lo_index, lo_contents);
-}
-
-/**
- * Applies an interrupt source override (ISO).
+ * Sets a redirect entry in an I/O APIC.
  *
  * Params:
  *   uint8_t - the bus-relative IRQ
@@ -475,15 +430,15 @@ static void ioapic_set_irq(uint8_t irq, uint8_t isr)
  *   uint16_t - the polarity from the flags in the MADT entry
  *   uint16_t - the trigger mode from the flags in the MADT entry
  */
-static void ioapic_set_iso(
+static void ioapic_set_redirect(
   uint8_t irq,
   uint8_t isr,
   uint16_t polarity,
   uint16_t trigger
 )
 {
-  uint32_t lo_index = irq * 2;
-  uint32_t hi_index = irq * 2 + 1;
+  uint32_t lo_index = 0x10 + irq * 2;
+  uint32_t hi_index = 0x10 + irq * 2 + 1;
 
   // Get the current APIC ID
   uint32_t lapic_id = k_lapic_get_id();
@@ -494,11 +449,11 @@ static void ioapic_set_iso(
   // TODO: figure out how to handle this scenario.
   if (lapic_id > 0xF)
   {
-    fprintf(stddbg, "[ERROR] local APIC ID is more than 4 bits\n");
+    fprintf(stdout, "[ERROR] local APIC ID is more than 4 bits\n");
     for (;;);
   }
 
-  fprintf(stddbg, "[ISO] IRQ: %u, ISR: %u\n", irq, isr);
+  fprintf(stdout, "[ISO] IRQ: %u, ISR: %u\n", irq, isr);
 
 
   // Put the local APIC ID in bits [59:56].
@@ -521,37 +476,28 @@ static void ioapic_set_iso(
   // Clear bit 11 to indicate physical destination mode.
   lo_contents &= ~(0x800);
 
+  // Bit 12 is the delivery status.
+
   // Bit 13 is the polarity. (1 for low, 0 for high)
-  if (polarity == polarity_low)
+  if (polarity == POLARITY_LOW)
   {
-    fprintf(stddbg, "polarity: low\n");
     lo_contents |= 0x2000;
   }
-  else if (polarity == polarity_high)
+  else if (polarity == POLARITY_HIGH)
   {
-    fprintf(stddbg, "polarity: high\n");
     lo_contents &= ~(0x2000);
   }
-  else
-  {
-    fprintf(stddbg, "polarity: assuming bus\n");
-  }
 
+  // Bit 14 is the remote IRR.
 
   // Bit 15 is the trigger mode. (1 for level, 0 for edge)
-  if (trigger == trigger_level)
+  if (trigger == TRIGGER_LEVEL)
   {
-    fprintf(stddbg, "trigger: level\n");
     lo_contents |= 0x8000;
   }
-  else if (trigger == trigger_edge)
+  else if (trigger == TRIGGER_EDGE)
   {
-    fprintf(stddbg, "trigger: edge\n");
     lo_contents &= ~(0x8000);
-  }
-  else
-  {
-    fprintf(stddbg, "trigger: assuming bus\n");
   }
 
   // Clear bit 16 to unmask the IRQ.
@@ -569,10 +515,13 @@ static void ioapic_set_iso(
 
 void k_ioapic_configure()
 {
+  // Base index of the APIC IRQ handlers in the IDT.
+  // The PIC IRQs were mapped to interrupt 0x20 through 0x2F,
+  // so we'll start installing the APIC IRQs at interrupt 0x30.
   uint8_t irq_base = 0x30;
 
   // Install the legacy IRQ handlers
-  k_install_isr(apic_irq_0, irq_base);
+  k_install_isr(apic_irq_0, irq_base + 0);
   k_install_isr(apic_irq_1, irq_base + 1);
   k_install_isr(apic_irq_2, irq_base + 2);
   k_install_isr(apic_irq_3, irq_base + 3);
@@ -589,18 +538,17 @@ void k_ioapic_configure()
   k_install_isr(apic_irq_14, irq_base + 14);
   k_install_isr(apic_irq_15, irq_base + 15);
 
-  // Set the IRQ redirects.
-  // The PIC IRQs were mapped to ISR 0x20 through 0x2F
-  // So we'll start at 0x30.
-  for (uint8_t i = 0; i < 24; i++)
+  // Set the initial IRQ redirects in the I/O APIC.
+  // TODO: verify max redirect entries and implement the
+  // spreading of a range of redirects over multiple I/O APICs.
+  for (uint8_t i = 0; i < 16; i++)
   {
-    ioapic_set_irq(i, irq_base + i);
+    ioapic_set_redirect(i, irq_base + i, POLARITY_BUS, TRIGGER_BUS);
   }
 
-  // Looks for ISOs in the MADT and install the
-  // IRQs accordingly.
-  uint32_t table_len = *(uint32_t*)(g_madt + 4);
-  for (uint32_t i = 0; i < table_len - 44;)
+  // Look for ISOs in the MADT.
+  uint32_t madt_len = *(uint32_t*)(g_madt + 4);
+  for (uint32_t i = 0; i < madt_len - 44;)
   {
     unsigned char* entry = &g_madt[44 + i];
     unsigned char entry_type = *entry;
@@ -628,17 +576,8 @@ void k_ioapic_configure()
         trig
       );
 
-      // Add the redirection entry to the IRQ.
-      // ioapic_set_iso(irq_src, irq_base + gsi, pol, trig);
-
-      // Timer IRQ
-      if (irq_src == 0)
-      {
-        printf("[APIC] installing the APIC PIT ISR\n");
-
-        // Install the ISR for handling the timer IRQ.
-        k_install_isr(apic_pit_isr, irq_base + gsi);
-      }
+      // Apply the appropriate redirection entry to the I/O APIC.
+      ioapic_set_redirect(gsi, irq_base + irq_src, pol, trig);
     }
     break;
 

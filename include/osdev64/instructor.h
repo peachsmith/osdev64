@@ -40,7 +40,6 @@ void k_disable_interrupts();
  */
 void k_enable_interrupts();
 
-
 /**
  * Causes an exception.
  * This typically causes a divide error by attempting to divide by 0,

@@ -41,6 +41,11 @@
 .global apic_pit_isr
 .global apic_generic_legacy_isr
 
+
+# debug handler
+.global debug_isr
+
+
 # PIC IRQ handlers
 .global pic_irq_0
 .global pic_irq_1
@@ -89,6 +94,9 @@
 .extern apic_spurious_handler
 .extern apic_pit_handler
 .extern apic_generic_legacy_handler
+
+# debug handler
+.extern debug_handler
 
 # used to send the EOI to the PIC
 .extern k_pic_send_eoi
@@ -488,4 +496,10 @@ apic_pit_isr:
 apic_generic_legacy_isr:
   cld
   call apic_generic_legacy_handler
+  iretq
+
+
+debug_isr:
+  cld
+  call debug_handler
   iretq

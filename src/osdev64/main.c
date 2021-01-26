@@ -198,7 +198,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     printf("I/O APIC Max Redirects: %u\n", ioapic_max);
 
 
-
     // Disable the PIC since we're using APIC.
     k_pic_disable();
 
@@ -296,7 +295,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // k_memory_print_ledger();
 
   // Print the MADT
-  k_acpi_print_madt();
+  // k_acpi_print_madt();
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
