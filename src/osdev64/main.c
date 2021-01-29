@@ -16,6 +16,7 @@
 #include "osdev64/pic.h"
 #include "osdev64/pit.h"
 #include "osdev64/apic.h"
+#include "osdev64/task.h"
 
 #include "klibc/stdio.h"
 
@@ -208,6 +209,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     k_ioapic_configure();
 
     printf("---------------------------------------\n");
+
+    k_task_init();
   }
   else
   {
@@ -224,35 +227,35 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   //==============================
   // BEGIN demo code
 
-  // // draw an outline of a rectangle
-  // k_draw_rect(
-  //   250, 250,    // x, y
-  //   50, 50,      // w, h
-  //   200, 120, 50 // r, g, b
-  // );
+  // draw an outline of a rectangle
+  k_draw_rect(
+    250, 250,    // x, y
+    50, 50,      // w, h
+    200, 120, 50 // r, g, b
+  );
 
-  // // draw a filled rectangle
-  // k_fill_rect(
-  //   303, 250,    // x, y
-  //   50, 50,      // w, h
-  //   200, 120, 50 // r, g, b
-  // );
+  // draw a filled rectangle
+  k_fill_rect(
+    303, 250,    // x, y
+    50, 50,      // w, h
+    200, 120, 50 // r, g, b
+  );
 
-  // // draw an outline of a triangle
-  // k_draw_triangle(
-  //   300, 353,    // x1, y1
-  //   250, 353,    // x2, y2
-  //   275, 303,    // x3, y3
-  //   50, 120, 200 // r, g, b
-  // );
+  // draw an outline of a triangle
+  k_draw_triangle(
+    300, 353,    // x1, y1
+    250, 353,    // x2, y2
+    275, 303,    // x3, y3
+    50, 120, 200 // r, g, b
+  );
 
-  // // draw a filled triangle
-  // k_fill_triangle(
-  //   353, 353,    // x1, y1
-  //   303, 353,    // x2, y2
-  //   328, 303,    // x3, y3
-  //   50, 120, 200 // r, g, b
-  // );
+  // draw a filled triangle
+  k_fill_triangle(
+    353, 353,    // x1, y1
+    303, 353,    // x2, y2
+    328, 303,    // x3, y3
+    50, 120, 200 // r, g, b
+  );
 
   // Print the physical RAM pool.
   // k_memory_print_pool();
@@ -300,7 +303,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
   // The main loop.
-  for (;;);
+  for (;;)
+  {
+    fprintf(stddbg, "This is the main task.\n");
+  }
 
   // We should never get here.
   return EFI_SUCCESS;

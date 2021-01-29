@@ -4,11 +4,6 @@
 #include <stdint.h>
 
 /**
- * Loads the IDT.
- */
-void k_load_idt();
-
-/**
  * Installs an interrupt service routine (ISR) in the IDT.
  * The first arguments is a function to handle an interrupt, and the
  * second argument is the interrupt number, which can range from 32 to 255.

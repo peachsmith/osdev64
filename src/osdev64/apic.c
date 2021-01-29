@@ -5,6 +5,7 @@
 #include "osdev64/uefi.h"
 #include "osdev64/msr.h"
 #include "osdev64/interrupts.h"
+#include "osdev64/task.h"
 
 #include "klibc/stdio.h"
 
@@ -26,7 +27,7 @@
 // IOAPIC registers
 #define IOAPICVER ((uint32_t)1)
 
-// Multiple APIC Descriptor Table (MADT)
+// The MADT (obtained from the ACPI interface)
 extern unsigned char* g_madt;
 
 // Local APIC physical base
@@ -178,20 +179,27 @@ void apic_spurious_handler()
   fprintf(stddbg, "[INT] APIC spurious interrupt handler\n");
 }
 
-void apic_pit_handler()
+uint64_t ticks = 0;
+uint64_t* apic_pit_handler(uint64_t* regs)
 {
-  fprintf(stddbg, "[INT] APIC PIT IRQ handler\n");
+  // fprintf(stddbg, "[INT] APIC PIT IRQ handler\n");
+  uint64_t* next_task = regs;
 
-  // TODO: figure out why the IRQ mapping appears to be wrong.
-  // Check the local APIC's in-service trgister (ISR) to see if we need
-  // to send an EOI. The legacy IRQs should have been mapped starting at
-  // interrupt 0x30. So the 16 IRQs would correspond to bits [63:48] of
-  // the local APIC's ISR.
+  ticks++;
+
+  if (ticks % 120 == 0)
+  {
+    // fprintf(stddbg, "we should be switching tasks here\n");
+    next_task = k_task_switch(regs);
+  }
+
   uint32_t isr1 = lapic_read(LAPIC_ISR1);
-  if (isr1 & (0x10000 << 10)) // TODO: replace 10 with the IRQ n
+  if (isr1 & (0x10000 << 0))
   {
     lapic_write(LAPIC_EOI, 0);
   }
+
+  return next_task;
 }
 
 void apic_generic_legacy_handler(uint8_t irqn)
@@ -214,16 +222,6 @@ void apic_generic_legacy_handler(uint8_t irqn)
   if (isr1 & (0x10000 << irqn))
   {
     lapic_write(LAPIC_EOI, 0);
-  }
-  else
-  {
-    for (uint32_t i = 0x10; i < 0x20; i++)
-    {
-      if (isr1 & (1 << i))
-      {
-        fprintf(stddbg, "[APIC] ISR bit %u is set\n", i - 0x10);
-      }
-    }
   }
 }
 
@@ -452,8 +450,6 @@ static void ioapic_set_redirect(
     fprintf(stdout, "[ERROR] local APIC ID is more than 4 bits\n");
     for (;;);
   }
-
-  fprintf(stdout, "[ISO] IRQ: %u, ISR: %u\n", irq, isr);
 
 
   // Put the local APIC ID in bits [59:56].
