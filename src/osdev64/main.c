@@ -228,8 +228,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     k_ioapic_configure();
 
     printf("---------------------------------------\n");
-
-    k_task_init();
   }
   else
   {
@@ -336,6 +334,20 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   {
     k_apic_wait(240);
     fprintf(stddbg, "This is the main task.\n");
+
+    if (task_a != NULL && task_a->status == TASK_REMOVED)
+    {
+      fprintf(stddbg, "destroying task a\n");
+      k_task_destroy(task_a);
+      task_a = NULL;
+    }
+
+    if (task_b != NULL && task_b->status == TASK_REMOVED)
+    {
+      fprintf(stddbg, "destroying task b\n");
+      k_task_destroy(task_b);
+      task_b = NULL;
+    }
 
     if (should_stop_b < 10)
     {

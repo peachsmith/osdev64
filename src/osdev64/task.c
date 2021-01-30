@@ -5,19 +5,6 @@
 
 #include "klibc/stdio.h"
 
-
-// TODO:
-// implement task creation
-// implement task destruction
-// implement more task switching logic
-// refactor and define the task life cycle
-
-
-// task states
-#define TASK_NEW 0
-#define TASK_RUNNING 1
-#define TASK_STOPPED 2
-
 // register stack indices
 #define TASK_REG_SS 20
 #define TASK_REG_RSP 19
@@ -40,7 +27,7 @@
 // Register Stack Structure
 // +-------------------+
 // | ///////////////// |
-// | //// unknown //// |<- don't know, don't care, don't touch
+// | //// unknown //// | <- don't know, don't care, don't touch
 // | ///////////////// |
 // |-------------------|
 // | pushed by the CPU |
@@ -73,81 +60,26 @@
 
 
 
-
+// number of tasks that have been created
 uint64_t g_task_count = 1;
 
-k_task g_main_task;
-// k_task g_task_a;
-// k_task g_task_b;
+// the initial memory pointed to by the current task pointer
+k_task g_primer_task;
 
-k_task* g_current_task = &g_main_task;
+// currently task
+k_task* g_current_task = &g_primer_task;
 
 // global task list
 k_task* g_task_list = NULL;
 
-// uint64_t task_a_regs[21];
-// uint64_t task_b_regs[21];
 
-// void task_a_action()
-// {
-//   for (;;)
-//   {
-//     fprintf(stddbg, "This is task A\n");
-//   }
-// }
-
-// void task_b_action()
-// {
-//   for (;;)
-//   {
-//     fprintf(stddbg, "This is task B\n");
-//   }
-// }
-
-// Populates a task with everything it needs to succeed in life.
-static void init_task(
-  k_task* task,
-  uint64_t* regs,
-  void (action)(),
-  uint64_t id
-)
-{
-  task->id = id;
-  task->status = TASK_RUNNING;
-
-  // Allocate a stack for the task.
-  // We want 64 KiB, so we allocate 17 pages so that the initial
-  // stack base can be a multiple of 4096.
-  void* stack = k_memory_alloc_pages(17);
-  if (stack == NULL)
-  {
-    task->status = TASK_STOPPED;
-    return;
-  }
-
-  task->regs = regs;
-  task->regs[TASK_REG_RIP] = (uint64_t)action;
-
-  // The stack is 64 KiB, so the base pointer starts at an offset
-  // of 0x10000 from the pointer that was allocated earlier.
-  task->regs[TASK_REG_RBP] = (uint64_t)stack + 0x10000;
-
-  // The initial stack pointer should be 16 byte aligned and allow
-  // for the contents of an interrupt handler stack.
-  task->regs[TASK_REG_RSP] = (uint64_t)stack + 0x10000 - TASK_STACK_ALIGN;
-
-  // Set the default RFLAGS value.
-  // The only bit that is set is bit 9, the interrupt flag (IF).
-  task->regs[TASK_REG_RFLAGS] = 0x200;
-
-  // Set the offset of kernel mode data segment.
-  task->regs[TASK_REG_SS] = 0x10;
-
-  // Set the offset of kernel mode code segment.
-  task->regs[TASK_REG_CS] = 0x8;
-}
-
-
+/**
+ * Removes a task from the global task list.
+ * This function does not free the memory used by a task.
+ *
+ * Params:
+ *   k_task* - a pointer to the task to be removed
+ */
 static void remove_task(k_task* target)
 {
   k_task* node = g_task_list;
@@ -179,17 +111,6 @@ static void remove_task(k_task* target)
 }
 
 
-void k_task_init()
-{
-  // init_task(&g_task_a, task_a_regs, task_a_action, 2);
-
-  // init_task(&g_task_b, task_b_regs, task_b_action, 3);
-}
-
-
-
-
-
 uint64_t* k_task_switch(uint64_t* reg_stack)
 {
   // If there are no tasks, then proceed with the current task.
@@ -207,7 +128,7 @@ uint64_t* k_task_switch(uint64_t* reg_stack)
   {
     k_task* target = g_current_task->next;
     remove_task(target);
-    k_task_destroy(target);
+    target->status = TASK_REMOVED;
   }
 
   // Select the next task.

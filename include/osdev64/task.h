@@ -3,6 +3,14 @@
 
 #include <stdint.h>
 
+
+// task states
+#define TASK_NEW 0
+#define TASK_RUNNING 1
+#define TASK_STOPPED 2
+#define TASK_REMOVED 3
+
+// task structure
 typedef struct k_task {
   void* mem_base; // base address of all task memory
   uint64_t* regs; // CPU state
@@ -10,12 +18,6 @@ typedef struct k_task {
   int status;
   struct k_task* next;
 }k_task;
-
-/**
- * Initializes task switching.
- *
- */
-void k_task_init();
 
 
 /**
