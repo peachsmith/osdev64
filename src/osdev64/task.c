@@ -228,45 +228,48 @@ uint64_t* k_task_switch(uint64_t* reg_stack)
  */
 void k_task_end()
 {
-  int count_down = 5;
-
   fprintf(stddbg, "a task has ended\n");
-  for (;;)
-  {
-    k_apic_wait(240);
-    fprintf(stddbg, "[TASK] ended task ID: %llu\n", g_current_task->id);
 
-    if (count_down > 0)
-    {
-      count_down--;
+  // Mark the task as STOPPED so it will be removed.
+  g_current_task->status = TASK_STOPPED;
 
-      if (count_down == 0)
-      {
-        // Mark the task as STOPPED so it will be removed.
-        g_current_task->status = TASK_STOPPED;
-      }
-    }
-  }
+  // Hang and wait for task disposal.
+  for (;;);
 }
 
 k_task* k_task_create(void (action)())
 {
+  void* task_mem; // task memory
+  uint64_t rsp;   // stack pointer
+  uint64_t rbp;   // base pointer
+
   // Allocate 16 Kib of stack space, and 4 Kib for the task state.
   // The task memory will have the following layout:
   // +--------------------+
-  // |      16 Kib        |
-  // |    stack space     |
-  // |                    |
-  // |--------------------|
-  // |       4 Kib        |
+  // |      4 Kib         |
   // |   task state and   |
-  // |   register stack   |
+  // |  register values   |
+  // |--------------------|
+  // |                    |
+  // |       16 Kib       |
+  // |     stack space    |
+  // |                    |
   // +--------------------+
-  void* task_mem = k_memory_alloc_pages(5);
+  task_mem = k_memory_alloc_pages(5);
   if (task_mem == NULL)
   {
     return NULL;
   }
+
+  // Calculate the initial stack and base pointer.
+  // The stack pointer should be 16 byte aligned, and we should
+  // reserve space on the initial stack for the ISR stack, the
+  // register values, and the k_task_end function.
+  rsp = (uint64_t)task_mem + 0x4000 - TASK_STACK_ALIGN;
+  rbp = (uint64_t)task_mem + 0x4000;
+
+  // Put the address of the k_task_end function on this task's stack.
+  *(uint64_t*)(rsp) = (uint64_t)k_task_end;
 
   // The memory that will hold the task state will start
   // at at an offset of 16 bytes from the start of the fifth page.
@@ -278,29 +281,18 @@ k_task* k_task_create(void (action)())
   // memory and the start of register stack memory.
   task->regs = (uint64_t*)((uint64_t)task_mem + 0x4060);
 
-  // Assign a function where execution will begin.
-  task->regs[TASK_REG_RIP] = (uint64_t)action;
 
-  // The stack is 16 KiB, so the base pointer starts at an offset
-  // of 0x4000 from the pointer that was allocated earlier.
-  task->regs[TASK_REG_RBP] = (uint64_t)task_mem + 0x4000;
+  // Build an ISR stack whose values will be popped
+  // off the stack by the IRET instruction.
+  task->regs[TASK_REG_SS] = 0x10;              // data segment
+  task->regs[TASK_REG_RSP] = rsp;              // stack pointer
+  task->regs[TASK_REG_RFLAGS] = 0x200;         // bit 9 (interrupt flag)
+  task->regs[TASK_REG_CS] = 0x8;               // code segment.
+  task->regs[TASK_REG_RIP] = (uint64_t)action; // begin execution here
 
-  // The initial stack pointer should be 16 byte aligned and allow
-  // for the contents of an interrupt handler stack.
-  task->regs[TASK_REG_RSP] = (uint64_t)task_mem + 0x4000 - TASK_STACK_ALIGN;
 
-  // Put the address of the k_task_end function on this task's stack.
-  *((uint64_t*)(task->regs[TASK_REG_RSP])) = (uint64_t)k_task_end;
-
-  // Set the default RFLAGS value.
-  // The only bit that is set is bit 9, the interrupt flag (IF).
-  task->regs[TASK_REG_RFLAGS] = 0x200;
-
-  // Set the offset of kernel mode data segment.
-  task->regs[TASK_REG_SS] = 0x10;
-
-  // Set the offset of kernel mode code segment.
-  task->regs[TASK_REG_CS] = 0x8;
+  // Set the initial base pointer.
+  task->regs[TASK_REG_RBP] = rbp;
 
   // All tasks are created with a status of NEW.
   task->status = TASK_NEW;

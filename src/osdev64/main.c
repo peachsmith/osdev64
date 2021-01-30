@@ -329,7 +329,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_task_schedule(task_a);
   k_task_schedule(task_b);
 
-  int b_killer = 0;
+  int should_stop_b = 0;
 
   // The main loop.
   for (;;)
@@ -337,10 +337,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     k_apic_wait(240);
     fprintf(stddbg, "This is the main task.\n");
 
-    if (b_killer < 10)
+    if (should_stop_b < 10)
     {
-      b_killer++;
-      if (b_killer == 10)
+      should_stop_b++;
+      if (should_stop_b == 10)
       {
         k_task_stop(task_b);
       }
