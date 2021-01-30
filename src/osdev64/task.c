@@ -4,11 +4,20 @@
 
 #include "klibc/stdio.h"
 
+
+// TODO:
+// implement task creation
+// implement task destruction
+// implement more task switching logic
+// refactor and define the task life cycle
+
+
+// task states
 #define TASK_NEW 0
 #define TASK_RUNNING 1
 #define TASK_STOPPED 2
 
-// register indices
+// register stack indices
 #define TASK_REG_SS 20
 #define TASK_REG_RSP 19
 #define TASK_REG_RFLAGS 18
@@ -17,31 +26,40 @@
 #define TASK_REG_RBP 1
 
 // memory occupied by a 16 byte aligned register stack
-#define TASK_REG_ALIGN (sizeof(uint64_t) * 22)
+#define TASK_STACK_ALIGN (sizeof(uint64_t) * 22)
 
-// The registers are in an array of uint64_t with the following structure:
-// index  register
-// 20     SS
-// 19     RSP
-// 18     RFLAGS
-// 17     CS
-// 16     RIP
-// 15     RAX
-// 14     RBX
-// 13     RCX
-// 12     RDX
-// 11     R8
-// 10     R9
-// 9      R10
-// 8      R11
-// 7      R12
-// 6      R13
-// 5      R14
-// 4      R15
-// 3      RSI
-// 2      RDI
-// 1      RBP
-// 0      padding
+// number of values in the register stack including padding
+#define TASK_REG_COUNT 21
+
+// The register stack is an array of 64-bit values passed by the ISR.
+// Upon entering the ISR, the stack is 16 byte aligned and contains
+// the values of SS, RSP, RFLAGS, CS, and RIP from before the interrupt
+// was raised.
+// +-------------------+
+// | index  register   |
+// |                   | <- don't know, don't care, don't touch
+// | 20     SS         |
+// | 19     RSP        | <- RSP from before entering the ISR
+// | 18     RFLAGS     |
+// | 17     CS         |
+// | 16     RIP        | <- where execution will resume
+// | 15     RAX        |
+// | 14     RBX        |
+// | 13     RCX        |
+// | 12     RDX        |
+// | 11     R8         |
+// | 10     R9         |
+// | 9      R10        |
+// | 8      R11        |
+// | 7      R12        |
+// | 6      R13        |
+// | 5      R14        |
+// | 4      R15        |
+// | 3      RSI        |
+// | 2      RDI        |
+// | 1      RBP        |
+// | 0      padding    | <- address that we receive from ISR
+// +-------------------+
 
 
 typedef struct k_task {
@@ -57,9 +75,6 @@ k_task g_task_a;
 k_task g_task_b;
 
 k_task* g_current_task = &g_main_task;
-
-unsigned char* task_a_stack;
-unsigned char* task_b_stack;
 
 uint64_t task_a_regs[21];
 uint64_t task_b_regs[21];
@@ -80,56 +95,67 @@ void task_b_action()
   }
 }
 
-void k_task_init()
+// Populates a task with everything it needs to succeed in life.
+static void init_task(
+  k_task* task,
+  uint64_t* regs,
+  void (action)(),
+  uint64_t id
+)
 {
-  g_task_a.id = 2;
-  g_task_a.status = TASK_RUNNING;
-  task_a_stack = (unsigned char*)k_memory_alloc_pages(16);
-  if (task_a_stack == NULL)
-  {
-    fprintf(stderr, "failed to allocate stack for task A\n");
-    g_task_a.id = TASK_STOPPED;
-  }
-  g_task_a.regs = task_a_regs;
-  g_task_a.regs[TASK_REG_RIP] = (uint64_t)task_a_action;
-  g_task_a.regs[TASK_REG_RBP] = (uint64_t)task_a_stack + 0xF000;
-  g_task_a.regs[TASK_REG_RSP] = (uint64_t)task_a_stack + 0xF000 - TASK_REG_ALIGN;
-  g_task_a.regs[TASK_REG_RFLAGS] = 0x200;
-  g_task_a.regs[TASK_REG_SS] = 0x10;
-  g_task_a.regs[TASK_REG_CS] = 0x8;
+  task->id = id;
+  task->status = TASK_RUNNING;
 
-
-  g_task_b.id = 3;
-  g_task_b.status = TASK_RUNNING;
-  task_b_stack = (unsigned char*)k_memory_alloc_pages(16);
-  if (task_b_stack == NULL)
+  // Allocate a stack for the task.
+  // We want 64 KiB, so we allocate 17 pages so that the initial
+  // stack base can be a multiple of 4096.
+  void* stack = k_memory_alloc_pages(17);
+  if (stack == NULL)
   {
-    fprintf(stderr, "failed to allocate stack for task B\n");
-    g_task_b.id = TASK_STOPPED;
+    task->status = TASK_STOPPED;
+    return;
   }
-  g_task_b.regs = task_b_regs;
-  g_task_b.regs[TASK_REG_RIP] = (uint64_t)task_b_action;
-  g_task_b.regs[TASK_REG_RBP] = (uint64_t)task_b_stack + 0xF000;
-  g_task_b.regs[TASK_REG_RSP] = (uint64_t)task_b_stack + 0xF000 - TASK_REG_ALIGN;
-  g_task_b.regs[TASK_REG_RFLAGS] = 0x200;
-  g_task_b.regs[TASK_REG_SS] = 0x10;
-  g_task_b.regs[TASK_REG_CS] = 0x8;
+
+  task->regs = regs;
+  task->regs[TASK_REG_RIP] = (uint64_t)action;
+
+  // The stack is 64 KiB, so the base pointer starts at an offset
+  // of 0x10000 from the pointer that was allocated earlier.
+  task->regs[TASK_REG_RBP] = (uint64_t)stack + 0x10000;
+
+  // The initial stack pointer should be 16 byte aligned and allow
+  // for the contents of an interrupt handler stack.
+  task->regs[TASK_REG_RSP] = (uint64_t)stack + 0x10000 - TASK_STACK_ALIGN;
+
+  // Set the default RFLAGS value.
+  // The only bit that is set is bit 9, the interrupt flag (IF).
+  task->regs[TASK_REG_RFLAGS] = 0x200;
+
+  // Set the offset of kernel mode data segment.
+  task->regs[TASK_REG_SS] = 0x10;
+
+  // Set the offset of kernel mode code segment.
+  task->regs[TASK_REG_CS] = 0x8;
 }
 
 
-// TODO: think of a better argument name than "task_stack"
-uint64_t* k_task_switch(uint64_t* task_stack)
+void k_task_init()
 {
-  uint64_t* next;
+  init_task(&g_task_a, task_a_regs, task_a_action, 2);
 
-  // If the global task count is 0, then task switching hasn't
-  // been initialized yet, so do that here.
+  init_task(&g_task_b, task_b_regs, task_b_action, 3);
+}
+
+
+uint64_t* k_task_switch(uint64_t* reg_stack)
+{
+  // If we haven't saved the state of the main kernel task,
+  // do that here and return.
   if (g_task_count == 0)
   {
-    fprintf(stddbg, "initializing main task\n");
     g_main_task.id = 1;
     g_main_task.status = TASK_RUNNING;
-    g_main_task.regs = task_stack;
+    g_main_task.regs = reg_stack;
 
     g_current_task = &g_main_task;
 
@@ -138,15 +164,18 @@ uint64_t* k_task_switch(uint64_t* task_stack)
     return g_current_task->regs;
   }
 
-  g_current_task->regs = task_stack;
+  // Save the register stack of the current task.
+  g_current_task->regs = reg_stack;
 
+  // Select the next task.
+  // Currently, we just switch between three known tasks:
+  // task A, task B, and the main kernel task.
   switch (g_current_task->id)
   {
   case 1:
   {
     if (g_task_a.status == TASK_RUNNING)
     {
-      fprintf(stddbg, "switching to task A\n");
       g_current_task = &g_task_a;
     }
   }
@@ -156,7 +185,6 @@ uint64_t* k_task_switch(uint64_t* task_stack)
   {
     if (g_task_b.status == TASK_RUNNING)
     {
-      fprintf(stddbg, "switching to task B\n");
       g_current_task = &g_task_b;
     }
   }
@@ -166,7 +194,6 @@ uint64_t* k_task_switch(uint64_t* task_stack)
   {
     if (g_main_task.status == TASK_RUNNING)
     {
-      fprintf(stddbg, "switching to main task\n");
       g_current_task = &g_main_task;
     }
   }
@@ -182,5 +209,6 @@ uint64_t* k_task_switch(uint64_t* task_stack)
   break;
   }
 
+  // Return the register stack of the next task.
   return g_current_task->regs;
 }
