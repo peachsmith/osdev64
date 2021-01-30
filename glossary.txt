@@ -1,0 +1,97 @@
+Glossary
+
+
+ACPI
+  The Advanced Configuration and Power Interface (ACPI) is a standard that
+  allows an operating system to discover hardware and perform power
+  management. The information provided to the operating system is stored
+  in structures referred to as the ACPI tables.
+
+
+APIC
+  The Advanced Programmable Interrupt Controller (APIC) handles the transfer
+  of interrupts to multiple CPU cores. It is the successor to the 8259 PIC.
+
+
+AML
+  ACPI Machine Language (AML) is bytecode that is stored in the ACPI tables.
+  This code should be interpreted to implement the full functionality provided
+  by ACPI.
+
+
+AML
+
+  ACPI Source Language (ASL) is code that is written by programmers and
+  compiled into AML.
+
+
+GDT
+  The Global Descriptor Table (GDT) is a collection of segment descriptors
+  that specify the purpose of memory segments.
+
+
+IDT
+  The Interrupt Descriptor Table (IDT) contains the addresses of ISR functions
+  that will handle interrupts as well as bits that describe how those
+  handler functions should be called.
+
+
+Interrupt
+  An interrupt is an event that causes the CPU to stop whatever it's doing and
+  jump to a particular function to handle the event.
+
+
+Interrupt Descriptor
+  Interrupt Descriptors are collections of bits that contain the address of
+  an ISR function as well as properties about that function, such as the index
+  of the interrupt stack in the IST.
+
+
+I/O
+  I/O (also written as IO) is an abbreviation for input/output. This usually
+  means transferring data between one device and another.
+
+
+ISR (in the context of interrupt handlers)
+  An interrupt service routine (ISR) is a function that gets called when an
+  interrupt is raised.
+
+
+ISR (in the context of interrupt controllers)
+  The in-service register (ISR) of an interrupt controller indicates which
+  interrupt is currently being handled. The is useful for detecting spurious
+  interrupts or determining whether or not to send the EOI to the interrupt
+  controller.
+
+
+IST
+
+  Interrupt Stack Table (IST) is a collection of addresses of stacks used
+  during interrupts. Their addresses are stored in the TSS, and the
+  interrupt descriptors in the IDT specify the index of the stack in the
+  IST that will be used in the ISR.
+
+
+Memory Segment
+  A segment is a region of memory used for a particular purpose.
+  This is mainly as legacy concept, as modern x86 CPUs can use pretty much
+  any part of RAM for anything as long as it's not reserved for something
+  like MMIO.
+
+
+MMIO
+  Memory Mapped I/O (MMIO) is I/O where the reads and writes are performed
+  like memory access. The CPU reads and writes to an address that may or
+  may not be backed up by physical RAM.
+  This is often used to communicate with devices.
+
+
+Stack
+  A stack is a FILO data structure. In the context of a CPU executing code,
+  the stack is a region of memory where local data is stored.
+  For example, before entering into a procedure, the address of the next
+  instruction to be called after returning from the procedure is pushed onto
+  the stack. The RET instruction then pops that value from the stack.
+
+
+
