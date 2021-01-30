@@ -94,4 +94,6 @@ uint32_t k_ioapic_get_version();
  */
 uint32_t k_ioapic_get_max_redirect();
 
+void k_apic_wait(uint64_t ticks);
+
 #endif

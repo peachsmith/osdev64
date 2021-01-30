@@ -179,19 +179,14 @@ void apic_spurious_handler()
   fprintf(stddbg, "[INT] APIC spurious interrupt handler\n");
 }
 
-uint64_t ticks = 0;
+uint64_t g_apic_ticks = 0;
 uint64_t* apic_pit_handler(uint64_t* regs)
 {
-  // fprintf(stddbg, "[INT] APIC PIT IRQ handler\n");
   uint64_t* next_task = regs;
 
-  ticks++;
+  g_apic_ticks++;
 
-  if (ticks % 120 == 0)
-  {
-    // fprintf(stddbg, "we should be switching tasks here\n");
-    next_task = k_task_switch(regs);
-  }
+  next_task = k_task_switch(regs);
 
   uint32_t isr1 = lapic_read(LAPIC_ISR1);
   if (isr1 & (0x10000 << 0))
@@ -200,6 +195,13 @@ uint64_t* apic_pit_handler(uint64_t* regs)
   }
 
   return next_task;
+}
+
+void k_apic_wait(uint64_t ticks)
+{
+  uint64_t current = g_apic_ticks;
+
+  while (g_apic_ticks - current < ticks);
 }
 
 void apic_generic_legacy_handler(uint8_t irqn)

@@ -21,6 +21,25 @@
 #include "klibc/stdio.h"
 
 
+void task_a_action()
+{
+  for (int i = 0; i < 10; i++)
+  {
+    k_apic_wait(60);
+    fprintf(stddbg, "This is task A\n");
+  }
+}
+
+void task_b_action()
+{
+  for (;;)
+  {
+    k_apic_wait(120);
+    fprintf(stddbg, "This is task B\n");
+  }
+}
+
+
 /**
  * Kernel entry point.
  */
@@ -302,10 +321,30 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
+  k_task* main_task = k_task_create(NULL);
+  k_task* task_a = k_task_create(task_a_action);
+  k_task* task_b = k_task_create(task_b_action);
+
+  k_task_schedule(main_task);
+  k_task_schedule(task_a);
+  k_task_schedule(task_b);
+
+  int b_killer = 0;
+
   // The main loop.
   for (;;)
   {
+    k_apic_wait(240);
     fprintf(stddbg, "This is the main task.\n");
+
+    if (b_killer < 10)
+    {
+      b_killer++;
+      if (b_killer == 10)
+      {
+        k_task_stop(task_b);
+      }
+    }
   }
 
   // We should never get here.
