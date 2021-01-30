@@ -35,14 +35,23 @@
 // Upon entering the ISR, the stack is 16 byte aligned and contains
 // the values of SS, RSP, RFLAGS, CS, and RIP from before the interrupt
 // was raised.
+//
+// Register Stack Structure
 // +-------------------+
-// | index  register   |
-// |                   | <- don't know, don't care, don't touch
+// | ///////////////// |
+// | //// unknown //// |<- don't know, don't care, don't touch
+// | ///////////////// |
+// |-------------------|
+// | pushed by the CPU |
+// |                   |
 // | 20     SS         |
 // | 19     RSP        | <- RSP from before entering the ISR
 // | 18     RFLAGS     |
 // | 17     CS         |
 // | 16     RIP        | <- where execution will resume
+// |-------------------|
+// | pushed by the ISR |
+// |                   |
 // | 15     RAX        |
 // | 14     RBX        |
 // | 13     RCX        |
