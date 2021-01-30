@@ -20,7 +20,6 @@ AML
 
 
 AML
-
   ACPI Source Language (ASL) is code that is written by programmers and
   compiled into AML.
 
@@ -84,6 +83,12 @@ MMIO
   like memory access. The CPU reads and writes to an address that may or
   may not be backed up by physical RAM.
   This is often used to communicate with devices.
+
+
+MSR
+  A model specific register (MSR) is a register in certain CPUs that contains
+  information about various aspects of the CPUs operation. For example,
+  the IA32_APIC_BASE MSR contains the physical base address of the local APIC.
 
 
 Stack
