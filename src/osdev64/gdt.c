@@ -1,7 +1,6 @@
-#include "osdev64/firmware.h"
+#include "osdev64/descriptor.h"
 #include "osdev64/core.h"
 #include "osdev64/bitmask.h"
-#include "osdev64/descriptor.h"
 #include "osdev64/memory.h"
 
 #include "klibc/stdio.h"
@@ -138,8 +137,8 @@ void k_gdt_init()
   }
 
   // Put IST1 in the TSS.
-  g_tss[9] = (uint32_t)(((uint64_t)(g_ist1 + 4096) & 0xFFFFFFFF));
-  g_tss[10] = (uint32_t)(((uint64_t)(g_ist1 + 4096) & 0xFFFFFFFF00000000) >> 32);
+  g_tss[9] = (uint32_t)((PTR_TO_N(g_ist1 + 4096) & 0xFFFFFFFF));
+  g_tss[10] = (uint32_t)((PTR_TO_N(g_ist1 + 4096) & 0xFFFFFFFF00000000) >> 32);
 
   // In 64-bit mode, a TSS descriptor is 128 bits, so we use two descriptors
   // to represent the low and high bits.
@@ -152,14 +151,14 @@ void k_gdt_init()
   tss_lo |= ((uint64_t)0xFFFF); // limit (low 16 bits)
   tss_lo |= ((uint64_t)0x0F0000 << 32); // limit (high 4 bits)
   tss_lo |= (SG_SEG_TSS_AVL << 40); // type:        1001 available
-  tss_lo |= ((uint64_t)0x1 << 47);  // present:     true
-  tss_lo |= ((uint64_t)0x1 << 55);  // granularity: 4KB
+  tss_lo |= (BM_47);                // present:     true
+  tss_lo |= (BM_55);                // granularity: 4KB
 
   // The TSS base address is split over the high and low
   // descriptor portions.
-  tss_lo |= (((uint64_t)g_tss & 0xFF000000) << 32);
-  tss_lo |= (((uint64_t)g_tss & 0x00FFFFFF) << 16);
-  tss_hi |= (((uint64_t)g_tss & 0xFFFFFFFF00000000) >> 32);
+  tss_lo |= ((PTR_TO_N(g_tss) & 0xFF000000) << 32);
+  tss_lo |= ((PTR_TO_N(g_tss) & 0x00FFFFFF) << 16);
+  tss_hi |= ((PTR_TO_N(g_tss) & 0xFFFFFFFF00000000) >> 32);
 
   // Put the TSS descriptor in the GDT.
   g_gdt[gdt_count++] = tss_lo;

@@ -247,130 +247,98 @@ generic_isr:
 
 pic_irq_0:
   cld
-  call pic_handler
-  cld
   mov $0x0, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_1:
   cld
-  call pic_handler
-  cld
   mov $0x1, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_2:
   cld
-  call pic_handler
-  cld
   mov $0x2, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_3:
   cld
-  call pic_handler
-  cld
   mov $0x3, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_4:
   cld
-  call pic_handler
-  cld
   mov $0x4, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
   
 pic_irq_5:
   cld
-  call pic_handler
-  cld
   mov $0x5, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_6:
   cld
-  call pic_handler
-  cld
   mov $0x6, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_7:
   cld
-  call pic_handler
-  cld
   mov $0x7, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_8:
   cld
-  call pic_handler
-  cld
   mov $0x8, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_9:
   cld
-  call pic_handler
-  cld
   mov $0x9, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_10:
   cld
-  call pic_handler
-  cld
   mov $0xA, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_11:
   cld
-  call pic_handler
-  cld
   mov $0xB, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_12:
   cld
-  call pic_handler
-  cld
   mov $0xC, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_13:
   cld
-  call pic_handler
-  cld
   mov $0xD, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_14:
   cld
-  call pic_handler
-  cld
   mov $0xE, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 pic_irq_15:
   cld
-  call pic_handler
-  cld
   mov $0xF, %rdi
-  call k_pic_send_eoi
+  call pic_handler
   iretq
 
 

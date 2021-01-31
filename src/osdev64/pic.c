@@ -108,9 +108,10 @@ void k_pic_disable()
   k_outb(MASTER_DAT, 0xFF);
 }
 
-uint64_t g_ticks = 0;
+uint64_t g_pic_ticks = 0;
 
-void k_pic_send_eoi(uint8_t irq)
+// Currently used to handle all IRQs from the PIC.
+void pic_handler(uint8_t irq)
 {
   uint16_t isrs = k_pic_get_isr();
 

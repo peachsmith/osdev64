@@ -1,7 +1,6 @@
-#include "osdev64/firmware.h"
+#include "osdev64/descriptor.h"
 #include "osdev64/core.h"
 #include "osdev64/bitmask.h"
-#include "osdev64/descriptor.h"
 #include "osdev64/memory.h"
 #include "osdev64/pic.h"
 
@@ -51,11 +50,6 @@ void generic_handler()
   fprintf(stddbg, "[INT] generic ISR\n");
 }
 
-// Currently used to handle all IRQs from the PIC.
-void pic_handler()
-{
-  // fprintf(stddbg, "[PIC] interrupt handler\n");
-}
 
 // the IDT
 int_desc* g_idt;
