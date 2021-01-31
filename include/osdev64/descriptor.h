@@ -1,7 +1,7 @@
 #ifndef JEP_DESCRIPTOR_H
 #define JEP_DESCRIPTOR_H
 
-#include <stdint.h>
+#include "osdev64/axiom.h"
 
 // A descriptor is a collection of bits that locate and describe something
 // in memory. What each descriptor desribes could be anything from a piece
@@ -34,7 +34,7 @@
  * [63:56] base address (8 bits)
  * ---------------------------------------------------------------------------
  */
-typedef uint64_t seg_desc;
+typedef k_desc seg_desc;
 
 
 /**
@@ -63,7 +63,7 @@ typedef uint64_t seg_desc;
  * [127:96] reserved
  * ---------------------------------------------------------------------------
  */
-typedef uint64_t int_desc;
+typedef k_desc int_desc;
 
 
 /**

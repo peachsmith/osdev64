@@ -1,9 +1,11 @@
+#include "osdev64/firmware.h"
+
 #include "osdev64/bitmask.h"
 #include "osdev64/instructor.h"
 #include "osdev64/control.h"
 #include "osdev64/cpuid.h"
 #include "osdev64/msr.h"
-#include "osdev64/uefi.h"
+//#include "osdev64/uefi.h"
 #include "osdev64/graphics.h"
 #include "osdev64/serial.h"
 #include "osdev64/console.h"
@@ -51,7 +53,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // BEGIN Stage 1 initialization
 
   // Initialize UEFI boot services.
-  k_uefi_init(image, systab);
+  k_firmware_init(image, systab);
 
   k_graphics_init();    // graphical output
   k_serial_com1_init(); // serial output
@@ -172,17 +174,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_paging_init();
 
   // Map the framebuffer to some high virtual address.
-  uint64_t fb_start = k_graphics_get_phys_base();
-  uint64_t fb_size = k_graphics_get_size();
-  uint64_t fb_end = fb_start + fb_size;
-  uint64_t fb_virt = k_paging_map_range(fb_start, fb_end);
-  if (!fb_virt)
-  {
-    fprintf(stddbg, "[ERROR] failed to map framebuffer\n");
-    for (;;);
-  }
-
-  k_graphics_set_virt_base(fb_virt);
+  k_graphics_map_framebuffer();
 
   // Initialize the PIC.
   k_pic_init();

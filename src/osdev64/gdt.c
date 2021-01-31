@@ -1,5 +1,5 @@
+#include "osdev64/firmware.h"
 #include "osdev64/core.h"
-#include "osdev64/uefi.h"
 #include "osdev64/bitmask.h"
 #include "osdev64/descriptor.h"
 #include "osdev64/memory.h"
@@ -15,7 +15,7 @@ seg_desc* g_gdt;
 uint32_t* g_tss;
 
 // IST1 stack
-unsigned char* g_ist1;
+k_byte* g_ist1;
 
 /**
  * Creates a segment descriptor which describes a 64-bit code or data

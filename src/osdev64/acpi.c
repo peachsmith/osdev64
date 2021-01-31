@@ -1,4 +1,5 @@
-#include "osdev64/uefi.h"
+// #include "osdev64/uefi.h"
+#include "osdev64/firmware.h"
 #include "osdev64/bitmask.h"
 #include "osdev64/memory.h"
 #include "osdev64/paging.h"
@@ -6,14 +7,10 @@
 #include "klibc/stdio.h"
 
 // The MADT
-unsigned char* g_madt = NULL;
+k_byte* g_madt = NULL;
 
-// Local APIC Base
-// volatile unsigned char* volatile g_lapic = NULL;
-
-// IO APIC base
-// volatile uint32_t* volatile g_ioapic = NULL;
-
+extern k_byte* g_sys_rsdp;
+extern int g_sys_acpi_ver;
 
 
 // ISO polarity and trigger types
@@ -96,44 +93,41 @@ static inline char* iso_trigger_str(uint64_t f)
 
 void k_acpi_init()
 {
-  int acpi_version;
-  unsigned char* rsdp;
-  unsigned char* rsdt;
-  unsigned char* madt = NULL;
+  k_byte* rsdt;
+  k_byte* madt = NULL;
 
   // Get the RSDP from UEFI firmware.
-  acpi_version = k_uefi_get_rsdp(&rsdp);
-  if (!acpi_version)
+  if (!g_sys_acpi_ver)
   {
     fprintf(stddbg, "[ERROR] failed to locate RSDP\n");
-    for (;;);
+    HANG();
   }
 
   // Print the RSDP signature (bytes 0 - 7)
   fprintf(stddbg, "RSDP Signature: %c%c%c%c%c%c%c%c\n",
-    rsdp[0],
-    rsdp[1],
-    rsdp[2],
-    rsdp[3],
-    rsdp[4],
-    rsdp[5],
-    rsdp[6],
-    rsdp[7]
+    g_sys_rsdp[0],
+    g_sys_rsdp[1],
+    g_sys_rsdp[2],
+    g_sys_rsdp[3],
+    g_sys_rsdp[4],
+    g_sys_rsdp[5],
+    g_sys_rsdp[6],
+    g_sys_rsdp[7]
   );
 
   // Print the OEM ID (bytes 9 - 14)
   fprintf(stddbg, "OEMID: %c%c%c%c%c%c\n",
-    rsdp[9],
-    rsdp[10],
-    rsdp[11],
-    rsdp[12],
-    rsdp[13],
-    rsdp[14]
+    g_sys_rsdp[9],
+    g_sys_rsdp[10],
+    g_sys_rsdp[11],
+    g_sys_rsdp[12],
+    g_sys_rsdp[13],
+    g_sys_rsdp[14]
   );
 
   // If we're using ACPI >= 2.0, get the XSDT address,
   // otherwise get the RSDT address.
-  if (acpi_version == 2)
+  if (g_sys_acpi_ver == 2)
   {
     // Alright, this probably looks a little silly.
     // Byte 24 of the RSDP structure is the beginning of 8
@@ -142,14 +136,14 @@ void k_acpi_init()
     // pointer to a 64-bit unsigned integer.
     // We then dereference that pointer to get the value, and we
     // cast that value as a pointer to the XSDT.
-    rsdt = (unsigned char*)*(uint64_t*)(rsdp + 24);
+    rsdt = (k_byte*)*(uint64_t*)(g_sys_rsdp + 24);
   }
   else
   {
     // If we're using the 32-bit RSDP, cast it as a 64-bit
     // integer before casting as a pointer, since addresses
     // are 64 bits.
-    rsdt = (unsigned char*)(uint64_t) * (uint32_t*)(rsdp + 16);
+    rsdt = (k_byte*)(uint64_t) * (uint32_t*)(g_sys_rsdp + 16);
   }
 
   // All SDTs start with an SDT header.
@@ -201,7 +195,7 @@ void k_acpi_init()
   // Get the length of the RSDT.
   uint32_t rsdt_len = *(uint32_t*)(rsdt + 4);
 
-  unsigned char rsdt_check = 0;
+  k_byte rsdt_check = 0;
   for (uint32_t i = 0; i < rsdt_len; i++)
   {
     rsdt_check += rsdt[i];
@@ -214,7 +208,7 @@ void k_acpi_init()
   {
     // Use our byte-to-pointer trick to get the pointer to
     // the next SDT.
-    unsigned char* sdt = (unsigned char*)(*(uint64_t*)(rsdt + 36 + i * 8));
+    k_byte* sdt = (k_byte*)(*(uint64_t*)(rsdt + 36 + i * 8));
 
     fprintf(stddbg, "SDT signature %c%c%c%c\n",
       sdt[0],
@@ -230,7 +224,7 @@ void k_acpi_init()
       uint32_t len = *(uint32_t*)(sdt + 4);
 
       // Calculate the checksum.
-      unsigned char check = 0;
+      k_byte check = 0;
       for (uint32_t j = 0; j < len; j++)
       {
         check += sdt[j];
@@ -246,7 +240,7 @@ void k_acpi_init()
         if (g_madt == NULL)
         {
           fprintf(stddbg, "[ERROR] failed to allocate memory for the MADT\n");
-          for (;;);
+          HANG();
         }
 
         // Copy the MADT into our dynamic memory.
@@ -280,7 +274,7 @@ void k_acpi_print_madt()
   lapic_base = (uint64_t)lapic32;
 
   // Calculate the checksum.
-  unsigned char madt_check = 0;
+  k_byte madt_check = 0;
   for (uint32_t i = 0; i < table_len; i++)
   {
     madt_check += g_madt[i];
@@ -297,7 +291,7 @@ void k_acpi_print_madt()
   // The entry list starts at offset 44.
   for (uint32_t i = 0; i < table_len - 44;)
   {
-    unsigned char* entry = &g_madt[44 + i];
+    k_byte* entry = &g_madt[44 + i];
 
     uint8_t entry_type = *((uint8_t*)(entry));
     uint8_t entry_len = *((uint8_t*)(entry + 1));

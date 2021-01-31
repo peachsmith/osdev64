@@ -28,7 +28,7 @@ OBJECTS=\
 $(GNUEFI_DIR)/x86_64/gnuefi/crt0-efi-x86_64.o \
 instructor.o \
 main.o \
-uefi.o \
+firmware.o \
 graphics.o \
 serial.o \
 console.o \
@@ -70,7 +70,7 @@ myos.iso: myos.efi
 myos.efi: klibc.o
 	$(AS) --64 src/osdev64/instructor.s -o instructor.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/main.c -o main.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/uefi.c -o uefi.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/firmware.c -o firmware.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/graphics.c -o graphics.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/serial.c -o serial.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/console.c -o console.o

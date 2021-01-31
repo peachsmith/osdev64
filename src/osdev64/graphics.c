@@ -1,4 +1,6 @@
-#include "osdev64/uefi.h"
+// #include "osdev64/uefi.h"
+#include "osdev64/firmware.h"
+#include "osdev64/paging.h"
 
 #include "klibc/stdio.h"
 
@@ -31,7 +33,7 @@
 
 
 // The main graphics information
-extern k_graphics g_graphics;
+extern k_graphics g_sys_graphics;
 
 // virtual address of framebuffer
 volatile uint32_t* volatile g_framebuffer;
@@ -126,27 +128,43 @@ static int point_in_triangle(
 
 void k_graphics_init()
 {
-  k_uefi_get_graphics();
-  g_framebuffer = (volatile uint32_t*)g_graphics.base;
+  g_framebuffer = (volatile uint32_t*)g_sys_graphics.base;
 }
 
-
-uint64_t k_graphics_get_phys_base()
+void k_graphics_map_framebuffer()
 {
-  return g_graphics.base;
+  uint64_t fb_phys = g_sys_graphics.base; // physical base
+  uint64_t fb_size = g_sys_graphics.size; // size of buffer
+  uint64_t fb_end = fb_phys + fb_size;    // physical end
+
+  // Map the physical address range to a virtual address range.
+  uint64_t fb_virt = k_paging_map_range(fb_phys, fb_end);
+  if (!fb_virt)
+  {
+    fprintf(stddbg, "[ERROR] failed to map framebuffer\n");
+    for (;;);
+  }
+
+  // Update the framebuffer address.
+  g_framebuffer = (volatile uint32_t*)fb_virt;
 }
 
+// uint64_t k_graphics_get_phys_base()
+// {
+//   return g_graphics.base;
+// }
 
-uint64_t k_graphics_get_size()
-{
-  return (uint64_t)(g_graphics.size);
-}
+
+// uint64_t k_graphics_get_size()
+// {
+//   return (uint64_t)(g_graphics.size);
+// }
 
 
-void k_graphics_set_virt_base(uint64_t base)
-{
-  g_framebuffer = (volatile uint32_t*)base;
-}
+// void k_graphics_set_virt_base(uint64_t base)
+// {
+//   g_framebuffer = (volatile uint32_t*)base;
+// }
 
 
 void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b)
@@ -156,10 +174,10 @@ void k_put_pixel(uint64_t x, uint64_t y, uint8_t r, uint8_t g, uint8_t b)
 
   // Calculate the destination address of the pixel.
   // As a reminder, "pps" is "pixels per scanline".
-  dest = g_framebuffer + (x + y * g_graphics.pps);
+  dest = g_framebuffer + (x + y * g_sys_graphics.pps);
 
   // Determine the color value.
-  switch (g_graphics.format)
+  switch (g_sys_graphics.format)
   {
   case PixelBlueGreenRedReserved8BitPerColor:
     color = BGR8_PIXEL(r, g, b);

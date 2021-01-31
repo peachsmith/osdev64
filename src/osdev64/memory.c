@@ -1,11 +1,16 @@
+#include "osdev64/firmware.h"
 #include "osdev64/core.h"
-#include "osdev64/uefi.h"
+// #include "osdev64/uefi.h"
 #include "osdev64/memory.h"
 
 #include "klibc/stdio.h"
 
-// memory map obtained from the firmware
-extern k_mem_map g_mem_map;
+
+
+// global system memory map
+extern k_mem_map g_sys_mem;
+
+
 
 
 /**
@@ -25,7 +30,6 @@ typedef struct ledger_entry {
   uint64_t pages;
   unsigned char avail; // availability flag
 }ledger_entry;
-
 
 // number of regions in the RAM pool
 int g_pool_count = 0;
@@ -148,20 +152,30 @@ static char* efi_mem_str(uint64_t t)
  */
 static void print_mmap()
 {
-  fprintf(stddbg, "map size: %lu, key: %lu, descriptor size: %lu, descriptor version: %lu\n",
-    g_mem_map.map_size,
-    g_mem_map.key,
-    g_mem_map.desc_size,
-    g_mem_map.version);
+  fprintf(
+    stddbg,
+    "map size: %lu, key: %lu, descriptor"
+    " size: %lu, descriptor version: %lu\n",
+    g_sys_mem.map_size,
+    g_sys_mem.key,
+    g_sys_mem.desc_size,
+    g_sys_mem.version
+  );
 
   EFI_MEMORY_DESCRIPTOR* d;
-  char* start = (char*)(g_mem_map.buffer);
-  char* end = start + g_mem_map.map_size;
+  char* start = (char*)(g_sys_mem.buffer);
+  char* end = start + g_sys_mem.map_size;
 
-  for (; start + g_mem_map.desc_size <= end; start += g_mem_map.desc_size)
+  for (; start + g_sys_mem.desc_size <= end; start += g_sys_mem.desc_size)
   {
     d = (EFI_MEMORY_DESCRIPTOR*)start;
-    fprintf(stddbg, "%-20s %p %ld \n", efi_mem_str(d->Type), d->PhysicalStart, d->NumberOfPages);
+    fprintf(
+      stddbg,
+      "%-20s %p %ld \n",
+      efi_mem_str(d->Type),
+      d->PhysicalStart,
+      d->NumberOfPages
+    );
   }
 }
 
@@ -174,13 +188,12 @@ void k_memory_init()
   char* end;                // end of memory map
 
   // Get the memory map from the firmware.
-  k_uefi_get_mem_map();
 
   // Fill the RAM pool.
-  start = (char*)(g_mem_map.buffer);
-  end = start + g_mem_map.map_size;
+  start = (char*)(g_sys_mem.buffer);
+  end = start + g_sys_mem.map_size;
 
-  for (; start + g_mem_map.desc_size <= end; start += g_mem_map.desc_size)
+  for (; start + g_sys_mem.desc_size <= end; start += g_sys_mem.desc_size)
   {
     d = (EFI_MEMORY_DESCRIPTOR*)start;
 
@@ -224,7 +237,7 @@ void k_memory_init()
   // We do this immediately after obtaining the memory map
   // so that we can use the regions marked as BootServiceCode,
   // BootServiceData, etc.
-  if (!k_uefi_exit())
+  if (!k_firmware_exit())
   {
     fprintf(stddbg, "[ERROR] Failed to exit UEFI boot services.\n");
     for (;;);

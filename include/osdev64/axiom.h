@@ -24,6 +24,8 @@
 // 5. A pointer to one data type can be freely cast to a pointer to another
 //    data type type as long as the contents of the memory in question are
 //    known or trivial.
+// 6. As long as optimizations are not requested, the compiler will not
+//    remove infinite loops that don't appear to do anything.
 
 
 //---------------------
@@ -66,5 +68,19 @@ typedef uint64_t k_desc;
 
 // PTR_TO_N converts a pointer to an unsigned integer.
 #define PTR_TO_N(p) ((k_regn)p)
+
+// HANG enters an infinite loop to halt execution
+// This should only be used when handling fatal errors.
+#define HANG() for (;;)
+
+// UEFI_PANIC uses the UEFI boot services to print a message
+// and then enter an infinite loop.
+// Since this uses boot services, this can only be called before
+// exiting the boot services, or after failure to exit boot services.
+#define UEFI_PANIC(m, r)   \
+{                          \
+  Print(L"[ERROR]" #m, r); \
+  HANG();                  \
+}                          \
 
 #endif

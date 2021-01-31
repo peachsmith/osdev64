@@ -1,3 +1,4 @@
+#include "osdev64/firmware.h"
 #include "osdev64/core.h"
 #include "osdev64/bitmask.h"
 #include "osdev64/descriptor.h"
@@ -90,7 +91,7 @@ void k_install_isr(void (isr)(), int i)
   lo |= BM_47;
 
   // The ISR address is placed in bits [15:0], [63:48], and [95:64]
-  uint64_t r = (uint64_t)isr;
+  k_regn r = PTR_TO_N(isr);
   lo |= (r & 0xFFFF);                     // [15:0]
   lo |= ((r & 0xFFFF0000) << 32);         // [63:48]
   hi |= ((r & 0xFFFFFFFF00000000) >> 32); // [95:64]

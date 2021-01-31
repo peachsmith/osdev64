@@ -1,16 +1,17 @@
+#include "osdev64/firmware.h"
 #include "osdev64/core.h"
-#include "osdev64/uefi.h"
+//#include "osdev64/uefi.h"
 #include "osdev64/console.h"
 #include "osdev64/graphics.h"
 
 
-// font used when rendering text
-extern unsigned char g_font[4096];
+// global system font
+extern k_byte g_sys_font[4096];
 
 
 void k_console_init()
 {
-  k_uefi_get_font();
+  
 }
 
 
@@ -88,7 +89,7 @@ void k_console_putc(char c)
 
   // Locate the glyph in the font data that can be used
   // to represent the character.
-  unsigned char* glyph = &(g_font[(int)c * GLYPH_HEIGHT]);
+  unsigned char* glyph = &(g_sys_font[(int)c * GLYPH_HEIGHT]);
 
   // Draw the character on the screen.
   draw_glyph(glyph, text_x, text_y, 200, 200, 200);

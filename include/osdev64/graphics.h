@@ -17,7 +17,7 @@ void k_graphics_init();
  * Returns:
  *   uint64_t - the base physical address of the framebuffer
  */
-uint64_t k_graphics_get_phys_base();
+// uint64_t k_graphics_get_phys_base();
 
 /**
  * Gets the size of the framebuffer in bytes.
@@ -25,16 +25,15 @@ uint64_t k_graphics_get_phys_base();
  * Returns:
  *   uint64_t - the size of the framebuffer in bytes
  */
-uint64_t k_graphics_get_size();
+// uint64_t k_graphics_get_size();
 
 
 /**
- * Sets the virtual address of the framebuffer.
- *
- * Params:
- *   uint64_t - the virtual address of the framebuffer
+ * Maps the base address of the framebuffer into virtual memory.
+ * The virtual memory manager must be initialized before calling
+ * this function.
  */
-void k_graphics_set_virt_base(uint64_t);
+void k_graphics_map_framebuffer();
 
 /**
  * Plots a single pixel on the screen.
