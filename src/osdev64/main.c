@@ -23,22 +23,81 @@
 #include "klibc/stdio.h"
 
 
+// NOTE:
+// Intel's manual contains the following warning about semaphores:
+// "Do not implement semaphores using the WC memory type"
+
+
+k_regn g_shared = 1;
+
 void task_a_action()
 {
+  k_regn lock = 2;
+
   for (int i = 0; i < 10; i++)
   {
-    k_apic_wait(60);
-    fprintf(stddbg, "This is task A\n");
+    while (lock == 2)
+    {
+      k_regn result = k_xchg(lock, &g_shared);
+
+      if (result == 1)
+      {
+        lock = result;
+
+        fprintf(stddbg, "Task A has obtained the lock now\n.");
+        k_apic_wait(240);
+      }
+    }
+
+    while (lock == 1)
+    {
+      k_regn result = k_xchg(lock, &g_shared);
+
+      if (result == 2)
+      {
+        lock = result;
+
+        fprintf(stddbg, "Task A has released the lock now\n.");
+      }
+    }
   }
+
+  fprintf(stddbg, "Task A has ended.\n");
 }
 
 void task_b_action()
 {
-  for (;;)
+  k_regn lock = 2;
+
+  for (int i = 0; i < 10; i++)
   {
-    k_apic_wait(120);
-    fprintf(stddbg, "This is task B\n");
+    while (lock == 2)
+    {
+      k_regn result = k_xchg(lock, &g_shared);
+
+      if (result == 1)
+      {
+        lock = result;
+
+        fprintf(stddbg, "Task B has obtained the lock now\n.");
+        k_apic_wait(240);
+      }
+    }
+
+    while (lock == 1)
+    {
+      k_regn result = k_xchg(lock, &g_shared);
+
+      if (result == 2)
+      {
+        lock = result;
+
+        fprintf(stddbg, "Task B has released the lock now\n.");
+      }
+    }
   }
+
+  fprintf(stddbg, "Task B has ended.\n");
 }
 
 
@@ -381,19 +440,19 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // BEGIN synchronization demo code
   //==========================================
 
-  k_regn val_a = 0;
+  // k_regn val_a = 0;
 
-  k_xchg(1, &val_a);
-  fprintf(stddbg, "val a: %X\n", val_a);
+  // k_xchg(1, &val_a);
+  // fprintf(stddbg, "val a: %X\n", val_a);
 
-  k_xchg(2, &val_a);
-  fprintf(stddbg, "val a: %X\n", val_a);
+  // k_xchg(2, &val_a);
+  // fprintf(stddbg, "val a: %X\n", val_a);
 
-  k_xchg(3, &val_a);
-  fprintf(stddbg, "val a: %X\n", val_a);
+  // k_xchg(3, &val_a);
+  // fprintf(stddbg, "val a: %X\n", val_a);
 
-  k_xchg(4, &val_a);
-  fprintf(stddbg, "val a: %X\n", val_a);
+  // k_xchg(4, &val_a);
+  // fprintf(stddbg, "val a: %X\n", val_a);
 
 
   //==========================================
@@ -401,6 +460,23 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   //==========================================
 
   int should_stop_b = 0;
+
+  k_regn num = 0;
+
+  k_bts(0, &num);
+  fprintf(stddbg, "BTS test %llX\n", num);
+  
+
+  fprintf(stddbg, "BTS test %llX\n", num);
+  k_bts(1, &num);
+
+  fprintf(stddbg, "BTS test %llX\n", num);
+  k_bts(2, &num);
+
+  fprintf(stddbg, "BTS test %llX\n", num);
+  k_bts(3, &num);
+
+  fprintf(stddbg, "BTS test %llX\n", num);
 
   // The main loop.
   for (;;)

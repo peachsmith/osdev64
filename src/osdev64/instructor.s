@@ -32,6 +32,7 @@
 
 
 .global k_xchg
+.global k_bts
 
 
 
@@ -420,5 +421,14 @@ k_xchg:
   xchg %rdi, (%rsi)
   mov %rdi, %rax
   
+  leaveq
+  retq
+
+k_bts:
+  push %rbp
+  mov %rsp, %rbp
+
+  bts %rdi, (%rsi)
+
   leaveq
   retq

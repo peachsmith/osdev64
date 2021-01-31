@@ -56,6 +56,8 @@ void k_enable_interrupts();
  */
 k_regn k_xchg(k_regn, k_regn*);
 
+void k_bts(k_regn, k_regn*);
+
 /**
  * Causes an exception.
  * This typically causes a divide error by attempting to divide by 0,
