@@ -33,6 +33,7 @@
 
 .global k_xchg
 .global k_bts
+.global k_btr
 
 
 
@@ -415,20 +416,14 @@ k_nonsense:
   retq
 
 k_xchg:
-  push %rbp
-  mov %rsp, %rbp
-
   xchg %rdi, (%rsi)
   mov %rdi, %rax
-  
-  leaveq
   retq
 
 k_bts:
-  push %rbp
-  mov %rsp, %rbp
-
   bts %rdi, (%rsi)
+  retq
 
-  leaveq
+k_btr:
+  btr %rdi, (%rsi)
   retq

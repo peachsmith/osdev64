@@ -465,18 +465,27 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_bts(0, &num);
   fprintf(stddbg, "BTS test %llX\n", num);
-  
 
-  fprintf(stddbg, "BTS test %llX\n", num);
   k_bts(1, &num);
-
   fprintf(stddbg, "BTS test %llX\n", num);
+
   k_bts(2, &num);
-
   fprintf(stddbg, "BTS test %llX\n", num);
+
   k_bts(3, &num);
-
   fprintf(stddbg, "BTS test %llX\n", num);
+
+  k_btr(0, &num);
+  fprintf(stddbg, "BTR test %llX\n", num);
+
+  k_btr(1, &num);
+  fprintf(stddbg, "BTR test %llX\n", num);
+
+  k_btr(2, &num);
+  fprintf(stddbg, "BTR test %llX\n", num);
+
+  k_btr(3, &num);
+  fprintf(stddbg, "BTR test %llX\n", num);
 
   // The main loop.
   for (;;)

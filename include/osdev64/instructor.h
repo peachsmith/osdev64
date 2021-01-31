@@ -56,7 +56,36 @@ void k_enable_interrupts();
  */
 k_regn k_xchg(k_regn, k_regn*);
 
+
+/**
+ * Executes the BTS instruction to test and set a bit.
+ * The first argument specifies which bit to test and set,
+ * and the second arguments specifies a location in memory
+ * that contain the bit in question.
+ * It is assumed that the memory location is readable and
+ * writable.
+ *
+ * Params:
+ *   k_regn - a number representing the bit to set
+ *   k_regn* - a location in memory containing the bit to set
+ */
 void k_bts(k_regn, k_regn*);
+
+
+/**
+ * Executes the BTR instruction to test and clear a bit.
+ * The first argument specifies which bit to test and set,
+ * and the second arguments specifies a location in memory
+ * that contain the bit in question.
+ * It is assumed that the memory location is readable and
+ * writable.
+ *
+ * Params:
+ *   k_regn - a number representing the bit to clear
+ *   k_regn* - a location in memory containing the bit to clear
+ */
+void k_btr(k_regn, k_regn*);
+
 
 /**
  * Causes an exception.
