@@ -5,7 +5,6 @@
 #include "osdev64/control.h"
 #include "osdev64/cpuid.h"
 #include "osdev64/msr.h"
-//#include "osdev64/uefi.h"
 #include "osdev64/graphics.h"
 #include "osdev64/serial.h"
 #include "osdev64/console.h"
@@ -19,6 +18,7 @@
 #include "osdev64/pit.h"
 #include "osdev64/apic.h"
 #include "osdev64/task.h"
+#include "osdev64/sync.h"
 
 #include "klibc/stdio.h"
 
@@ -28,75 +28,34 @@
 // "Do not implement semaphores using the WC memory type"
 
 
+k_spinlock* g_spinlock;
 k_regn g_shared = 1;
 
 void task_a_action()
 {
-  k_regn lock = 2;
-
   for (int i = 0; i < 10; i++)
   {
-    while (lock == 2)
-    {
-      k_regn result = k_xchg(lock, &g_shared);
+    k_spinlock_acquire(g_spinlock);
+    k_apic_wait(120);
+    fprintf(stddbg, "Task A has the spinlock.\n");
+    k_spinlock_release(g_spinlock);
 
-      if (result == 1)
-      {
-        lock = result;
-
-        fprintf(stddbg, "Task A has obtained the lock now\n.");
-        k_apic_wait(240);
-      }
-    }
-
-    while (lock == 1)
-    {
-      k_regn result = k_xchg(lock, &g_shared);
-
-      if (result == 2)
-      {
-        lock = result;
-
-        fprintf(stddbg, "Task A has released the lock now\n.");
-      }
-    }
+    k_apic_wait(150);
   }
-
   fprintf(stddbg, "Task A has ended.\n");
 }
 
 void task_b_action()
 {
-  k_regn lock = 2;
-
   for (int i = 0; i < 10; i++)
   {
-    while (lock == 2)
-    {
-      k_regn result = k_xchg(lock, &g_shared);
+    k_spinlock_acquire(g_spinlock);
+    k_apic_wait(120);
+    fprintf(stddbg, "Task B has the spinlock.\n");
+    k_spinlock_release(g_spinlock);
 
-      if (result == 1)
-      {
-        lock = result;
-
-        fprintf(stddbg, "Task B has obtained the lock now\n.");
-        k_apic_wait(240);
-      }
-    }
-
-    while (lock == 1)
-    {
-      k_regn result = k_xchg(lock, &g_shared);
-
-      if (result == 2)
-      {
-        lock = result;
-
-        fprintf(stddbg, "Task B has released the lock now\n.");
-      }
-    }
+    k_apic_wait(180);
   }
-
   fprintf(stddbg, "Task B has ended.\n");
 }
 
@@ -119,6 +78,14 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_console_init();     // text output
   k_memory_init();      // memory management
   k_acpi_init();        // ACPI tables
+  k_sync_init();        // synchronization
+
+  g_spinlock = k_spinlock_create();
+  if (g_spinlock == NULL)
+  {
+    fprintf(stddbg, "failed to create spinlock\n");
+    HANG();
+  }
 
   fprintf(stddbg, "[INFO] graphics, serial, console, and memory have been initialized.\n");
 
@@ -423,13 +390,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // BEGIN task creation
   //==========================================
 
-  // k_task* main_task = k_task_create(NULL);
-  // k_task* task_a = k_task_create(task_a_action);
-  // k_task* task_b = k_task_create(task_b_action);
+  k_task* main_task = k_task_create(NULL);
+  k_task* task_a = k_task_create(task_a_action);
+  k_task* task_b = k_task_create(task_b_action);
 
-  // k_task_schedule(main_task);
-  // k_task_schedule(task_a);
-  // k_task_schedule(task_b);
+  k_task_schedule(main_task);
+  k_task_schedule(task_a);
+  k_task_schedule(task_b);
 
   //==========================================
   // BEGIN task creation
@@ -462,30 +429,37 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   int should_stop_b = 0;
 
   k_regn num = 0;
+  k_regn carry = 0;
 
-  k_bts(0, &num);
-  fprintf(stddbg, "BTS test %llX\n", num);
+  carry = k_bts(0, &num);
+  fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
-  k_bts(1, &num);
-  fprintf(stddbg, "BTS test %llX\n", num);
+  carry = k_bts(0, &num);
+  fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
-  k_bts(2, &num);
-  fprintf(stddbg, "BTS test %llX\n", num);
+  carry = k_btr(0, &num);
+  fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
-  k_bts(3, &num);
-  fprintf(stddbg, "BTS test %llX\n", num);
+  // carry = k_bts(1, &num);
+  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
-  k_btr(0, &num);
-  fprintf(stddbg, "BTR test %llX\n", num);
+  // carry = k_bts(2, &num);
+  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
-  k_btr(1, &num);
-  fprintf(stddbg, "BTR test %llX\n", num);
+  // carry = k_bts(3, &num);
+  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
-  k_btr(2, &num);
-  fprintf(stddbg, "BTR test %llX\n", num);
+  // carry = k_btr(0, &num);
+  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
-  k_btr(3, &num);
-  fprintf(stddbg, "BTR test %llX\n", num);
+  // carry = k_btr(1, &num);
+  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
+
+  // carry = k_btr(2, &num);
+  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
+
+  // carry = k_btr(3, &num);
+  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
   // The main loop.
   for (;;)
@@ -493,19 +467,19 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     // k_apic_wait(240);
     // fprintf(stddbg, "This is the main task.\n");
 
-    // if (task_a != NULL && task_a->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying task a\n");
-    //   k_task_destroy(task_a);
-    //   task_a = NULL;
-    // }
+    if (task_a != NULL && task_a->status == TASK_REMOVED)
+    {
+      fprintf(stddbg, "destroying task a\n");
+      k_task_destroy(task_a);
+      task_a = NULL;
+    }
 
-    // if (task_b != NULL && task_b->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying task b\n");
-    //   k_task_destroy(task_b);
-    //   task_b = NULL;
-    // }
+    if (task_b != NULL && task_b->status == TASK_REMOVED)
+    {
+      fprintf(stddbg, "destroying task b\n");
+      k_task_destroy(task_b);
+      task_b = NULL;
+    }
 
     // if (should_stop_b < 10)
     // {

@@ -6,7 +6,6 @@
 
 #include "osdev64/axiom.h"
 
-
 /**
  * Writes a byte to an I/O port.
  *
@@ -68,8 +67,11 @@ k_regn k_xchg(k_regn, k_regn*);
  * Params:
  *   k_regn - a number representing the bit to set
  *   k_regn* - a location in memory containing the bit to set
+ *
+ * Returns:
+ *   k_regn - the previous value of the bit
  */
-void k_bts(k_regn, k_regn*);
+k_regn k_bts(k_regn, k_regn*);
 
 
 /**
@@ -83,8 +85,24 @@ void k_bts(k_regn, k_regn*);
  * Params:
  *   k_regn - a number representing the bit to clear
  *   k_regn* - a location in memory containing the bit to clear
+ *
+ * Returns:
+ *   k_regn - the previous value of the bit
  */
-void k_btr(k_regn, k_regn*);
+k_regn k_btr(k_regn, k_regn*);
+
+
+/**
+ * Executes the BTS instruction to set bit 0 of a 64-bit value.
+ * If the carry flag is set after executing the BTS instruction,
+ * then this procedure loops until bit 0 is no longer set, at
+ * which point it makes another attempt to set bit 0.
+ *
+ * Params:
+ *   k_regn - a number representing the bit to set
+ *   k_regn* - a location in memory containing the bit to set
+ */
+void k_bts_spin(k_regn, k_regn*);
 
 
 /**

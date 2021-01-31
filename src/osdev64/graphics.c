@@ -1,4 +1,3 @@
-// #include "osdev64/uefi.h"
 #include "osdev64/firmware.h"
 #include "osdev64/paging.h"
 

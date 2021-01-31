@@ -1,6 +1,5 @@
 #include "osdev64/firmware.h"
 #include "osdev64/core.h"
-// #include "osdev64/uefi.h"
 #include "osdev64/memory.h"
 
 #include "klibc/stdio.h"

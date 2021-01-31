@@ -1,6 +1,5 @@
 #include "osdev64/firmware.h"
 #include "osdev64/core.h"
-//#include "osdev64/uefi.h"
 #include "osdev64/console.h"
 #include "osdev64/graphics.h"
 

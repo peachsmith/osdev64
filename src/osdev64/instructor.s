@@ -34,6 +34,7 @@
 .global k_xchg
 .global k_bts
 .global k_btr
+.global k_bts_spin
 
 
 
@@ -420,10 +421,34 @@ k_xchg:
   mov %rdi, %rax
   retq
 
+
 k_bts:
   bts %rdi, (%rsi)
+  jc .bts_carry
+  movq $0x0, %rax
   retq
+.bts_carry:
+  movq $0x1, %rax
+  retq
+
 
 k_btr:
   btr %rdi, (%rsi)
+  jc .btr_carry
+  movq $0x0, %rax
   retq
+.btr_carry:
+  movq $0x1, %rax
+  retq
+
+
+k_bts_spin:
+  lock bts %rdi, (%rsi)
+  jc .spin_wait
+  retq
+
+.spin_wait:
+  pause
+  testq $0x1, (%rsi)
+  jnz .spin_wait
+  jmp k_bts_spin
