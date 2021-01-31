@@ -266,11 +266,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     50, 120, 200 // r, g, b
   );
 
-  // Print the physical RAM pool.
+  // // Print the physical RAM pool.
   // k_memory_print_pool();
 
-  // Allocate three separate regions of memory where
-  // each region is one page.
+  // // Allocate three separate regions of memory where
+  // // each region is one page.
   // fprintf(stddbg, "creating 3 separate 1 page reservations\n");
   // char* my_ram = (char*)k_memory_alloc_pages(1);
   // char* my_ram2 = (char*)k_memory_alloc_pages(1);

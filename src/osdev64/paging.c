@@ -750,7 +750,7 @@ k_regn k_paging_map_range(k_regn start, k_regn end)
   //=====================================
 
   // Update the global dynamic mapping base address.
-  g_dyn_base = virt_end + 0x1000;
+  // g_dyn_base = virt_end + 0x1000;
 
   return virt_start + virt_offset;
 }
