@@ -4,7 +4,7 @@
 // Functions that use assembly instructions that don't
 // have C
 
-#include <stdint.h>
+#include "osdev64/axiom.h"
 
 
 /**
@@ -39,6 +39,22 @@ void k_disable_interrupts();
  * Enabled interrupts.
  */
 void k_enable_interrupts();
+
+/**
+ * Executes the XCHG instruction to swap some value with a location
+ * in memory.
+ * The value is expected to be 64 bits, and the memory location is
+ * expected to have at least 64 bits of readable and writable memory
+ * available.
+ *
+ * Params:
+ *   k_regn - a value to put in a memory location
+ *   k_regn* - a memory location to receive the value
+ *
+ * Returns:
+ *   k_regn - the value that was previously at the memory location
+ */
+k_regn k_xchg(k_regn, k_regn*);
 
 /**
  * Causes an exception.

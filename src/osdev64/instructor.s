@@ -31,6 +31,9 @@
 .global k_msr_set
 
 
+.global k_xchg
+
+
 
 # disabled interrupts
 #
@@ -406,6 +409,16 @@ k_nonsense:
   mov %rsp, %rbp
 
   int $0x30
+  
+  leaveq
+  retq
+
+k_xchg:
+  push %rbp
+  mov %rsp, %rbp
+
+  xchg %rdi, (%rsi)
+  mov %rdi, %rax
   
   leaveq
   retq

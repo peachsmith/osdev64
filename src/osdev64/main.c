@@ -266,6 +266,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     50, 120, 200 // r, g, b
   );
 
+
+  //==========================================
+  // BEGIN physical memory demo
+  //==========================================
+
   // // Print the physical RAM pool.
   // k_memory_print_pool();
 
@@ -293,6 +298,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // my_ram4 = (char*)k_memory_alloc_pages(1);
   // k_memory_print_ledger();
 
+  //==========================================
+  // END physical memory demo
+  //==========================================
+
   // END demo code
   //==============================
 
@@ -311,34 +320,49 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
-  fprintf(stddbg, "mapping a range of physical addreses into dynamic virtual address space\n");
-  // map some physical memory into dynamic virtual address space.
-  char* phys_dat = (char*)k_memory_alloc_pages(2);
-  char* virt_dat = (char*)k_paging_map_range(PTR_TO_N(phys_dat), PTR_TO_N(phys_dat) + 0x1000);
 
-  // Print the dynamic virtual address map ledger.
-  k_paging_print_ledger();
+  //==========================================
+  // BEGIN virtual address ledger
+  //==========================================
 
-  fprintf(stddbg, "mapping a second range\n");
-  // map some more physical memory into dynamic virtual address space.
-  char* phys_dat2 = (char*)k_memory_alloc_pages(2);
-  char* virt_dat2 = (char*)k_paging_map_range(PTR_TO_N(phys_dat2), PTR_TO_N(phys_dat2) + 0x1000);
+  // fprintf(stddbg, "mapping a range of physical addreses into dynamic virtual address space\n");
+  // // map some physical memory into dynamic virtual address space.
+  // char* phys_dat = (char*)k_memory_alloc_pages(2);
+  // char* virt_dat = (char*)k_paging_map_range(PTR_TO_N(phys_dat), PTR_TO_N(phys_dat) + 0x1000);
 
-  // Print the dynamic virtual address map ledger.
-  k_paging_print_ledger();
+  // // Print the dynamic virtual address map ledger.
+  // k_paging_print_ledger();
 
-  fprintf(stddbg, "unmapping the first range\n");
-  k_paging_unmap_range(PTR_TO_N(virt_dat));
+  // fprintf(stddbg, "mapping a second range\n");
+  // // map some more physical memory into dynamic virtual address space.
+  // char* phys_dat2 = (char*)k_memory_alloc_pages(2);
+  // char* virt_dat2 = (char*)k_paging_map_range(PTR_TO_N(phys_dat2), PTR_TO_N(phys_dat2) + 0x1000);
 
-  k_paging_print_ledger();
+  // // Print the dynamic virtual address map ledger.
+  // k_paging_print_ledger();
 
-  fprintf(stddbg, "mapping a third range\n");
+  // fprintf(stddbg, "unmapping the first range\n");
+  // k_paging_unmap_range(PTR_TO_N(virt_dat));
 
-  // map yet more physical memory into dynamic virtual address space.
-  char* phys_dat3 = (char*)k_memory_alloc_pages(2);
-  char* virt_dat3 = (char*)k_paging_map_range(PTR_TO_N(phys_dat3), PTR_TO_N(phys_dat3) + 0x1000);
+  // k_paging_print_ledger();
 
-  k_paging_print_ledger();
+  // fprintf(stddbg, "mapping a third range\n");
+
+  // // map yet more physical memory into dynamic virtual address space.
+  // char* phys_dat3 = (char*)k_memory_alloc_pages(2);
+  // char* virt_dat3 = (char*)k_paging_map_range(PTR_TO_N(phys_dat3), PTR_TO_N(phys_dat3) + 0x1000);
+
+  // k_paging_print_ledger();
+
+  //==========================================
+  // END virtual address ledger
+  //==========================================
+
+
+
+  //==========================================
+  // BEGIN task creation
+  //==========================================
 
   // k_task* main_task = k_task_create(NULL);
   // k_task* task_a = k_task_create(task_a_action);
@@ -347,6 +371,34 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // k_task_schedule(main_task);
   // k_task_schedule(task_a);
   // k_task_schedule(task_b);
+
+  //==========================================
+  // BEGIN task creation
+  //==========================================
+
+
+  //==========================================
+  // BEGIN synchronization demo code
+  //==========================================
+
+  k_regn val_a = 0;
+
+  k_xchg(1, &val_a);
+  fprintf(stddbg, "val a: %X\n", val_a);
+
+  k_xchg(2, &val_a);
+  fprintf(stddbg, "val a: %X\n", val_a);
+
+  k_xchg(3, &val_a);
+  fprintf(stddbg, "val a: %X\n", val_a);
+
+  k_xchg(4, &val_a);
+  fprintf(stddbg, "val a: %X\n", val_a);
+
+
+  //==========================================
+  // END synchronization demo code
+  //==========================================
 
   int should_stop_b = 0;
 
