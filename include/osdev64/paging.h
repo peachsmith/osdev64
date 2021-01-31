@@ -1,7 +1,7 @@
 #ifndef JEP_PAGING_H
 #define JEP_PAGING_H
 
-#include <stdint.h>
+#include "osdev64/axiom.h"
 
 
 /**
@@ -73,7 +73,7 @@
  * 63      execute-disable (only applied if IA32_EFER.NXE = 1)
  * ---------------------------------------------------------------------------
  */
-typedef uint64_t pml4e;
+typedef k_regn pml4e;
 
 
 /**
@@ -96,7 +96,7 @@ typedef uint64_t pml4e;
  * 63      execute disable (only applicable if IA32_EFER.NXE = 1)
  * ---------------------------------------------------------------------------
  */
-typedef uint64_t pdpte;
+typedef k_regn pdpte;
 
 /**
  * Page Directory Entry (PDE)
@@ -120,7 +120,7 @@ typedef uint64_t pdpte;
  * 63      execute disable (only applicable if IA32_EFER.NXE = 1)
  * ---------------------------------------------------------------------------
  */
-typedef uint64_t pde;
+typedef k_regn pde;
 
 /**
  * Page Table Entry (PTE)
@@ -143,7 +143,7 @@ typedef uint64_t pde;
  * 63      execute disable (only applicable if IA32_EFER.NXE = 1)
  * ---------------------------------------------------------------------------
  */
-typedef uint64_t pte;
+typedef k_regn pte;
 
 
 /**
@@ -161,14 +161,30 @@ void k_paging_init();
  * On failure, 0 is returned.
  *
  * Params:
- *   uint64_t - the lowest address in the range of physical addresses
- *   uint64_t - the highest address in the range of physical addresses
+ *   k_regn - the lowest address in the range of physical addresses
+ *   k_regn - the highest address in the range of physical addresses
  *
  * Returns:
- *   uint64_t - the base address of the range of virtual addresses
+ *   k_regn - the base address of the range of virtual addresses
  *
  */
-uint64_t k_paging_map_range(uint64_t start, uint64_t end);
+k_regn k_paging_map_range(k_regn start, k_regn end);
+
+
+/**
+ * Releases a virtual address mapping starting at the specified address.
+ *
+ * Params:
+ *   k_regn - the base address of a range of virtual addresses
+ */
+void k_paging_unmap_range(k_regn start);
+
+/**
+ * This function writes the contents of the dynamic virtual address ledger
+ * to some output stream. It is intended to be used for debugging.
+ * The actual output destination is undefined.
+ */
+void k_paging_print_ledger();
 
 
 #endif

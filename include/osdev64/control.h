@@ -1,7 +1,6 @@
 #ifndef JEP_CONTROL_H
 #define JEP_CONTROL_H
 
-
 // Control Register Interface 
 // Functions and data types for reading and writing controls registers
 // CR0, CR3, CR4, and RFLAGS.
@@ -81,10 +80,8 @@
 // -------------------------------------------------------------
 
 
+#include "osdev64/axiom.h"
 #include "osdev64/bitmask.h"
-
-
-#include <stdint.h>
 
 
 #define CR4_PCIDE BM_17
@@ -95,71 +92,71 @@
  * Reads the value of control register CR0.
  *
  * Returns:
- *   uint64_t - the contents of CR0
+ *   k_regn - the contents of CR0
  */
-uint64_t k_get_cr0();
+k_regn k_get_cr0();
 
 
 /**
  * Writes a value into control register CR0.
  *
  * Params:
- *   uint64_t - the contents to put in CR0
+ *   k_regn - the contents to put in CR0
  */
-void k_set_cr0(uint64_t);
+void k_set_cr0(k_regn);
 
 
 /**
  * Reads the value of control register CR3.
  *
  * Returns:
- *   uint64_t - the contents of CR3
+ *   k_regn - the contents of CR3
  */
-uint64_t k_get_cr3();
+k_regn k_get_cr3();
 
 
 /**
  * Writes a value into control register CR3.
  *
  * Params:
- *   uint64_t - the contents to put in CR3
+ *   k_regn - the contents to put in CR3
  */
-void k_set_cr3(uint64_t);
+void k_set_cr3(k_regn);
 
 
 /**
  * Reads the value of control register CR4.
  *
  * Returns:
- *   uint64_t - the contents of CR4
+ *   k_regn - the contents of CR4
  */
-uint64_t k_get_cr4();
+k_regn k_get_cr4();
 
 
 /**
  * Writes a value into control register CR4.
  *
  * Params:
- *   uint64_t - the contents to put in CR4
+ *   k_regn - the contents to put in CR4
  */
-void k_set_cr4(uint64_t);
+void k_set_cr4(k_regn);
 
 
 /**
  * Reads the value of control register RFLAGS.
  *
  * Returns:
- *   uint64_t - the contents of RFLAGS
+ *   k_regn - the contents of RFLAGS
  */
-uint64_t k_get_rflags();
+k_regn k_get_rflags();
 
 
 /**
  * Writes a value into RFLAGS
  *
  * Params:
- *   uint64_t - the contents to put in RFLAGS
+ *   k_regn - the contents to put in RFLAGS
  */
-void k_set_rflags(uint64_t);
+void k_set_rflags(k_regn);
 
 #endif

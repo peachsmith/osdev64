@@ -64,12 +64,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   fprintf(stddbg, "[INFO] graphics, serial, console, and memory have been initialized.\n");
 
   // CPU information
-  uint64_t cr0 = k_get_cr0();
-  uint64_t cr4 = k_get_cr4();
-  uint64_t rflags = k_get_rflags();
-  uint64_t max_e = k_cpuid_rax(0x80000000);
-  uint64_t maxphysaddr;
-  uint64_t rdx_features = k_cpuid_rdx(1);
+  k_regn cr0 = k_get_cr0();
+  k_regn cr4 = k_get_cr4();
+  k_regn rflags = k_get_rflags();
+  k_regn max_e = k_cpuid_rax(0x80000000);
+  k_regn maxphysaddr;
+  k_regn rdx_features = k_cpuid_rdx(1);
   char vendor[13];
 
   // Check for CPUID.
@@ -311,44 +311,73 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
-  k_task* main_task = k_task_create(NULL);
-  k_task* task_a = k_task_create(task_a_action);
-  k_task* task_b = k_task_create(task_b_action);
+  fprintf(stddbg, "mapping a range of physical addreses into dynamic virtual address space\n");
+  // map some physical memory into dynamic virtual address space.
+  char* phys_dat = (char*)k_memory_alloc_pages(2);
+  char* virt_dat = (char*)k_paging_map_range(PTR_TO_N(phys_dat), PTR_TO_N(phys_dat) + 0x1000);
 
-  k_task_schedule(main_task);
-  k_task_schedule(task_a);
-  k_task_schedule(task_b);
+  // Print the dynamic virtual address map ledger.
+  k_paging_print_ledger();
+
+  fprintf(stddbg, "mapping a second range\n");
+  // map some more physical memory into dynamic virtual address space.
+  char* phys_dat2 = (char*)k_memory_alloc_pages(2);
+  char* virt_dat2 = (char*)k_paging_map_range(PTR_TO_N(phys_dat2), PTR_TO_N(phys_dat2) + 0x1000);
+
+  // Print the dynamic virtual address map ledger.
+  k_paging_print_ledger();
+
+  fprintf(stddbg, "unmapping the first range\n");
+  k_paging_unmap_range(PTR_TO_N(virt_dat));
+
+  k_paging_print_ledger();
+
+  fprintf(stddbg, "mapping a third range\n");
+
+  // map yet more physical memory into dynamic virtual address space.
+  char* phys_dat3 = (char*)k_memory_alloc_pages(2);
+  char* virt_dat3 = (char*)k_paging_map_range(PTR_TO_N(phys_dat3), PTR_TO_N(phys_dat3) + 0x1000);
+
+  k_paging_print_ledger();
+
+  // k_task* main_task = k_task_create(NULL);
+  // k_task* task_a = k_task_create(task_a_action);
+  // k_task* task_b = k_task_create(task_b_action);
+
+  // k_task_schedule(main_task);
+  // k_task_schedule(task_a);
+  // k_task_schedule(task_b);
 
   int should_stop_b = 0;
 
   // The main loop.
   for (;;)
   {
-    k_apic_wait(240);
-    fprintf(stddbg, "This is the main task.\n");
+    // k_apic_wait(240);
+    // fprintf(stddbg, "This is the main task.\n");
 
-    if (task_a != NULL && task_a->status == TASK_REMOVED)
-    {
-      fprintf(stddbg, "destroying task a\n");
-      k_task_destroy(task_a);
-      task_a = NULL;
-    }
+    // if (task_a != NULL && task_a->status == TASK_REMOVED)
+    // {
+    //   fprintf(stddbg, "destroying task a\n");
+    //   k_task_destroy(task_a);
+    //   task_a = NULL;
+    // }
 
-    if (task_b != NULL && task_b->status == TASK_REMOVED)
-    {
-      fprintf(stddbg, "destroying task b\n");
-      k_task_destroy(task_b);
-      task_b = NULL;
-    }
+    // if (task_b != NULL && task_b->status == TASK_REMOVED)
+    // {
+    //   fprintf(stddbg, "destroying task b\n");
+    //   k_task_destroy(task_b);
+    //   task_b = NULL;
+    // }
 
-    if (should_stop_b < 10)
-    {
-      should_stop_b++;
-      if (should_stop_b == 10)
-      {
-        k_task_stop(task_b);
-      }
-    }
+    // if (should_stop_b < 10)
+    // {
+    //   should_stop_b++;
+    //   if (should_stop_b == 10)
+    //   {
+    //     k_task_stop(task_b);
+    //   }
+    // }
   }
 
   // We should never get here.

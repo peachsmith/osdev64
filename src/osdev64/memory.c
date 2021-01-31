@@ -381,7 +381,7 @@ void* k_memory_alloc_pages(size_t n)
 
 void k_memory_free_pages(void* addr)
 {
-  uint64_t a = (uint64_t)addr;
+  k_regn a = PTR_TO_N(addr);
 
   for (int i = 1; i < RAM_LEDGER_MAX; i++)
   {

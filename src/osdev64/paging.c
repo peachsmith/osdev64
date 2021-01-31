@@ -27,19 +27,29 @@ pdpte* g_pdpt_mem;
 // PML4
 pml4e* g_pml4_mem;
 
+// typedef struct map_ledger_entry {
+//   uint64_t start;
+//   uint64_t end;
+//   uint16_t pdpt_start;
+//   uint16_t pdpt_end;
+//   uint16_t pd_start;
+//   uint16_t pd_end;
+//   uint16_t pt_start;
+//   uint16_t pt_end;
+//   unsigned char avail; // availability flag
+// }map_ledger_entry;
+
+/**
+ * A single entry in the virtual address mapping ledger.
+ */
 typedef struct map_ledger_entry {
-  uint64_t start;
-  uint64_t end;
-  uint16_t pdpt_start;
-  uint16_t pdpt_end;
-  uint16_t pd_start;
-  uint16_t pd_end;
-  uint16_t pt_start;
-  uint16_t pt_end;
+  k_regn start;
+  k_regn end;
   unsigned char avail; // availability flag
 }map_ledger_entry;
 
 map_ledger_entry* g_map_ledger;
+
 
 // dynamic virtual address base
 //                    0x  80000000 2 GiB
@@ -296,7 +306,7 @@ void k_paging_init()
   if (g_total_ram >= 0x8000000000)
   {
     fprintf(stddbg, "[ERROR] RAM size too large.\n");
-    for (;;);
+    HANG();
   }
 
 
@@ -353,7 +363,7 @@ void k_paging_init()
   if (g_pt_mem == NULL)
   {
     fprintf(stddbg, "[ERROR] failed to allocate memory for page tables\n");
-    for (;;);
+    HANG();
   }
 
   // Get memory for the page page directories.
@@ -361,7 +371,7 @@ void k_paging_init()
   if (g_pd_mem == NULL)
   {
     fprintf(stddbg, "[ERROR] failed to allocate memory for page directories\n");
-    for (;;);
+    HANG();
   }
 
   // Get memory for the PDPTs.
@@ -369,7 +379,7 @@ void k_paging_init()
   if (g_pdpt_mem == NULL)
   {
     fprintf(stddbg, "[ERROR] failed to allocate memory for PDPTs\n");
-    for (;;);
+    HANG();
   }
 
   // Get memory for a PML4
@@ -377,11 +387,11 @@ void k_paging_init()
   if (g_pml4_mem == NULL)
   {
     fprintf(stddbg, "[ERROR] failed to allocate memory for PML4\n");
-    for (;;);
+    HANG();
   }
 
   // Fill the page tables with base addresses of pages.
-  uint64_t addr = 0;
+  k_regn addr = 0;
   for (int i = 0; i < ptn * 512; i++)
   {
     g_pt_mem[i] = make_pte(addr);
@@ -438,7 +448,7 @@ void k_paging_init()
   }
 
   // Update CR3 with the address of the PML4.
-  k_set_cr3((uint64_t)g_pml4_mem);
+  k_set_cr3(PTR_TO_N(g_pml4_mem));
 
   // END static mapping initialization
   //=============================================
@@ -453,7 +463,7 @@ void k_paging_init()
   if (g_map_ledger == NULL)
   {
     fprintf(stddbg, "[ERROR] failed to allocate memory for virtual map ledger\n");
-    for (;;);
+    HANG();
   }
 
   // Mark all ledger entries as available.
@@ -468,7 +478,7 @@ void k_paging_init()
   if (g_dyn_pt_map == NULL)
   {
     fprintf(stddbg, "[ERROR] failed to allocate memory for dynamic page table bitmap.\n");
-    for (;;);
+    HANG();
   }
 
   // Set all the entries in the dynamic page table bitmap to 0.
@@ -489,7 +499,7 @@ void k_paging_init()
   if (g_dyn_pdpt == NULL)
   {
     fprintf(stddbg, "failed to allocate memory for PDPT for dynamic mapping\n");
-    for (;;);
+    HANG();
   }
 
   // Set all entries in the dynamic PDPT to 0.
@@ -517,18 +527,25 @@ void k_paging_init()
 // 
 
 
-uint64_t k_paging_map_range(uint64_t start, uint64_t end)
+k_regn k_paging_map_range(k_regn start, k_regn end)
 {
+  // Immediately fail if the start address is higher
+  // than the end address.
+  if (start > end)
+  {
+    return 0;
+  }
+
   // physical addresses
-  uint64_t phys_start = start;
-  uint64_t phys_end = end;
+  k_regn phys_start = start;
+  k_regn phys_end = end;
 
   // virtual addresses
-  uint64_t virt_start;
-  uint64_t virt_end;
+  k_regn virt_start;
+  k_regn virt_end;
 
   // virtual address offset
-  uint64_t virt_offset = 0;
+  k_regn virt_offset = 0;
 
   // Round the starting and ending addresses down to the nearest 4 KiB
   // boundary.
@@ -536,18 +553,40 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
   for (;phys_end % 0x1000; phys_end--);
 
   // Determine the size of the range.
-  uint64_t size = phys_end - phys_start;
+  k_regn size = phys_end - phys_start;
 
-  // Determine the virtual address range
+
+  // Initialize the start of the virtual address range to the
+  // global dynamic virtual address base.
   virt_start = g_dyn_base;
   virt_end = virt_start + size;
 
-  // for debugging
-  // fprintf(stddbg, "[PAGING] phys start: %llX, end: %llX, size: %llu\n", phys_start, phys_end, size);
-  // fprintf(stddbg, "[PAGING] virt start: %llX, end: %llX, size: %llu\n", virt_start, virt_end, size);
+  // Check the ledger to see if there are existing virtual address
+  // ranges that were previously mapped but are now available.
+  for (int i = 0; i < MAP_LEDGER_MAX; i++)
+  {
+    if (!g_map_ledger[i].avail)
+    {
+      // start and end addresses of reserved memory region
+      k_regn res_start = g_map_ledger[i].start;
+      k_regn res_end = g_map_ledger[i].end;
 
-  // Create a new entry in the ledger
-  for (int i = 0, entry = 0; i < MAP_LEDGER_MAX && !entry; i++)
+      // If the requested region overlaps a reserved region,
+      // update the start and end addresses of the requested region.
+      if (
+        (virt_start >= res_start && virt_start <= res_end)
+        ||
+        (res_start >= virt_start && res_start <= virt_end)
+        )
+      {
+        virt_start = res_end + 0x1000;
+        virt_end = virt_start + size;
+      }
+    }
+  }
+
+  // Create a new virtual address reservation.
+  for (int i = 0, entry = 0; i < RAM_LEDGER_MAX && !entry; i++)
   {
     if (g_map_ledger[i].avail)
     {
@@ -557,6 +596,11 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
       entry = 1;
     }
   }
+
+
+
+  //=====================================
+  // BEGIN paging structure population
 
   // Determine the paging structures needed to map the range.
   uint64_t ram_counter = 0;
@@ -615,16 +659,16 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
 
   // Break the starting and ending virtual addresses into their
   // paging structure index components.
-  uint64_t pml4_start = (virt_start & (BM_9_BITS << 39)) >> 39;
-  uint64_t pdpt_start = (virt_start & (BM_9_BITS << 30)) >> 30;
-  uint64_t pd_start = (virt_start & (BM_9_BITS << 21)) >> 21;
-  uint64_t pt_start = (virt_start & (BM_9_BITS << 12)) >> 12;
-  uint64_t pt_offset = virt_start & BM_12_BITS;
+  k_regn pml4_start = (virt_start & (BM_9_BITS << 39)) >> 39;
+  k_regn pdpt_start = (virt_start & (BM_9_BITS << 30)) >> 30;
+  k_regn pd_start = (virt_start & (BM_9_BITS << 21)) >> 21;
+  k_regn pt_start = (virt_start & (BM_9_BITS << 12)) >> 12;
+  k_regn pt_offset = virt_start & BM_12_BITS;
 
-  uint64_t pml4_end = (virt_end & (BM_9_BITS << 39)) >> 39;
-  uint64_t pdpt_end = (virt_end & (BM_9_BITS << 30)) >> 30;
-  uint64_t pd_end = (virt_end & (BM_9_BITS << 21)) >> 21;
-  uint64_t pt_end = (virt_end & (BM_9_BITS << 12)) >> 12;
+  k_regn pml4_end = (virt_end & (BM_9_BITS << 39)) >> 39;
+  k_regn pdpt_end = (virt_end & (BM_9_BITS << 30)) >> 30;
+  k_regn pd_end = (virt_end & (BM_9_BITS << 21)) >> 21;
+  k_regn pt_end = (virt_end & (BM_9_BITS << 12)) >> 12;
 
 
   // Currently, we don't allow mappings that pass 0xFFFFFFFFFF
@@ -633,7 +677,7 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
     return 0;
   }
 
-  uint64_t addr = phys_start;
+  k_regn addr = phys_start;
 
   // Allocate page directories
   for (uint64_t i = pdpt_start; i <= pdpt_end; i++)
@@ -702,8 +746,49 @@ uint64_t k_paging_map_range(uint64_t start, uint64_t end)
     }
   }
 
+  // END paging structure population
+  //=====================================
+
   // Update the global dynamic mapping base address.
   g_dyn_base = virt_end + 0x1000;
 
   return virt_start + virt_offset;
+}
+
+
+void k_paging_unmap_range(k_regn start)
+{
+  for (int i = 0; i < MAP_LEDGER_MAX; i++)
+  {
+    // Find the first entry in the virtual address ledger
+    // whose starting address matches the specified address
+    // and mark it as available.
+    if (g_map_ledger[i].start == start && !g_map_ledger[i].avail)
+    {
+      g_map_ledger[i].avail = 1;
+      return;
+    }
+  }
+}
+
+
+void k_paging_print_ledger()
+{
+  fprintf(stddbg, "+------------------------------------+\n");
+  fprintf(stddbg, "| start             end              |\n");
+  fprintf(stddbg, "+------------------------------------+\n");
+
+  for (int i = 0; i < MAP_LEDGER_MAX; i++)
+  {
+    if (!g_map_ledger[i].avail)
+    {
+      fprintf(stddbg,
+        "| %p  %p |\n",
+        g_map_ledger[i].start,
+        g_map_ledger[i].end
+      );
+    }
+  }
+
+  fprintf(stddbg, "+------------------------------------+\n");
 }
