@@ -4,6 +4,13 @@
 
 #include "klibc/stdio.h"
 
+
+// NOTE:
+// Intel's manual contains the following warning about semaphores:
+// "Do not implement semaphores using the WC memory type"
+
+
+
 // memory used for creating spinlocks
 static k_regn* spinlock_memory;
 
