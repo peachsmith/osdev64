@@ -140,18 +140,18 @@ void k_semaphore_destroy(k_semaphore* s)
 
 void k_semaphore_wait(k_semaphore* s)
 {
-  k_spinlock_acquire((int64_t*)&s[1]);
+  k_spinlock_acquire((k_spinlock*)&s[1]);
 
   k_xadd_wait(-1, s);
 
-  k_spinlock_release((int64_t*)&s[1]);
+  k_spinlock_release((k_spinlock*)&s[1]);
 }
 
 void k_semaphore_signal(k_semaphore* s)
 {
-  k_spinlock_acquire((int64_t*)&s[1]);
+  k_spinlock_acquire((k_spinlock*)&s[1]);
 
   k_xadd(1, s);
 
-  k_spinlock_release((int64_t*)&s[1]);
+  k_spinlock_release((k_spinlock*)&s[1]);
 }
