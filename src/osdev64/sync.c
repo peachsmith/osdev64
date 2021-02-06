@@ -8,11 +8,12 @@
 // NOTE:
 // Intel's manual contains the following warning about semaphores:
 // "Do not implement semaphores using the WC memory type"
+// Intel also recommends placing sempahores on 128-byte boundaries.
 
 
 
-// memory used for creating spinlocks
-static k_regn* spinlock_memory;
+// memory used for storing locks and semaphores
+static k_regn* sync_memory;
 
 // bitmap for keeping track of which spinlocks exist
 static uint64_t spinlock_bitmap[8];
@@ -47,9 +48,9 @@ void k_sync_init()
   // Allocate 4 Kib for the spinlock memory pool.
   // If we use 8 bytes for each spinlock, that allows
   // for up to 512 unique spinlocks to exist simultaneously.
-  spinlock_memory = (k_regn*)k_memory_alloc_pages(1);
+  sync_memory = (k_regn*)k_memory_alloc_pages(1);
 
-  if (spinlock_memory == NULL)
+  if (sync_memory == NULL)
   {
     fprintf(
       stddbg,
@@ -67,9 +68,9 @@ k_spinlock* k_spinlock_create()
   {
     if (!check_bit(b))
     {
-      spinlock_memory[b] = 0;
+      sync_memory[b] = 0;
       set_bit(b);
-      return &spinlock_memory[b];
+      return &sync_memory[b];
     }
   }
 
@@ -82,7 +83,7 @@ void k_spinlock_destroy(k_spinlock* sl)
   // Clear the corresponding bit in the spinlock bitmap.
   for (uint64_t b = 0; b < 512; b++)
   {
-    if (&spinlock_memory[b] == sl)
+    if (&sync_memory[b] == sl)
     {
       clear_bit(b);
       return;
@@ -93,11 +94,64 @@ void k_spinlock_destroy(k_spinlock* sl)
 
 void k_spinlock_acquire(k_spinlock* sl)
 {
-  k_bts_spin(0, sl);
+  k_bts_wait(0, sl);
 }
 
 
 void k_spinlock_release(k_spinlock* sl)
 {
   k_btr(0, sl);
+}
+
+
+
+k_semaphore* k_semaphore_create(int64_t n)
+{
+  // Find the first available bit in the bitmap.
+  for (uint64_t b = 0; b < 511; b++)
+  {
+    if (!check_bit(b) && !check_bit(b + 1))
+    {
+      sync_memory[b] = n;
+      sync_memory[b + 1] = 0;
+      set_bit(b);
+      return &sync_memory[b];
+    }
+  }
+
+  return NULL;
+}
+
+
+
+void k_semaphore_destroy(k_semaphore* s)
+{
+  // Clear the corresponding bit in the bitmap.
+  for (uint64_t b = 0; b < 512; b++)
+  {
+    if (&sync_memory[b] == s)
+    {
+      clear_bit(b);
+      return;
+    }
+  }
+}
+
+
+void k_semaphore_wait(k_semaphore* s)
+{
+  k_spinlock_acquire((int64_t*)&s[1]);
+
+  k_xadd_wait(-1, s);
+
+  k_spinlock_release((int64_t*)&s[1]);
+}
+
+void k_semaphore_signal(k_semaphore* s)
+{
+  k_spinlock_acquire((int64_t*)&s[1]);
+
+  k_xadd(1, s);
+
+  k_spinlock_release((int64_t*)&s[1]);
 }

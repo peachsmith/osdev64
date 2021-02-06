@@ -20,39 +20,15 @@
 #include "osdev64/task.h"
 #include "osdev64/sync.h"
 
+// temporary task demo for debugging task code
+#include "osdev64/task_demo.h"
+
 #include "klibc/stdio.h"
 
 
-k_spinlock* g_spinlock;
-k_regn g_shared = 1;
+k_spinlock* g_demo_lock;
+k_semaphore* g_demo_sem;
 
-void task_a_action()
-{
-  for (int i = 0; i < 10; i++)
-  {
-    k_spinlock_acquire(g_spinlock);
-    k_apic_wait(120);
-    fprintf(stddbg, "Task A has the spinlock.\n");
-    k_spinlock_release(g_spinlock);
-
-    k_apic_wait(150);
-  }
-  fprintf(stddbg, "Task A has ended.\n");
-}
-
-void task_b_action()
-{
-  for (int i = 0; i < 10; i++)
-  {
-    k_spinlock_acquire(g_spinlock);
-    k_apic_wait(120);
-    fprintf(stddbg, "Task B has the spinlock.\n");
-    k_spinlock_release(g_spinlock);
-
-    k_apic_wait(180);
-  }
-  fprintf(stddbg, "Task B has ended.\n");
-}
 
 
 /**
@@ -75,10 +51,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_acpi_init();        // ACPI tables
   k_sync_init();        // synchronization
 
-  g_spinlock = k_spinlock_create();
-  if (g_spinlock == NULL)
+  g_demo_lock = k_spinlock_create();
+  if (g_demo_lock == NULL)
   {
-    fprintf(stddbg, "failed to create spinlock\n");
+    fprintf(stddbg, "failed to create demo spinlock\n");
+    HANG();
+  }
+
+  g_demo_sem = k_semaphore_create(-1);
+  if (g_demo_sem == NULL)
+  {
+    fprintf(stddbg, "failed to create demo semaphore\n");
     HANG();
   }
 
@@ -386,12 +369,22 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   //==========================================
 
   k_task* main_task = k_task_create(NULL);
-  k_task* task_a = k_task_create(task_a_action);
-  k_task* task_b = k_task_create(task_b_action);
+
+  k_task* demo_mutex_task_a = k_task_create(demo_mutex_task_a_action);
+  k_task* demo_mutex_task_b = k_task_create(demo_mutex_task_b_action);
+
+  // k_task* demo_sem_task_a = k_task_create(demo_sem_task_a_action);
+  // k_task* demo_sem_task_b = k_task_create(demo_sem_task_b_action);
+  // k_task* demo_sem_task_c = k_task_create(demo_sem_task_b_action);
 
   k_task_schedule(main_task);
-  k_task_schedule(task_a);
-  k_task_schedule(task_b);
+
+  k_task_schedule(demo_mutex_task_a);
+  k_task_schedule(demo_mutex_task_b);
+
+  // k_task_schedule(demo_sem_task_a);
+  // k_task_schedule(demo_sem_task_b);
+  // k_task_schedule(demo_sem_task_c);
 
   //==========================================
   // BEGIN task creation
@@ -456,25 +449,83 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // carry = k_btr(3, &num);
   // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
 
+
+
+  //==========================================
+  // BEGIN XADD demo code
+  //==========================================
+
+  int64_t x_count = 0;
+  int64_t x_result = 0;
+  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
+
+  // count: 1, result: 0
+  x_result = k_xadd(1, &x_count);
+  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
+
+  // count: 3, result: 1
+  x_result = k_xadd(2, &x_count);
+  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
+
+  // count: -1, result: 3
+  x_result = k_xadd(-4, &x_count);
+  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
+
+  // count: 0, result: -1
+  x_result = k_xadd(1, &x_count);
+  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
+
+  //==========================================
+  // END XADD demo code
+  //==========================================
+
   // The main loop.
   for (;;)
   {
+
+    // TODO: figure out why IRQs break task switching
+
     // k_apic_wait(240);
     // fprintf(stddbg, "This is the main task.\n");
 
-    if (task_a != NULL && task_a->status == TASK_REMOVED)
+    if (demo_mutex_task_a != NULL && demo_mutex_task_a->status == TASK_REMOVED)
     {
-      fprintf(stddbg, "destroying task a\n");
-      k_task_destroy(task_a);
-      task_a = NULL;
+      fprintf(stddbg, "destroying mutex task a\n");
+      k_task_destroy(demo_mutex_task_a);
+      demo_mutex_task_a = NULL;
     }
 
-    if (task_b != NULL && task_b->status == TASK_REMOVED)
+    if (demo_mutex_task_b != NULL && demo_mutex_task_b->status == TASK_REMOVED)
     {
-      fprintf(stddbg, "destroying task b\n");
-      k_task_destroy(task_b);
-      task_b = NULL;
+      fprintf(stddbg, "destroying mutex task b\n");
+      k_task_destroy(demo_mutex_task_b);
+      demo_mutex_task_b = NULL;
     }
+
+    // k_apic_wait(120);
+    // k_semaphore_signal(g_demo_sem);
+
+
+    // if (demo_sem_task_a != NULL && demo_sem_task_a->status == TASK_REMOVED)
+    // {
+    //   fprintf(stddbg, "destroying semaphore task a\n");
+    //   k_task_destroy(demo_sem_task_a);
+    //   demo_sem_task_a = NULL;
+    // }
+
+    // if (demo_sem_task_b != NULL && demo_sem_task_b->status == TASK_REMOVED)
+    // {
+    //   fprintf(stddbg, "destroying semaphore task b\n");
+    //   k_task_destroy(demo_sem_task_b);
+    //   demo_sem_task_b = NULL;
+    // }
+
+    // if (demo_sem_task_c != NULL && demo_sem_task_c->status == TASK_REMOVED)
+    // {
+    //   fprintf(stddbg, "destroying semaphore task c\n");
+    //   k_task_destroy(demo_sem_task_c);
+    //   demo_sem_task_c = NULL;
+    // }
 
     // if (should_stop_b < 10)
     // {

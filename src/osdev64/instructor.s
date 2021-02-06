@@ -32,9 +32,11 @@
 
 
 .global k_xchg
+.global k_xadd
 .global k_bts
 .global k_btr
-.global k_bts_spin
+.global k_bts_wait
+.global k_xadd_wait
 
 
 
@@ -416,14 +418,21 @@ k_nonsense:
   leaveq
   retq
 
+
 k_xchg:
   xchg %rdi, (%rsi)
   mov %rdi, %rax
   retq
 
 
+k_xadd:
+  lock xadd %rdi, (%rsi)
+  mov %rdi, %rax
+  retq
+
+
 k_bts:
-  bts %rdi, (%rsi)
+  lock bts %rdi, (%rsi)
   jc .bts_carry
   movq $0x0, %rax
   retq
@@ -433,7 +442,7 @@ k_bts:
 
 
 k_btr:
-  btr %rdi, (%rsi)
+  lock btr %rdi, (%rsi)
   jc .btr_carry
   movq $0x0, %rax
   retq
@@ -442,13 +451,35 @@ k_btr:
   retq
 
 
-k_bts_spin:
-  lock bts %rdi, (%rsi)
-  jc .spin_wait
+# TODO: come up with better names for these procedures
+
+
+# NOTE: used for spinlocks
+k_bts_wait:
+  lock bts %rdi, (%rsi) # attempt to set a bit
+  jc .bts_wait_loop     # if the bit was already set, loop until it isn't set
   retq
 
-.spin_wait:
+.bts_wait_loop:
   pause
-  testq $0x1, (%rsi)
-  jnz .spin_wait
-  jmp k_bts_spin
+  testq $0x1, (%rsi) # check if the bit is set
+  jnz .bts_wait_loop # if the bit is set, repeat the loop
+  jmp k_bts_wait     # if the bit is not set, jump back to k_bts_wait
+
+
+# NOTE: used in counting sempahores
+k_xadd_wait:
+  mov (%rsi), %rax
+  test %rax, %rax    # check if the value is < 0
+  js .xadd_wait_loop # if the value is < 0, loop until it's >= 0
+
+  mov %rdi, %rax
+  lock xadd %rax, (%rsi) # add the first argument to the value
+  retq
+
+.xadd_wait_loop:
+  pause
+  mov (%rsi), %rax
+  test %rax, %rax    # check if the value is < 0
+  js .xadd_wait_loop # if the value is < 0, repeat the loop
+  jmp k_xadd_wait    # if the value is >= 0, jump back to k_xadd_wait

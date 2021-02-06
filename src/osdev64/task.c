@@ -14,6 +14,9 @@
 #define TASK_REG_RBP 1
 
 // memory occupied by a 16 byte aligned register stack
+// This represents a number of bytes of memory that is at least
+// large enough to hold the register stack of a task as well as
+// a function to be called once the task returns from its action.
 #define TASK_STACK_ALIGN (sizeof(uint64_t) * 24)
 
 // number of values in the register stack including padding

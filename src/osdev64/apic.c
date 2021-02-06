@@ -206,7 +206,7 @@ void k_apic_wait(uint64_t ticks)
 
 void apic_generic_legacy_handler(uint8_t irqn)
 {
-  fprintf(stddbg, "[INT] APIC legacy IRQ %u\n", irqn);
+  // fprintf(stddbg, "[INT] APIC legacy IRQ %u\n", irqn);
 
   // For printing the ISR bits (0x80000000 == (1 << 31))
   // fprintf(stddbg, "ISR1: ");

@@ -102,7 +102,31 @@ k_regn k_btr(k_regn, k_regn*);
  *   k_regn - a number representing the bit to set
  *   k_regn* - a location in memory containing the bit to set
  */
-void k_bts_spin(k_regn, k_regn*);
+void k_bts_wait(k_regn, k_regn*);
+
+
+/**
+ * Executes the XADD instruction to add the first argument to the value
+ * pointed to by the second argument.
+ *
+ * Params:
+ *   int64_t - the amount to add to the destination
+ *   int64_t* - a pointer to the value to be added
+ */
+int32_t k_xadd(int64_t, int64_t*);
+
+
+/**
+ * Executes the XADD instruction to add the first argument to the value
+ * pointed to by the second argument. This function is like k_xadd,
+ * but this function loops until the value pointed to by the second
+ * argument is greater than or equal to zero.
+ *
+ * Params:
+ *   int64_t - the amount to add to the destination
+ *   int64_t* - a pointer to the value to be added
+ */
+int32_t k_xadd_wait(int64_t, int64_t*);
 
 
 /**
