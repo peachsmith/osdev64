@@ -68,7 +68,7 @@ void demo_sem_task_b_action()
   for (;;)
   {
     k_semaphore_wait(g_demo_sem);
-    fprintf(stddbg, "Semaphore task B has performed an action.\n");
+    fprintf(stddbg, "Semaphore task B has performed an action. Semaphore: %lld\n", *g_demo_sem);
   }
 }
 
@@ -77,7 +77,7 @@ void demo_sem_task_c_action()
   for (;;)
   {
     k_semaphore_wait(g_demo_sem);
-    fprintf(stddbg, "Semaphore task C has performed an action.\n");
+    fprintf(stddbg, "Semaphore task C has performed an action. Semaphore: %lld\n", *g_demo_sem);
   }
 }
 //==========================================
