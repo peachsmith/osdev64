@@ -404,43 +404,40 @@ apic_irq_0:
 apic_irq_1:
   cld
 
-  # put the GPRs on the stack
+  # Callee-saved registers:
+  # rbx
+  # rsp
+  # rbp
+  # r12
+  # r13
+  # r14
+  # r15
+
+  # Save the caller-saved registers
   push %rax
-  push %rbx
   push %rcx
   push %rdx
+  push %rsi
+  push %rdi
   push %r8
   push %r9
   push %r10
   push %r11
-  push %r12
-  push %r13
-  push %r14
-  push %r15
-  push %rsi
-  push %rdi
-  push %rbp
-  push %rax # padding to keep 16-byte alignment
-  # TODO: add xmm and other floating point registers
+  push %r11 # padding to keep 16-byte alignment
 
   mov $0x1, %rdi
   call apic_generic_legacy_handler
 
-  pop %rbx # remove the padding
-  pop %rbp
-  pop %rdi
-  pop %rsi
-  pop %r15
-  pop %r14
-  pop %r13
-  pop %r12
+  # Restore the caller-saved registers
+  pop %r11 # remove the padding
   pop %r11
   pop %r10
   pop %r9
   pop %r8
+  pop %rdi
+  pop %rsi
   pop %rdx
   pop %rcx
-  pop %rbx
   pop %rax
 
   iretq
