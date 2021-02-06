@@ -206,20 +206,9 @@ void k_apic_wait(uint64_t ticks)
 
 void apic_generic_legacy_handler(uint8_t irqn)
 {
-  // fprintf(stddbg, "[INT] APIC legacy IRQ %u\n", irqn);
-
-  // For printing the ISR bits (0x80000000 == (1 << 31))
-  // fprintf(stddbg, "ISR1: ");
-  // for (int i = 0; i < 32; i++)
-  // {
-  //   fputc((isr1 & (0x80000000 >> i)) ? '1' : '0', stddbg);
-  // }
-  // fputc('\n', stddbg);
-
-  // Check the local APIC's in-service trgister (ISR) to see if we need
-  // to send an EOI. The legacy IRQs should have been mapped starting at
-  // interrupt 0x30. So the 16 IRQs would correspond to bits [63:48] of
-  // the local APIC's ISR.
+  // Check the local APIC's ISR to see if we need to send an EOI.
+  // Since legacy IRQs should have been mapped starting at interrupt 0x30,
+  // the 16 IRQs would correspond to bits [63:48] of the local APIC's ISR.
   uint32_t isr1 = lapic_read(LAPIC_ISR1);
   if (isr1 & (0x10000 << irqn))
   {

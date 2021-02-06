@@ -59,7 +59,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     HANG();
   }
 
-  g_demo_sem_pub = k_semaphore_create(2);
+  g_demo_sem_pub = k_semaphore_create(0);
   if (g_demo_sem_pub == NULL)
   {
     fprintf(stddbg, "failed to create demo semaphore\n");
@@ -382,8 +382,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // k_task* demo_mutex_task_b = k_task_create(demo_mutex_task_b_action);
 
   k_task* demo_sem_task_a = k_task_create(demo_sem_task_a_action);
-  k_task* demo_sem_task_b = k_task_create(demo_sem_task_b_action);
-  k_task* demo_sem_task_c = k_task_create(demo_sem_task_c_action);
+  // k_task* demo_sem_task_b = k_task_create(demo_sem_task_b_action);
+  // k_task* demo_sem_task_c = k_task_create(demo_sem_task_c_action);
 
   k_task_schedule(main_task);
 
@@ -391,8 +391,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // k_task_schedule(demo_mutex_task_b);
 
   k_task_schedule(demo_sem_task_a);
-  k_task_schedule(demo_sem_task_b);
-  k_task_schedule(demo_sem_task_c);
+  // k_task_schedule(demo_sem_task_b);
+  // k_task_schedule(demo_sem_task_c);
 
   //==========================================
   // BEGIN task creation
@@ -510,8 +510,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     //   demo_mutex_task_b = NULL;
     // }
 
-    
-    k_apic_wait(60);
+    // k_apic_wait(60);
     k_semaphore_wait(g_demo_sem_pub);
     k_semaphore_signal(g_demo_sem_sub);
 
@@ -522,19 +521,19 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
       demo_sem_task_a = NULL;
     }
 
-    if (demo_sem_task_b != NULL && demo_sem_task_b->status == TASK_REMOVED)
-    {
-      fprintf(stddbg, "destroying semaphore task b\n");
-      k_task_destroy(demo_sem_task_b);
-      demo_sem_task_b = NULL;
-    }
+    // if (demo_sem_task_b != NULL && demo_sem_task_b->status == TASK_REMOVED)
+    // {
+    //   fprintf(stddbg, "destroying semaphore task b\n");
+    //   k_task_destroy(demo_sem_task_b);
+    //   demo_sem_task_b = NULL;
+    // }
 
-    if (demo_sem_task_c != NULL && demo_sem_task_c->status == TASK_REMOVED)
-    {
-      fprintf(stddbg, "destroying semaphore task c\n");
-      k_task_destroy(demo_sem_task_c);
-      demo_sem_task_c = NULL;
-    }
+    // if (demo_sem_task_c != NULL && demo_sem_task_c->status == TASK_REMOVED)
+    // {
+    //   fprintf(stddbg, "destroying semaphore task c\n");
+    //   k_task_destroy(demo_sem_task_c);
+    //   demo_sem_task_c = NULL;
+    // }
 
     // if (should_stop_b < 10)
     // {

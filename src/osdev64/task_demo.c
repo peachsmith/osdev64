@@ -67,7 +67,7 @@ void demo_sem_task_a_action()
       *g_demo_sem_sub,
       *g_demo_sem_pub
     );
-    k_apic_wait(120);
+    // k_apic_wait(120);
     k_semaphore_signal(g_demo_sem_pub);
   }
 }
