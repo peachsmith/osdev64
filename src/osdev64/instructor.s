@@ -1,139 +1,71 @@
 # The instructor contains various procedures that send instructions to the CPU
 # for which there is no standard C interface.
 # For example: IN, OUT, LGDT, etc.
-
 .section .text
 
-.extern k_debug_spin
 
-# procedures
+# Executes the CLI instruction to disable interrupts.
 .global k_disable_interrupts
-.global k_enable_interrupts
-.global k_outb
-.global k_inb
-.global k_lgdt
-.global k_lidt
-.global k_ltr
-.global k_cause_exception
-.global k_nonsense
-
-.global k_xor
-.global k_get_cr0
-.global k_set_cr0
-.global k_get_cr3
-.global k_set_cr3
-.global k_get_cr4
-.global k_set_cr4
-.global k_get_rflags
-.global k_set_rflags
-.global k_cpuid_rax
-.global k_cpuid_rdx
-.global k_cpuid_vendor
-.global k_msr_get
-.global k_msr_set
-
-
-.global k_xchg
-.global k_xadd
-.global k_bts
-.global k_btr
-.global k_bts_wait
-.global k_xadd_wait
-
-
-
-# disabled interrupts
-#
-# Featured instruction: CLI
 k_disable_interrupts:
   cli
   retq
 
-# enables interrupts
-#
-# Featured instruction: STI
+
+# Executes the STI instruction to enable interrupts.
+.global k_enable_interrupts
 k_enable_interrupts:
   sti
   retq
 
 
-# Writes an 8-bit value to a 16-bit port.
+# Executes the OUT isntruction to write an 8-bit value to a 16-bit port.
 # The first argument is a 16-bit port number, and the second argument
 # is an 8-bit value to be written.
 # This procedure does not modify the stack or base pointers.
 #
-# Featured instructions: OUT
-#
 # Params:
-#   %rdi - a 16-bit port number
-#   %rsi - an 8-bit number to be written
+#   RDI - a 16-bit port number
+#   RSI - an 8-bit number to be written
+.global k_outb
 k_outb:
   mov %di, %dx
   mov %sil, %al
-
   out %al, %dx
-
   retq
 
 
-# Reads an 8-bit value from a 16-bit port.
+# Executes the IN instruction to read an 8-bit value from a 16-bit port.
 # The argument is a 16-bit port number.
 # This procedure does not modify the stack or base pointers.
 #
-# Featured instructions: IN
-#
 # Params:
-#   %rdi - a 16-bit port number
+#   RDI - a 16-bit port number
 #
 # Returns:
-#   %rax - an 8-bit value
+#   RAX - an 8-bit value
+.global k_inb
 k_inb:
-
   mov %di, %dx
-
   in %dx, %al
-  
   retq
 
 
-# Loads the GDT) into GDTR.
-#
-# Featured instructions: LGDT
+# Executes the LGDT instruction to load the address of the GDT into the GDTR.
 #
 # Params:
-#   %rdi - a 16-bit number representing the number of bytes in the GDT - 1
-#   %rsi - a 64-bit number representing the address of the GDT
+#   RDI - a 16-bit number representing the number of bytes in the GDT - 1
+#   RSI - a 64-bit number representing the address of the GDT
+.global k_lgdt
 k_lgdt:
-
   push %rbp
   mov %rsp, %rbp
 
-  sub $0x10, %rsp # allocate 16 bytes on the stack
-
-  mov %di, -0x10(%rbp)  # put the limit on the stack frame
+  sub $0x10, %rsp      # allocate 16 bytes on the stack
+  mov %di, -0x10(%rbp) # put the limit on the stack frame
   mov %rsi, -0xE(%rbp) # put the address of the GDT on the stack frame
 
-  # Our stack frame now has the following structure:
-  # 
-  # base pointer
-  # +-----------------+
-  # | address of GDT  |
-  # |                 |
-  # |                 |
-  # |                 |
-  # |                 |
-  # |                 |
-  # |                 |
-  # |                 |
-  # +-----------------+
-  # | size of GDT - 1 |
-  # |                 |
-  # +-----------------+
-  # stack pointer
-
-  lea -0x10(%rbp), %rax # load the address of our stack frame into %rax
-
-  lgdt (%rax) # load the GDT into the GDTR
+  lea -0x10(%rbp), %rax # get the address of the top of the stack frame
+  lgdt (%rax)           # load the GDT into the GDTR
 
   # Put the offset of the data segment in DS, ES, FS, GS, and SS
   mov $0x10, %ax
@@ -158,20 +90,20 @@ end_gdt:
   retq
 
 
-# Load the offset of the TSS selector into the TR register.
+# Executes the LTR instruction to load the offset of the TSS selector
+# into the TR register.
 #
 # Features instructions: LTR
 #
 # Params:
-#   %rdi - 16 bits representing the offset of the TSS descriptor inthe GDT
+#   RDI - 16 bits representing the offset of the TSS descriptor in the GDT
+.global k_ltr
 k_ltr:
-
   push %rbp
   mov %rsp, %rbp
 
-  mov %di, %ax  # offset of TSS descriptor in GDT
-
-  ltr %ax
+  mov %di, %ax # offset of TSS descriptor in GDT
+  ltr %ax      # Load the offset of the TSS into TR.
 
   leaveq
   retq
@@ -183,27 +115,26 @@ k_ltr:
 # Featured instructions: LIDT
 #
 # Params:
-#   %rdi - a 16-bit number representing the number of bytes in the IDT - 1
-#   %rsi - a 64-bit number representing the address of the IDT
+#   RDI - a 16-bit number representing the number of bytes in the IDT - 1
+#   RSI - a 64-bit number representing the address of the IDT
+.global k_lidt
 k_lidt:
-
   push %rbp
   mov %rsp, %rbp
 
-  sub $0x10, %rsp # allocate 16 bytes on the stack
-
-  mov %di, -0x10(%rbp)  # IDT size limit
+  sub $0x10, %rsp      # Allocate 16 bytes on the stack.
+  mov %di, -0x10(%rbp) # IDT size limit
   mov %rsi, -0xE(%rbp) # IDT address
 
-  lea -0x10(%rbp), %rax # address of the stack frame
-
-  lidt (%rax) # load the IDT into the IDTR
+  lea -0x10(%rbp), %rax # Get the address of the top of the stack frame.
+  lidt (%rax)           # Load the IDT into the IDTR.
   
   leaveq
   retq
 
 
 # A procedure used to test exception handling with ISRs
+.global k_cause_exception
 k_cause_exception:
   push %rbp
   mov %rsp, %rbp
@@ -224,16 +155,17 @@ k_cause_exception:
   leaveq
   retq
 
-# executes the XOR instruction
+
+# Executes the XOR instruction.
 #
 # Params:
-#   %rdi - a 64-bit unsigned integer
-#   %rsi - a 64-bit unsigned integer
+#   RDI - a 64-bit unsigned integer
+#   RSI - a 64-bit unsigned integer
 #
 # Returns:
-#   %rax - the result of the XOR instruction
+#   RAX - the result of the XOR instruction
+.global k_xor
 k_xor:
-
   push %rbp
   mov %rsp, %rbp
 
@@ -244,7 +176,11 @@ k_xor:
   retq
 
 
-# Reads the value from CR0
+# Reads the value of CR0.
+#
+# Returns:
+#   RAX - the value read from CR0
+.global k_get_cr0
 k_get_cr0:
   push %rbp
   mov %rsp, %rbp
@@ -255,7 +191,11 @@ k_get_cr0:
   retq
 
 
-# Writes a value into CR0
+# Writes a value into CR0.
+#
+# Params:
+#   RDI - the value to write to CR0
+.global k_set_cr0
 k_set_cr0:
   push %rbp
   mov %rsp, %rbp
@@ -266,7 +206,11 @@ k_set_cr0:
   retq
 
 
-# Reads the value from CR3
+# Reads the value of CR3.
+#
+# Returns:
+#   RAX - the value read from CR3
+.global k_get_cr3
 k_get_cr3:
   push %rbp
   mov %rsp, %rbp
@@ -276,7 +220,11 @@ k_get_cr3:
   leaveq
   retq
 
-# Writes a value into CR3
+# Writes a value into CR3.
+# Params:
+#
+#   RDI - the value to write to CR3
+.global k_set_cr3
 k_set_cr3:
   push %rbp
   mov %rsp, %rbp
@@ -287,7 +235,11 @@ k_set_cr3:
   retq
 
 
-# Reads the value from CR4
+# Reads the value of CR4.
+#
+# Returns:
+#   RAX - the value read from CR4
+.global k_get_cr4
 k_get_cr4:
   push %rbp
   mov %rsp, %rbp
@@ -298,7 +250,11 @@ k_get_cr4:
   retq
 
 
-# Writes a value into CR3
+# Writes a value into CR4.
+#
+# Params:
+#   RDI - the value to write to CR4
+.global k_set_cr4
 k_set_cr4:
   push %rbp
   mov %rsp, %rbp
@@ -309,6 +265,11 @@ k_set_cr4:
   retq
 
 
+# Reads the value of RFLAGS.
+#
+# Returns:
+#   RAX - the value read from RFLAGS
+.global k_get_rflags
 k_get_rflags:
   push %rbp
   mov %rsp, %rbp
@@ -320,6 +281,11 @@ k_get_rflags:
   retq
 
 
+# Writes a value into RFLAGS.
+#
+# Params:
+#   RDI - the value to write to RFLAGS
+.global k_set_rflags
 k_set_rflags:
   push %rbp
   mov %rsp, %rbp
@@ -331,14 +297,15 @@ k_set_rflags:
   retq
 
 
-# Executes the CPUID instruction and returns the value
+# Executes the CPUID instruction and returns the value that was placed
 # in RAX.
 #
 # Params:
-#   %rdi - the input provided to CPUID
+#   RDI - the input provided to CPUID
 #
 # Returns:
-#   %rax - the result out the CPUID instruction
+#   RAX - the value placed in RAX by the CPUID instruction
+.global k_cpuid_rax
 k_cpuid_rax:
   push %rbp
   mov %rsp, %rbp
@@ -350,6 +317,15 @@ k_cpuid_rax:
   retq
 
 
+# Executes the CPUID instruction and returns the value that was placed
+# in RDX.
+#
+# Params:
+#   RDI - the input provided to CPUID
+#
+# Returns:
+#   RAX - the value placed in RDX by the CPUID instruction
+.global k_cpuid_rdx
 k_cpuid_rdx:
   push %rbp
   mov %rsp, %rbp
@@ -362,6 +338,13 @@ k_cpuid_rdx:
   retq
 
 
+# Executes the CPUID instruction to get the vendor identification string.
+# At the start of the procedure, RDI is expected to contain the address
+# of at least 12 bytes of memory.
+#
+# Params:
+#   RDI - address of 12 bytes of memory
+.global k_cpuid_vendor
 k_cpuid_vendor:
   push %rbp
   mov %rsp, %rbp
@@ -375,6 +358,14 @@ k_cpuid_vendor:
   leaveq
   retq
 
+# Executes the RDMSR isntruction to read the value of an MSR.
+#
+# Params:
+#   RDI - the address of an MSR
+#
+# Returns:
+#   RAX - the contents of an MSR
+.global k_msr_get
 k_msr_get:
   push %rbp
   mov %rsp, %rbp
@@ -393,6 +384,13 @@ k_msr_get:
   leaveq
   retq
 
+
+# Executes the WRMSR isntruction to write a value into an MSR.
+#
+# Params:
+#   RDI - the address of an MSR
+#   RSI - the value to write to the MSR
+.global k_msr_set
 k_msr_set:
   push %rbp
   mov %rsp, %rbp
@@ -411,6 +409,8 @@ k_msr_set:
   retq
 
 
+# Used for debugging stuff.
+.global k_nonsense
 k_nonsense:
   push %rbp
   mov %rsp, %rbp
@@ -421,18 +421,40 @@ k_nonsense:
   retq
 
 
+# Executes the XCHG instruction to swap the value of RDI with the
+# value pointed to by RSI. The XCHG instruction automatically locks the bus.
+#
+# Params:
+#   RDI - a value to be written to the memory location
+#   RSI - a memory location containing a value to be read
+#
+# Returns:
+#   RAX - the value formerly held at the memory location
+.global k_xchg
 k_xchg:
   xchg %rdi, (%rsi)
   mov %rdi, %rax
   retq
 
 
+# Executes the XADD instruction to add the value of RDI to the
+# value pointed to by RSI. The previous value held at the memory
+# location is returned. The lock prefix is added to lock the bus.
+#
+# Params:
+#   RDI - a value to be added to the value at a memory location
+#   RSI - a memory location containing a value to be added
+#
+# Returns:
+#   RAX - the value formerly held at the memory location
+.global k_xadd
 k_xadd:
   lock xadd %rdi, (%rsi)
   mov %rdi, %rax
   retq
 
 
+.global k_bts
 k_bts:
   lock bts %rdi, (%rsi)
   jc .bts_carry
@@ -443,6 +465,7 @@ k_bts:
   retq
 
 
+.global k_btr
 k_btr:
   lock btr %rdi, (%rsi)
   jc .btr_carry
@@ -456,31 +479,45 @@ k_btr:
 # TODO: come up with better names for these procedures
 
 
-# NOTE: used for spinlocks
-k_bts_wait:
-  lock bts %rdi, (%rsi) # attempt to set a bit
-  jc .bts_wait_loop     # if the bit was already set, loop until it isn't set
+# Attempts to set bit 0 of the value pointed to by RDI.
+# If bit 0 is already set, then this procedure enters a loop and
+# repeatedly tests the value until it is 0. Once bit 0 is cleared,
+# the procedure makes another attempt to set it.
+#
+# Params:
+#   RDI - a memory location pointing to the byte whose bit 0 will be set
+#
+.global k_bts_spin
+k_bts_spin:
+  lock bts $0, (%rdi) # attempt to set a bit
+  jc .bts_spin_loop     # if the bit was already set, loop until it isn't set
   retq
 
-.bts_wait_loop:
+.bts_spin_loop:
   pause
-  testq $0x1, (%rsi) # check if the bit is set
-  jnz .bts_wait_loop # if the bit is set, repeat the loop
-  jmp k_bts_wait     # if the bit is not set, jump back to k_bts_wait
+  testq $0x1, (%rdi) # check if the bit is set
+  jnz .bts_spin_loop # if the bit is set, repeat the loop
+  jmp k_bts_spin     # if the bit is not set, jump back to k_bts_spin
 
 
-# NOTE: used in counting sempahores
-k_xadd_wait:
-  mov (%rsi), %rax
-  test %rax, %rax    # check if the value is < 0
-  js .xadd_wait_loop # if the value is < 0, loop until it's >= 0
-
-  lock xadd %rdi, (%rsi) # add the first argument to the value
+# Attempts to decrement a semaphore.
+# If the value is less than 0, this procedure loops until it is >= 0,
+# at which point it restarts execution from the beginning.
+#
+# Params:
+#   RDI - the memory location of a sempahore
+.global k_sem_wait
+k_sem_wait:
+  mov (%rdi), %rax
+  test %rax, %rax        # Set the sign flag if the semaphore is < 0.
+  js .sem_wait_loop      # If the value is < 0, loop until it's >= 0.
+  mov $-1, %rdx          # Store -1 in RDX so it can be used with XADD.
+  lock xadd %rdx, (%rdi) # Add -1 to the value to decrement it.
   retq
 
-.xadd_wait_loop:
+.sem_wait_loop:
   pause
-  mov (%rsi), %rax
-  test %rax, %rax    # check if the value is < 0
-  js .xadd_wait_loop # if the value is < 0, repeat the loop
-  jmp k_xadd_wait    # if the value is >= 0, jump back to k_xadd_wait
+  mov (%rdi), %rax
+  test %rax, %rax   # Set the sign flag if the semaphore is < 0.
+  js .sem_wait_loop # If the value is < 0, repeat the loop.
+  jmp k_sem_wait    # If the value is >= 0, restart the procedure.

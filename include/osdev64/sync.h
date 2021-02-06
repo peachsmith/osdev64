@@ -133,7 +133,7 @@ k_semaphore* k_semaphore_create(int64_t n);
  * Returns:
  *   k_spinlock* - a pointer to the sempahore to destroy
  */
-void k_semaphore_destroy(k_spinlock*);
+void k_semaphore_destroy(k_semaphore*);
 
 /**
  * Decrements a semaphore by 1 to attempt to access a resource.

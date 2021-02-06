@@ -99,10 +99,9 @@ k_regn k_btr(k_regn, k_regn*);
  * which point it makes another attempt to set bit 0.
  *
  * Params:
- *   k_regn - a number representing the bit to set
  *   k_regn* - a location in memory containing the bit to set
  */
-void k_bts_wait(k_regn, k_regn*);
+void k_bts_spin(k_regn*);
 
 
 /**
@@ -113,7 +112,7 @@ void k_bts_wait(k_regn, k_regn*);
  *   int64_t - the amount to add to the destination
  *   int64_t* - a pointer to the value to be added
  */
-int32_t k_xadd(int64_t, int64_t*);
+int64_t k_xadd(int64_t, int64_t*);
 
 
 /**
@@ -126,7 +125,7 @@ int32_t k_xadd(int64_t, int64_t*);
  *   int64_t - the amount to add to the destination
  *   int64_t* - a pointer to the value to be added
  */
-int32_t k_xadd_wait(int64_t, int64_t*);
+void k_sem_wait(int64_t*);
 
 
 /**

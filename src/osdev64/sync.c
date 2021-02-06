@@ -94,7 +94,7 @@ void k_spinlock_destroy(k_spinlock* sl)
 
 void k_spinlock_acquire(k_spinlock* sl)
 {
-  k_bts_wait(0, sl);
+  k_bts_spin(sl);
 }
 
 
@@ -145,13 +145,10 @@ void k_semaphore_destroy(k_semaphore* s)
 
 void k_semaphore_wait(k_semaphore* s)
 {
-  // fprintf(stddbg, "LOCK semaphore %llX, value of %lld\n", s, *s);
   k_spinlock_acquire((k_spinlock*)&s[1]);
 
-  // fprintf(stddbg, "WAIT semaphore %llX, value of %lld\n", s, *s);
-  k_xadd_wait(-1, s);
+  k_sem_wait(s);
 
-  // fprintf(stddbg, "DONE semaphore %llX, value of %lld\n", s, *s);
   k_spinlock_release((k_spinlock*)&s[1]);
 }
 
