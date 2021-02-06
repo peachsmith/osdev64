@@ -7,7 +7,8 @@
 #include "klibc/stdio.h"
 
 extern k_spinlock* g_demo_lock;
-extern k_semaphore* g_demo_sem;
+extern k_semaphore* g_demo_sem_pub;
+extern k_semaphore* g_demo_sem_sub;
 
 k_regn g_mutex_data[3];
 k_regn g_sem_data[3];
@@ -58,8 +59,16 @@ void demo_sem_task_a_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem);
-    fprintf(stddbg, "Semaphore task A has performed an action. Semaphore: %lld\n", *g_demo_sem);
+    k_semaphore_wait(g_demo_sem_sub);
+    fprintf(
+      stddbg,
+      "Semaphore task A has performed an action. "
+      "sub: %lld, pub: %lld\n",
+      *g_demo_sem_sub,
+      *g_demo_sem_pub
+    );
+    k_apic_wait(120);
+    k_semaphore_signal(g_demo_sem_pub);
   }
 }
 
@@ -67,8 +76,16 @@ void demo_sem_task_b_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem);
-    fprintf(stddbg, "Semaphore task B has performed an action. Semaphore: %lld\n", *g_demo_sem);
+    k_semaphore_wait(g_demo_sem_sub);
+    fprintf(
+      stddbg,
+      "Semaphore task B has performed an action. "
+      "sub: %lld, pub: %lld\n",
+      *g_demo_sem_sub,
+      *g_demo_sem_pub
+    );
+    k_apic_wait(120);
+    k_semaphore_signal(g_demo_sem_pub);
   }
 }
 
@@ -76,8 +93,16 @@ void demo_sem_task_c_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem);
-    fprintf(stddbg, "Semaphore task C has performed an action. Semaphore: %lld\n", *g_demo_sem);
+    k_semaphore_wait(g_demo_sem_sub);
+    fprintf(
+      stddbg,
+      "Semaphore task C has performed an action. "
+      "sub: %lld, pub: %lld\n",
+      *g_demo_sem_sub,
+      *g_demo_sem_pub
+    );
+    k_apic_wait(120);
+    k_semaphore_signal(g_demo_sem_pub);
   }
 }
 //==========================================

@@ -116,6 +116,8 @@ k_semaphore* k_semaphore_create(int64_t n)
       sync_memory[b + 1] = 0;
       sync_memory[b + 2] = 0;
       set_bit(b);
+      set_bit(b + 1);
+      set_bit(b + 2);
       return &sync_memory[b];
     }
   }
@@ -143,10 +145,13 @@ void k_semaphore_destroy(k_semaphore* s)
 
 void k_semaphore_wait(k_semaphore* s)
 {
+  // fprintf(stddbg, "LOCK semaphore %llX, value of %lld\n", s, *s);
   k_spinlock_acquire((k_spinlock*)&s[1]);
 
+  // fprintf(stddbg, "WAIT semaphore %llX, value of %lld\n", s, *s);
   k_xadd_wait(-1, s);
 
+  // fprintf(stddbg, "DONE semaphore %llX, value of %lld\n", s, *s);
   k_spinlock_release((k_spinlock*)&s[1]);
 }
 

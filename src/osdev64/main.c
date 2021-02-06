@@ -27,7 +27,8 @@
 
 
 k_spinlock* g_demo_lock;
-k_semaphore* g_demo_sem;
+k_semaphore* g_demo_sem_sub;
+k_semaphore* g_demo_sem_pub;
 
 
 
@@ -58,8 +59,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     HANG();
   }
 
-  g_demo_sem = k_semaphore_create(-1);
-  if (g_demo_sem == NULL)
+  g_demo_sem_pub = k_semaphore_create(2);
+  if (g_demo_sem_pub == NULL)
+  {
+    fprintf(stddbg, "failed to create demo semaphore\n");
+    HANG();
+  }
+
+  g_demo_sem_sub = k_semaphore_create(-1);
+  if (g_demo_sem_sub == NULL)
   {
     fprintf(stddbg, "failed to create demo semaphore\n");
     HANG();
@@ -375,7 +383,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_task* demo_sem_task_a = k_task_create(demo_sem_task_a_action);
   k_task* demo_sem_task_b = k_task_create(demo_sem_task_b_action);
-  k_task* demo_sem_task_c = k_task_create(demo_sem_task_b_action);
+  k_task* demo_sem_task_c = k_task_create(demo_sem_task_c_action);
 
   k_task_schedule(main_task);
 
@@ -502,10 +510,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     //   demo_mutex_task_b = NULL;
     // }
 
-    k_apic_wait(120);
-    k_semaphore_signal(g_demo_sem);
-    k_semaphore_signal(g_demo_sem);
-    k_semaphore_signal(g_demo_sem);
+    
+    k_apic_wait(60);
+    k_semaphore_wait(g_demo_sem_pub);
+    k_semaphore_signal(g_demo_sem_sub);
 
     if (demo_sem_task_a != NULL && demo_sem_task_a->status == TASK_REMOVED)
     {

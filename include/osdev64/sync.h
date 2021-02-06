@@ -5,12 +5,54 @@
 
 #include "osdev64/axiom.h"
 
+
+// Synchronization notes:
+//
+// Mutex:
+// "mutex" is an abbreviation of "mutual exclusion". It is the concept
+// of only one task being allowed access to a resource at any given time.
+// 
+// Sempahore:
+// A sempahore is a value that is decremented to gain access to a resource.
+// A semaphore with a starting value of n can theoretically allow up to n
+// tasks to access some resoure simultaneously.
+//
+// Spinlock:
+// A spinlock attempts to set a value and enters into a loop until that value
+// is successfully set. This loop is sometimes called "busy waiting" because
+// it uses CPU clock cycles. Due to the loop taking up CPU time, it's
+// generally regarded as inefficient in a single core environment.
+//
+// Sleep:
+// In the context of task synchronization, to "sleep" is to wait on some
+// condition without expending CPU clock cycles. This is an alternative
+// to the busy waiting of a spinlock. When the scheduler is selecting the
+// next task to run, it will skip over a task that is sleeping until
+// the resource that the task is waiting to access becomes available.
+//
+//
+// Type Definitions:
+//
+//   mutex_lock - an implementation of a lock that uses either spinlocks
+//                or sleeping to acquire the lock.
+//
+//   sempahore - an implementation of a counting semaphore that uses either
+//               spinlocks or sleeping to ensure the atomicity of its
+//               increment and decrement operations.
+//
+//   spinlock - an implementation of a spinlock that attempts to set a
+//              value and loops infinitely until the value is successfully
+//              set.
+//
+
+
+
 /**
  * A spinlock is a lock in which the task attempting to obtain the lock
  * waits for the lock to become available. This is used to implement
  * mutual exclusion. Once a task has acquired the lock, no other tasks
  * should be able to acquire the lock until it is released.
- * 
+ *
  * A task utilizes a spinlock through the k_spinlock_acquire and
  * k_spinlock_release functions. A task acquires the lock by calling
  * k_spinlock_acquire, then it performs the desired operations
@@ -23,7 +65,7 @@ typedef k_regn k_spinlock;
  * A sempahore allows one or more tasks to notify other tasks when
  * a resource is available. For a given semaphore with a value of
  * n, up to n tasks can access the synchronized resource at any given time.
- * 
+ *
  * Tasks utilize a sempahore with the k_sempahore_wait and
  * k_sempahore_signal functions. A task that attempts to access a protected
  * resource calls k_sempahore_wait to make sure that the resource is available.
@@ -78,7 +120,7 @@ void k_spinlock_release(k_spinlock*);
  *
  * Params:
  *   int64_t - the starting value of the semaphore
- * 
+ *
  * Returns:
  *   k_semaphore* - a pointer to a new semaphore or NULL on failure
  */
