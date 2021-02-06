@@ -4,6 +4,8 @@
 
 .section .text
 
+.extern k_debug_spin
+
 # procedures
 .global k_disable_interrupts
 .global k_enable_interrupts
@@ -426,6 +428,15 @@ k_xchg:
 
 
 k_xadd:
+
+  # push %rdi
+  # push %rsi
+  # cld
+  # mov (%rsi), %rdi
+  # call k_debug_spin # print the current value of the sempahore
+  # pop %rsi
+  # pop %rdi
+
   lock xadd %rdi, (%rsi)
   mov %rdi, %rax
   retq
@@ -469,12 +480,20 @@ k_bts_wait:
 
 # NOTE: used in counting sempahores
 k_xadd_wait:
+
+  # push %rdi
+  # push %rsi
+  # cld
+  # mov (%rsi), %rdi
+  # call k_debug_spin # print the current value of the sempahore
+  # pop %rsi
+  # pop %rdi
+
   mov (%rsi), %rax
   test %rax, %rax    # check if the value is < 0
   js .xadd_wait_loop # if the value is < 0, loop until it's >= 0
 
-  mov %rdi, %rax
-  lock xadd %rax, (%rsi) # add the first argument to the value
+  lock xadd %rdi, (%rsi) # add the first argument to the value
   retq
 
 .xadd_wait_loop:

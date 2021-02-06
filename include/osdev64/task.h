@@ -1,7 +1,7 @@
 #ifndef JEP_TASK_H
 #define JEP_TASK_H
 
-#include <stdint.h>
+#include "osdev64/axiom.h"
 
 
 // task states
@@ -13,7 +13,7 @@
 // task structure
 typedef struct k_task {
   void* mem_base; // base address of all task memory
-  uint64_t* regs; // CPU state
+  k_regn* regs; // CPU state
   uint64_t id;
   int status;
   struct k_task* next;
@@ -24,7 +24,7 @@ typedef struct k_task {
  * Switches between tasks.
  *
  */
-uint64_t* k_task_switch(uint64_t*);
+k_regn* k_task_switch(k_regn*);
 
 
 /**

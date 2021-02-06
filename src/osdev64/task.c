@@ -114,7 +114,7 @@ static void remove_task(k_task* target)
 }
 
 
-uint64_t* k_task_switch(uint64_t* reg_stack)
+k_regn* k_task_switch(k_regn* reg_stack)
 {
   // If there are no tasks, then proceed with the current task.
   if (g_task_list == NULL)
@@ -164,8 +164,8 @@ void k_task_end()
 k_task* k_task_create(void (action)())
 {
   void* task_mem; // task memory
-  uint64_t rsp;   // stack pointer
-  uint64_t rbp;   // base pointer
+  k_regn rsp;   // stack pointer
+  k_regn rbp;   // base pointer
 
   // Allocate 16 Kib of stack space, and 4 Kib for the task state.
   // The task memory will have the following layout:
@@ -189,30 +189,31 @@ k_task* k_task_create(void (action)())
   // The stack pointer should be 16 byte aligned, and we should
   // reserve space on the initial stack for the ISR stack, the
   // register values, and the k_task_end function.
-  rsp = (uint64_t)task_mem + 0x4000 - TASK_STACK_ALIGN;
-  rbp = (uint64_t)task_mem + 0x4000;
+  rbp = PTR_TO_N(task_mem) + 0x4000;
+  rsp = rbp - TASK_STACK_ALIGN;
+  
 
-  // Put the address of the k_task_end function on this task's stack.
-  *(uint64_t*)(rsp) = (uint64_t)k_task_end;
+  // Put the address of the k_task_end function on the top of the stack.
+  *(k_regn*)(rsp) = PTR_TO_N(k_task_end);
 
   // The memory that will hold the task state will start
   // at at an offset of 16 bytes from the start of the fifth page.
-  k_task* task = (k_task*)((uint64_t)task_mem + 0x4010);
+  k_task* task = (k_task*)(rbp + 0x10);
 
   // The register stack memory will start at at an offset of 96 bytes
   // from the start of the fifth page.
   // This leaves a difference of 80 bytes between the start of task state
   // memory and the start of register stack memory.
-  task->regs = (uint64_t*)((uint64_t)task_mem + 0x4060);
+  task->regs = (k_regn*)(rbp + 0x60);
 
 
   // Build an ISR stack whose values will be popped
   // off the stack by the IRET instruction.
-  task->regs[TASK_REG_SS] = 0x10;              // data segment
-  task->regs[TASK_REG_RSP] = rsp;              // stack pointer
-  task->regs[TASK_REG_RFLAGS] = 0x200;         // bit 9 (interrupt flag)
-  task->regs[TASK_REG_CS] = 0x8;               // code segment.
-  task->regs[TASK_REG_RIP] = (uint64_t)action; // begin execution here
+  task->regs[TASK_REG_SS] = 0x10;                // data segment
+  task->regs[TASK_REG_RSP] = rsp;                // stack pointer
+  task->regs[TASK_REG_RFLAGS] = 0x200;           // bit 9 (interrupt flag)
+  task->regs[TASK_REG_CS] = 0x8;                 // code segment.
+  task->regs[TASK_REG_RIP] = PTR_TO_N(action); // begin execution here
 
 
   // Set the initial base pointer.

@@ -55,6 +55,12 @@ void demo_mutex_task_b_action()
 //==========================================
 // BEGIN counting semaphore demo
 //==========================================
+
+void k_debug_spin(int64_t s)
+{
+  fprintf(stddbg, "%lld\n", s);
+}
+
 void demo_sem_task_a_action()
 {
   for (;;)
@@ -67,7 +73,7 @@ void demo_sem_task_a_action()
       *g_demo_sem_sub,
       *g_demo_sem_pub
     );
-    // k_apic_wait(120);
+    k_apic_wait(120);
     k_semaphore_signal(g_demo_sem_pub);
   }
 }

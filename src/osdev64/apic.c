@@ -206,6 +206,8 @@ void k_apic_wait(uint64_t ticks)
 
 void apic_generic_legacy_handler(uint8_t irqn)
 {
+  // fprintf(stddbg, "APIC IRQ %u\n", irqn);
+  
   // Check the local APIC's ISR to see if we need to send an EOI.
   // Since legacy IRQs should have been mapped starting at interrupt 0x30,
   // the 16 IRQs would correspond to bits [63:48] of the local APIC's ISR.
