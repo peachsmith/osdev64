@@ -147,7 +147,6 @@ static uint32_t ioapic_write(uint32_t index, uint32_t value)
 
 void apic_generic_isr();
 void apic_spurious_isr();
-void apic_pit_isr();
 void apic_generic_legacy_isr();
 void debug_isr();
 
@@ -206,8 +205,8 @@ void k_apic_wait(uint64_t ticks)
 
 void apic_generic_legacy_handler(uint8_t irqn)
 {
-  // fprintf(stddbg, "APIC IRQ %u\n", irqn);
-  
+  fprintf(stddbg, "APIC IRQ %u\n", irqn);
+
   // Check the local APIC's ISR to see if we need to send an EOI.
   // Since legacy IRQs should have been mapped starting at interrupt 0x30,
   // the 16 IRQs would correspond to bits [63:48] of the local APIC's ISR.

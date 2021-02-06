@@ -1,5 +1,109 @@
 .section .text
 
+# Callee-saved registers:
+# rbx
+# rsp
+# rbp
+# r12
+# r13
+# r14
+# r15
+
+# Caller-saved registers:
+# rax
+# rcx
+# rdx
+# rsi
+# rdi
+# r8
+# r9
+# r10
+# r11
+# r11
+
+
+# Pushes the caller-saved registers onto the stack.
+.macro push_caller_saved
+  push %rax
+  push %rcx
+  push %rdx
+  push %rsi
+  push %rdi
+  push %r8
+  push %r9
+  push %r10
+  push %r11
+  push %r11 # padding (for 16-byte alignment)
+.endm
+
+# Pops the caller-saved registers from the stack.
+.macro pop_caller_saved
+  pop %r11 # padding (for 16-byte alignment)
+  pop %r11
+  pop %r10
+  pop %r9
+  pop %r8
+  pop %rdi
+  pop %rsi
+  pop %rdx
+  pop %rcx
+  pop %rax
+.endm
+
+# Generic handler for IRQs.
+.macro handle_generic_irq n:req handler:req
+  cld
+  push_caller_saved
+  mov $\n, %rdi
+  call \handler
+  pop_caller_saved
+.endm
+
+
+
+# Pushes the registers onto the stack in preparation for a task switch.
+.macro push_task_regs
+  push %rax
+  push %rbx
+  push %rcx
+  push %rdx
+  push %rsi
+  push %rdi
+  push %r8
+  push %r9
+  push %r10
+  push %r11
+  push %r12
+  push %r13
+  push %r14
+  push %r15
+  push %rbp
+  push %rbp # padding (for 16-byte alignment)
+.endm
+
+# Pops the register values from the stack after a task switch.
+.macro pop_task_regs
+  pop %rbp # padding (for 16-byte alignment)
+  pop %rbp
+  pop %r15
+  pop %r14
+  pop %r13
+  pop %r12
+  pop %r11
+  pop %r10
+  pop %r9
+  pop %r8
+  pop %rdi
+  pop %rsi
+  pop %rdx
+  pop %rcx
+  pop %rbx
+  pop %rax
+.endm
+
+
+
+
 # interrupt service routine (ISR) entry points
 .global isr0
 .global isr1
@@ -38,7 +142,6 @@
 .global generic_isr
 .global apic_generic_isr
 .global apic_spurious_isr
-.global apic_pit_isr
 .global apic_generic_legacy_isr
 
 
@@ -352,178 +455,111 @@ apic_irq_0:
   # The stack should have this structure:
   # +------------+
   # | SS         |
+  # | RSP        | <- RSP from before entering this ISR
+  # | RFLAGS     |
+  # | CS         |
+  # | RIP        |
+  # +------------+ <- RSP currently points to the top of this stack frame
+
+  # Push the task registers onto the stack.
+  push_task_regs
+
+  # After pushing the current task's registers onto the stack,
+  # the local stack frame should have this structure:
+  #
+  # +------------+
+  # | SS         |
   # | RSP        |
   # | RFLAGS     |
   # | CS         |
   # | RIP        |
-  # +------------+
+  # |------------|
+  # | RAX        |
+  # | RBX        |
+  # | RCX        |
+  # | RDX        |
+  # | RSI        |
+  # | RDI        |
+  # | r8         |
+  # | r9         |
+  # | r10        |
+  # | r11        |
+  # | r12        |
+  # | r13        |
+  # | r14        |
+  # | r15        |
+  # | RBP        |
+  # | padding    |
+  # +------------+ <- RSP now points to the top of this stack frame
 
-
-  # put the GPRs on the stack
-  push %rax
-  push %rbx
-  push %rcx
-  push %rdx
-  push %r8
-  push %r9
-  push %r10
-  push %r11
-  push %r12
-  push %r13
-  push %r14
-  push %r15
-  push %rsi
-  push %rdi
-  push %rbp
-  push %rax # padding to keep 16-byte alignment
-  # TODO: add xmm and other floating point registers
-  
+  # Call the timer handler.
   mov %rsp, %rdi
   call apic_pit_handler
   mov %rax, %rsp
 
-  pop %rbx # remove the padding
-  pop %rbp
-  pop %rdi
-  pop %rsi
-  pop %r15
-  pop %r14
-  pop %r13
-  pop %r12
-  pop %r11
-  pop %r10
-  pop %r9
-  pop %r8
-  pop %rdx
-  pop %rcx
-  pop %rbx
-  pop %rax
+  # Pop the task registers from the stack.
+  pop_task_regs
 
   iretq
 
 apic_irq_1:
-  cld
-
-  # Callee-saved registers:
-  # rbx
-  # rsp
-  # rbp
-  # r12
-  # r13
-  # r14
-  # r15
-
-  # Save the caller-saved registers
-  push %rax
-  push %rcx
-  push %rdx
-  push %rsi
-  push %rdi
-  push %r8
-  push %r9
-  push %r10
-  push %r11
-  push %r11 # padding to keep 16-byte alignment
-
-  mov $0x1, %rdi
-  call apic_generic_legacy_handler
-
-  # Restore the caller-saved registers
-  pop %r11 # remove the padding
-  pop %r11
-  pop %r10
-  pop %r9
-  pop %r8
-  pop %rdi
-  pop %rsi
-  pop %rdx
-  pop %rcx
-  pop %rax
-
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_2:
-  cld
-  mov $0x2, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 2, apic_generic_legacy_handler
   iretq
 
 apic_irq_3:
-  cld
-  mov $0x3, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_4:
-  cld
-  mov $0x4, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
   
 apic_irq_5:
-  cld
-  mov $0x5, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_6:
-  cld
-  mov $0x6, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_7:
-  cld
-  mov $0x7, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_8:
-  cld
-  mov $0x8, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_9:
-  cld
-  mov $0x9, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_10:
-  cld
-  mov $0xA, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_11:
-  cld
-  mov $0xB, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_12:
-  cld
-  mov $0xC, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_13:
-  cld
-  mov $0xD, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_14:
-  cld
-  mov $0xE, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 apic_irq_15:
-  cld
-  mov $0xF, %rdi
-  call apic_generic_legacy_handler
+  handle_generic_irq 1, apic_generic_legacy_handler
   iretq
 
 
@@ -533,26 +569,29 @@ apic_irq_15:
 
 apic_generic_isr:
   cld
+  push_caller_saved
   call apic_generic_handler
+  pop_caller_saved
   iretq
 
 apic_spurious_isr:
   cld
+  push_caller_saved
   call apic_spurious_handler
-  iretq
-
-apic_pit_isr:
-  cld
-  call apic_pit_handler
+  pop_caller_saved
   iretq
 
 apic_generic_legacy_isr:
   cld
+  push_caller_saved
   call apic_generic_legacy_handler
+  pop_caller_saved
   iretq
 
 
 debug_isr:
   cld
+  push_caller_saved
   call debug_handler
+  pop_caller_saved
   iretq
