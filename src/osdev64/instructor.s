@@ -428,15 +428,6 @@ k_xchg:
 
 
 k_xadd:
-
-  # push %rdi
-  # push %rsi
-  # cld
-  # mov (%rsi), %rdi
-  # call k_debug_spin # print the current value of the sempahore
-  # pop %rsi
-  # pop %rdi
-
   lock xadd %rdi, (%rsi)
   mov %rdi, %rax
   retq
@@ -480,15 +471,6 @@ k_bts_wait:
 
 # NOTE: used in counting sempahores
 k_xadd_wait:
-
-  # push %rdi
-  # push %rsi
-  # cld
-  # mov (%rsi), %rdi
-  # call k_debug_spin # print the current value of the sempahore
-  # pop %rsi
-  # pop %rdi
-
   mov (%rsi), %rax
   test %rax, %rax    # check if the value is < 0
   js .xadd_wait_loop # if the value is < 0, loop until it's >= 0
