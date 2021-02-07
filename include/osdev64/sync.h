@@ -112,6 +112,16 @@ void k_spinlock_acquire(k_spinlock*);
  */
 void k_spinlock_release(k_spinlock*);
 
+/**
+ * Attempts to acquire a lock.
+ * The task that calls this function will sleep until the lock becomes
+ * available.
+ *
+ * Params:
+ *   k_spinlock* - a pointer to the spinlock to acquire
+ */
+void k_lock_acquire(k_spinlock*);
+
 
 
 

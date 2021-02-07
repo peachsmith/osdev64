@@ -97,6 +97,11 @@ void k_spinlock_acquire(k_spinlock* sl)
   k_bts_spin(sl);
 }
 
+void k_lock_acquire(k_spinlock* sl)
+{
+  k_bts_sleep(sl);
+}
+
 
 void k_spinlock_release(k_spinlock* sl)
 {

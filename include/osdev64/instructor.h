@@ -103,6 +103,17 @@ k_regn k_btr(k_regn, k_regn*);
  */
 void k_bts_spin(k_regn*);
 
+/**
+ * Executes the BTS instruction to set bit 0 of a 64-bit value.
+ * If the carry flag is set after executing the BTS instruction,
+ * then this procedure puts the current task to sleep until
+ * the lock has a value of 0.
+ *
+ * Params:
+ *   k_regn* - a location in memory containing the bit to set
+ */
+void k_bts_sleep(k_regn*);
+
 
 /**
  * Executes the XADD instruction to add the first argument to the value

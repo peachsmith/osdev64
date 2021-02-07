@@ -3,6 +3,41 @@
 # For example: IN, OUT, LGDT, etc.
 .section .text
 
+# Used to put the current task to sleep
+.extern k_task_sleep
+.extern k_task_resume
+
+# Pushes the caller-saved registers onto the stack.
+.macro push_caller_saved
+  push %rax
+  push %rcx
+  push %rdx
+  push %rsi
+  push %rdi
+  push %r8
+  push %r9
+  push %r10
+  push %r11
+  push %r11 # padding (for 16-byte alignment)
+.endm
+
+# Pops the caller-saved registers from the stack.
+.macro pop_caller_saved
+  pop %r11 # padding (for 16-byte alignment)
+  pop %r11
+  pop %r10
+  pop %r9
+  pop %r8
+  pop %rdi
+  pop %rsi
+  pop %rdx
+  pop %rcx
+  pop %rax
+.endm
+
+
+
+
 
 # Executes the CLI instruction to disable interrupts.
 .global k_disable_interrupts
@@ -498,6 +533,26 @@ k_bts_spin:
   testq $0x1, (%rdi) # check if the bit is set
   jnz .bts_spin_loop # if the bit is set, repeat the loop
   jmp k_bts_spin     # if the bit is not set, jump back to k_bts_spin
+
+
+# Executes the BTS instruction to set bit 0 of a 64-bit value.
+# If the carry flag is set after executing the BTS instruction,
+# then this procedure puts the current task to sleep until
+# the lock has a value of 0.
+#
+# Params:
+#   RDI - a memory location pointing to the byte whose bit 0 will be set
+#
+.global k_bts_sleep
+k_bts_sleep:
+  lock bts $0, (%rdi) # attempt to set a bit
+  jc .bts_sleep       # If the bit was already set, then sleep.
+  retq
+
+.bts_sleep:
+  mov $1, %rdx    # Indicate that the task is waiting on a lock.
+  int $0x40       # raise interrupt 64 to put the task to sleep
+  jmp k_bts_sleep # restart the procedure
 
 
 # Attempts to decrement a semaphore.

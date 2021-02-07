@@ -7,18 +7,27 @@
 // task states
 #define TASK_NEW 0
 #define TASK_RUNNING 1
-#define TASK_STOPPED 2
-#define TASK_REMOVED 3
+#define TASK_SLEEPING 2
+#define TASK_STOPPED 3
+#define TASK_REMOVED 4
 
 // task structure
 typedef struct k_task {
-  void* mem_base; // base address of all task memory
-  k_regn* regs; // CPU state
-  uint64_t id;
-  int status;
-  struct k_task* next;
+  void* mem_base;      // base address of all task memory
+  k_regn* regs;        // register stack
+  uint64_t id;         // task ID
+  int status;          // status
+  struct k_task* next; // next task in the list
+  k_regn* sync_val;    // synchronization value
+  k_regn sync_type;    // synchronization type
 }k_task;
 
+
+/**
+ * Initializes task management.
+ * 
+ */
+void k_task_init();
 
 /**
  * Switches between tasks.
@@ -57,9 +66,24 @@ void k_task_destroy(k_task*);
 void k_task_schedule(k_task*);
 
 /**
- * Marks a task as STOPPED.
+ * This function changes a task's status to STOPPED.
  * Tasks with this status may be removed.
  */
 void k_task_stop(k_task*);
+
+/**
+ * Prevents execution of a task until synchronized resource becomes
+ * available. The first argument is a pointer to a synchronization primitive,
+ * and the second argument indicates the type of synchronization primitive.
+ * If the type is 1, then the first argument points to a lock. If the type
+ * is 2, then the first argument points to a semaphore.
+ * This function changes the current task's status to SLEEPING.
+ *
+ * Params:
+ *   k_regn* - a pointer to a synchronization primitive
+ *   int - the type of synchronization primitive (1 for lock, 2 for semaphore)
+ */
+k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ);
+//void k_task_sleep(k_regn*, int);
 
 #endif

@@ -1,5 +1,6 @@
 #include "osdev64/task.h"
 #include "osdev64/memory.h"
+#include "osdev64/interrupts.h"
 #include "osdev64/instructor.h"
 #include "osdev64/apic.h"
 
@@ -13,11 +14,16 @@
 #define TASK_REG_RIP 16
 #define TASK_REG_RBP 1
 
-// memory occupied by a 16 byte aligned register stack
-// This represents a number of bytes of memory that is at least
-// large enough to hold the register stack of a task as well as
-// a function to be called once the task returns from its action.
-#define TASK_STACK_ALIGN (sizeof(uint64_t) * 24)
+#define TASK_SYNC_LOCK 1
+#define TASK_SYNC_SEMAPHORE 2
+
+// Memory for the initial contents of a task's stack.
+// It must be large enough to hold a task's entire register stack,
+// since the registers stack is popped upon returning to the IRQ that
+// called k_task_switch.
+// It must also have space for the k_task_end function.
+#define TASK_STACK_SPACE (sizeof(uint64_t) * 28)
+
 
 // number of values in the register stack including padding
 #define TASK_REG_COUNT 21
@@ -29,10 +35,6 @@
 //
 // Register Stack Structure
 // +-------------------+
-// | ///////////////// |
-// | //// unknown //// | <- don't know, don't care, don't touch
-// | ///////////////// |
-// |-------------------|
 // | pushed by the CPU |
 // |                   |
 // | 20     SS         |
@@ -62,6 +64,8 @@
 // +-------------------+
 
 
+// ISR for used to call k_task_sleep
+void k_sleep_isr();
 
 // number of tasks that have been created
 uint64_t g_task_count = 1;
@@ -114,6 +118,13 @@ static void remove_task(k_task* target)
 }
 
 
+void k_task_init()
+{
+  // Interrupt 64 will be used to put the current task to sleep.
+  k_install_isr(k_sleep_isr, 0x40);
+}
+
+
 k_regn* k_task_switch(k_regn* reg_stack)
 {
   // If there are no tasks, then proceed with the current task.
@@ -139,6 +150,38 @@ k_regn* k_task_switch(k_regn* reg_stack)
   if (g_current_task->next != NULL)
   {
     g_current_task = g_current_task->next;
+
+    // Handle tasks with a status of SLEEPING.
+    while (g_current_task->next != NULL
+      && g_current_task->status == TASK_SLEEPING)
+    {
+      if (g_current_task->sync_type == TASK_SYNC_LOCK)
+      {
+        if (*g_current_task->sync_val == 0)
+        {
+          g_current_task->status = TASK_RUNNING;
+        }
+        else
+        {
+          g_current_task = g_current_task->next;
+        }
+      }
+      else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE)
+      {
+        if (*g_current_task->sync_val >= 0)
+        {
+          g_current_task->status = TASK_RUNNING;
+        }
+        else
+        {
+          g_current_task = g_current_task->next;
+        }
+      }
+      else
+      {
+        g_current_task = g_current_task->next;
+      }
+    }
   }
 
   // Return the register stack of the next task.
@@ -171,11 +214,11 @@ k_task* k_task_create(void (action)())
   // The task memory will have the following layout:
   // +--------------------+
   // |      4 Kib         |
-  // |   task state and   |
-  // |  register values   |
-  // |--------------------|
-  // |                    |
-  // |       16 Kib       |
+  // |   task state and   | <- initial register stack
+  // |  register values   | <- task state
+  // |--------------------| <- RBP
+  // |                    | <- padding
+  // |       16 Kib       | <- RSP
   // |     stack space    |
   // |                    |
   // +--------------------+
@@ -190,8 +233,8 @@ k_task* k_task_create(void (action)())
   // reserve space on the initial stack for the ISR stack, the
   // register values, and the k_task_end function.
   rbp = PTR_TO_N(task_mem) + 0x4000;
-  rsp = rbp - TASK_STACK_ALIGN;
-  
+  rsp = rbp - TASK_STACK_SPACE;
+
 
   // Put the address of the k_task_end function on the top of the stack.
   *(k_regn*)(rsp) = PTR_TO_N(k_task_end);
@@ -200,11 +243,12 @@ k_task* k_task_create(void (action)())
   // at at an offset of 16 bytes from the start of the fifth page.
   k_task* task = (k_task*)(rbp + 0x10);
 
-  // The register stack memory will start at at an offset of 96 bytes
+  // The register stack memory will start at at an offset of 240 bytes
   // from the start of the fifth page.
-  // This leaves a difference of 80 bytes between the start of task state
-  // memory and the start of register stack memory.
-  task->regs = (k_regn*)(rbp + 0x60);
+  // This leaves sufficient space between the task state memory and
+  // the initial register stack.
+  // This address must be a multiple of 16.
+  task->regs = (k_regn*)(rbp + 0xF0);
 
 
   // Build an ISR stack whose values will be popped
@@ -213,7 +257,7 @@ k_task* k_task_create(void (action)())
   task->regs[TASK_REG_RSP] = rsp;                // stack pointer
   task->regs[TASK_REG_RFLAGS] = 0x200;           // bit 9 (interrupt flag)
   task->regs[TASK_REG_CS] = 0x8;                 // code segment.
-  task->regs[TASK_REG_RIP] = PTR_TO_N(action); // begin execution here
+  task->regs[TASK_REG_RIP] = PTR_TO_N(action);   // start of execution
 
 
   // Set the initial base pointer.
@@ -274,4 +318,15 @@ void k_task_schedule(k_task* t)
 void k_task_stop(k_task* t)
 {
   t->status = TASK_STOPPED;
+}
+
+k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ)
+{
+  // Set the synchronization value and type in the current task,
+  // then set the current task's status to SLEEPING.
+  g_current_task->sync_val = val;
+  g_current_task->sync_type = typ;
+  g_current_task->status = TASK_SLEEPING;
+
+  return k_task_switch(regs);
 }

@@ -595,3 +595,23 @@ debug_isr:
   call debug_handler
   pop_caller_saved
   iretq
+
+
+.global k_sleep_isr
+k_sleep_isr:
+
+  # Upon entering this procedure, the following registers should
+  # have the following values:
+  # RDX: synchronization type
+  # RDI: address of synchronization value
+
+  cld
+  push_task_regs    # Push the current task's registers onto the stack.
+
+  mov %rdi, %rsi    # The synchronization value is the second argument.
+  mov %rsp, %rdi    # The register stack is the first argument.
+  call k_task_sleep # Put the current task to sleep.
+  mov %rax, %rsp    # Retrieve the register stack of the next task.
+
+  pop_task_regs     # Pop the next task's registers from the stack.
+  iretq
