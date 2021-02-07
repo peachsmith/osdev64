@@ -566,11 +566,12 @@ k_lock_sleep:
 #   RDI - the memory location of a sempahore
 .global k_sem_wait
 k_sem_wait:
-  mov (%rdi), %rax
-  test %rax, %rax        # Set the sign flag if the semaphore is < 0.
-  js .sem_wait_loop      # If the value is < 0, loop until it's >= 0.
   mov $-1, %rdx          # Store -1 in RDX so it can be used with XADD.
   lock xadd %rdx, (%rdi) # Add -1 to the value to decrement it.
+  test %rdx, %rdx        # Set the zero flag if the semaphore was 0.
+  jz .sem_wait_loop      # If the value was <= 0, put the task to sleep.
+  js .sem_wait_loop
+  mov %rdx, %rax
   retq
 
 .sem_wait_loop:

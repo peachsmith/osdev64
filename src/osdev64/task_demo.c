@@ -35,7 +35,7 @@ void demo_mutex_task_b_action()
 {
   for (int i = 0; i < 10; i++)
   {
-    k_mutex_acquire(g_demo_lock, 0);
+    k_mutex_acquire(g_demo_lock, 1);
     k_apic_wait(120);
 
     fprintf(stddbg, "Mutex task B has the spinlock.\n");
@@ -65,7 +65,7 @@ void demo_sem_task_a_action()
 {
   for (;;)
   {
-    k_semaphore_sleep(g_demo_sem_sub);
+    k_semaphore_wait(g_demo_sem_sub, 0);
     fprintf(
       stddbg,
       "Semaphore task A has performed an action. "
@@ -82,7 +82,7 @@ void demo_sem_task_b_action()
 {
   for (;;)
   {
-    k_semaphore_sleep(g_demo_sem_sub);
+    k_semaphore_wait(g_demo_sem_sub, 1);
     fprintf(
       stddbg,
       "Semaphore task B has performed an action. "
@@ -99,7 +99,7 @@ void demo_sem_task_c_action()
 {
   for (;;)
   {
-    k_semaphore_sleep(g_demo_sem_sub);
+    k_semaphore_wait(g_demo_sem_sub, 0);
     fprintf(
       stddbg,
       "Semaphore task C has performed an action. "

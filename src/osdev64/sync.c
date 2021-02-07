@@ -12,11 +12,11 @@
 
 
 
-// memory used for storing locks and semaphores
+// memory used for storing synchronization values
 static k_regn* sync_memory;
 
-// bitmap for keeping track of which spinlocks exist
-static uint64_t spinlock_bitmap[8];
+// bitmap for keeping track of synchronization value allocation
+static uint64_t sync_bitmap[8];
 
 // b should range from 0 to 511
 static uint64_t check_bit(uint64_t bit)
@@ -24,7 +24,7 @@ static uint64_t check_bit(uint64_t bit)
   uint64_t i = bit / 64;
   uint64_t b = bit % 64;
 
-  return spinlock_bitmap[i] & ((uint64_t)1 << b);
+  return sync_bitmap[i] & ((uint64_t)1 << b);
 }
 
 static uint64_t set_bit(uint64_t bit)
@@ -32,7 +32,7 @@ static uint64_t set_bit(uint64_t bit)
   uint64_t i = bit / 64;
   uint64_t b = bit % 64;
 
-  spinlock_bitmap[i] |= ((uint64_t)1 << b);
+  sync_bitmap[i] |= ((uint64_t)1 << b);
 }
 
 static uint64_t clear_bit(uint64_t bit)
@@ -40,30 +40,30 @@ static uint64_t clear_bit(uint64_t bit)
   uint64_t i = bit / 64;
   uint64_t b = bit % 64;
 
-  spinlock_bitmap[i] &= ~((uint64_t)1 << b);
+  sync_bitmap[i] &= ~((uint64_t)1 << b);
 }
 
 void k_sync_init()
 {
-  // Allocate 4 Kib for the spinlock memory pool.
-  // If we use 8 bytes for each spinlock, that allows
-  // for up to 512 unique spinlocks to exist simultaneously.
+  // Allocate 4 Kib for the memory pool.
+  // If we use 8 bytes for each synchronization value, that allows
+  // for up to 512 unique values to exist simultaneously.
   sync_memory = (k_regn*)k_memory_alloc_pages(1);
 
   if (sync_memory == NULL)
   {
     fprintf(
       stddbg,
-      "[ERROR] failed to allocate memory for spinlocks\n"
+      "[ERROR] failed to allocate memory for synchronization values\n"
     );
     HANG();
   }
 }
 
 
-k_lock* k_spinlock_create()
+k_lock* k_mutex_create()
 {
-  // Find the first available bit in the spinlock bitmap.
+  // Find the first available bit in the bitmap.
   for (uint64_t b = 0; b < 512; b++)
   {
     if (!check_bit(b))
@@ -78,9 +78,9 @@ k_lock* k_spinlock_create()
 }
 
 
-void k_spinlock_destroy(k_lock* sl)
+void k_mutex_destroy(k_lock* sl)
 {
-  // Clear the corresponding bit in the spinlock bitmap.
+  // Clear the corresponding bit in the bitmap.
   for (uint64_t b = 0; b < 512; b++)
   {
     if (&sync_memory[b] == sl)
@@ -104,11 +104,6 @@ void k_mutex_acquire(k_lock* sl, int busy)
   }
 }
 
-// void k_lock_acquire(k_spinlock* sl)
-// {
-//   k_lock_sleep(sl);
-// }
-
 
 void k_mutex_release(k_lock* sl)
 {
@@ -120,16 +115,12 @@ void k_mutex_release(k_lock* sl)
 k_semaphore* k_semaphore_create(int64_t n)
 {
   // Find the first available bit in the bitmap.
-  for (uint64_t b = 0; b < 510; b++)
+  for (uint64_t b = 0; b < 512; b++)
   {
-    if (!check_bit(b) && !check_bit(b + 1) && !check_bit(b + 2))
+    if (!check_bit(b))
     {
       sync_memory[b] = n;
-      sync_memory[b + 1] = 0;
-      sync_memory[b + 2] = 0;
       set_bit(b);
-      set_bit(b + 1);
-      set_bit(b + 2);
       return &sync_memory[b];
     }
   }
@@ -142,35 +133,30 @@ k_semaphore* k_semaphore_create(int64_t n)
 void k_semaphore_destroy(k_semaphore* s)
 {
   // Clear the corresponding bit in the bitmap.
-  for (uint64_t b = 0; b < 510; b++)
+  for (uint64_t b = 0; b < 512; b++)
   {
     if (&sync_memory[b] == s)
     {
       clear_bit(b);
-      clear_bit(b + 1);
-      clear_bit(b + 2);
       return;
     }
   }
 }
 
 
-void k_semaphore_wait(k_semaphore* s)
+void k_semaphore_wait(k_semaphore* s, int busy)
 {
-  k_sem_wait(s);
-}
-
-void k_semaphore_sleep(k_semaphore* s)
-{
-  int64_t sem_sleep_res = k_sem_sleep(s);
-  // fprintf(stddbg, "former semaphore value: %lld\n", sem_sleep_res);
+  if (busy)
+  {
+    k_sem_wait(s);
+  }
+  else
+  {
+    k_sem_sleep(s);
+  }
 }
 
 void k_semaphore_signal(k_semaphore* s)
 {
-  k_mutex_acquire((k_lock*)&s[2], 0);
-
   k_xadd(1, s);
-
-  k_mutex_release((k_lock*)&s[2]);
 }

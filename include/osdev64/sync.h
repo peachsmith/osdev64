@@ -6,47 +6,6 @@
 #include "osdev64/axiom.h"
 
 
-// Synchronization notes:
-//
-// Mutex:
-// "mutex" is an abbreviation of "mutual exclusion". It is the concept
-// of only one task being allowed access to a resource at any given time.
-// 
-// Sempahore:
-// A sempahore is a value that is decremented to gain access to a resource.
-// A semaphore with a starting value of n can theoretically allow up to n
-// tasks to access some resoure simultaneously.
-//
-// Spinlock:
-// A spinlock attempts to set a value and enters into a loop until that value
-// is successfully set. This loop is sometimes called "busy waiting" because
-// it uses CPU clock cycles. Due to the loop taking up CPU time, it's
-// generally regarded as inefficient in a single core environment.
-//
-// Sleep:
-// In the context of task synchronization, to "sleep" is to wait on some
-// condition without expending CPU clock cycles. This is an alternative
-// to the busy waiting of a spinlock. When the scheduler is selecting the
-// next task to run, it will skip over a task that is sleeping until
-// the resource that the task is waiting to access becomes available.
-//
-//
-// Type Definitions:
-//
-//   mutex_lock - an implementation of a lock that uses either spinlocks
-//                or sleeping to acquire the lock.
-//
-//   sempahore - an implementation of a counting semaphore that uses either
-//               spinlocks or sleeping to ensure the atomicity of its
-//               increment and decrement operations.
-//
-//   spinlock - an implementation of a spinlock that attempts to set a
-//              value and loops infinitely until the value is successfully
-//              set.
-//
-
-
-
 /**
  * A lock in which the task attempting to obtain the lock
  * waits for the lock to become available. This is used to implement
@@ -78,21 +37,21 @@ typedef k_regn k_semaphore;
 void k_sync_init();
 
 /**
- * Creates a new spinlock.
+ * Creates a new mutex lock.
  *
  * Returns:
- *   k_spinlock* - a pointer to a new spinlock or NULL on failure
+ *   k_lock* - a pointer to a new lock or NULL on failure
  */
-k_lock* k_spinlock_create();
+k_lock* k_mutex_create();
 
 
 /**
- * Frees the memory allocated for a spinlock.
+ * Frees the memory allocated for a mutex lock.
  *
  * Returns:
- *   k_spinlock* - a pointer to the spinlock to destroy
+ *   k_lock* - a pointer to the lock to destroy
  */
-void k_spinlock_destroy(k_lock*);
+void k_mutex_destroy(k_lock*);
 
 /**
  * Attempts to acquire a lock to ensure mutual exclusion.
@@ -104,68 +63,52 @@ void k_spinlock_destroy(k_lock*);
  * will be put to sleep until the lock becomes available.
  *
  * Params:
- *   k_spinlock* - a pointer to the spinlock to acquire
+ *   k_lock* - a pointer to the spinlock to acquire
  *   int - busy flag (1 for busy wait, 0 for sleeping wait)
  */
 void k_mutex_acquire(k_lock*, int);
 
 /**
- * Releases a spinlock.
+ * Releases a lock.
  *
  * Params:
- *   k_spinlock* - a pointer to the spinlock to release
+ *   k_lock* - a pointer to the lock to release
  */
 void k_mutex_release(k_lock*);
 
+
 /**
- * Attempts to acquire a lock.
- * The task that calls this function will sleep until the lock becomes
- * available.
+ * Creates a new counting sempahore.
  *
  * Params:
- *   k_spinlock* - a pointer to the spinlock to acquire
+ *   int64_t - the starting value of the semaphore
+ *
+ * Returns:
+ *   k_semaphore* - a pointer to a new semaphore or NULL on failure
  */
- // void k_lock_acquire(k_spinlock*);
-
-
-
-
- /**
-  * Creates a new counting sempahore.
-  *
-  * Params:
-  *   int64_t - the starting value of the semaphore
-  *
-  * Returns:
-  *   k_semaphore* - a pointer to a new semaphore or NULL on failure
-  */
 k_semaphore* k_semaphore_create(int64_t n);
 
 
 /**
- * Frees the memory allocated for a spinlock.
+ * Frees the memory allocated for a semaphore.
  *
  * Returns:
- *   k_spinlock* - a pointer to the sempahore to destroy
+ *   k_semaphore* - a pointer to the sempahore to destroy
  */
 void k_semaphore_destroy(k_semaphore*);
 
+
 /**
- * Decrements a semaphore by 1 to attempt to access a resource.
+ * Attempts to decrement a semaphore. The first argument is a pointer to the
+ * semaphore, and the second argument is the busy flag.
+ * If the busy flag is 1, then this function will loop until the semaphore has
+ * a value of >= 0. If the busy flag is 0, then the current task will be put
+ * to sleep until the semaphore has a value of >= 0
  *
  * Params:
  *   k_semaphore* - a pointer to the semaphore to be decremented
  */
-void k_semaphore_wait(k_semaphore*);
-
-
-/**
- * Decrements a semaphore by 1 to attempt to access a resource.
- *
- * Params:
- *   k_semaphore* - a pointer to the semaphore to be decremented
- */
-void k_semaphore_sleep(k_semaphore*);
+void k_semaphore_wait(k_semaphore*, int);
 
 
 /**

@@ -52,7 +52,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_acpi_init();        // ACPI tables
   k_sync_init();        // synchronization
 
-  g_demo_lock = k_spinlock_create();
+  g_demo_lock = k_mutex_create();
   if (g_demo_lock == NULL)
   {
     fprintf(stddbg, "failed to create demo spinlock\n");
@@ -381,8 +381,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_task* main_task = k_task_create(NULL);
 
-  // k_task* demo_mutex_task_a = k_task_create(demo_mutex_task_a_action);
-  // k_task* demo_mutex_task_b = k_task_create(demo_mutex_task_b_action);
+  k_task* demo_mutex_task_a = k_task_create(demo_mutex_task_a_action);
+  k_task* demo_mutex_task_b = k_task_create(demo_mutex_task_b_action);
 
   k_task* demo_sem_task_a = k_task_create(demo_sem_task_a_action);
   k_task* demo_sem_task_b = k_task_create(demo_sem_task_b_action);
@@ -390,8 +390,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_task_schedule(main_task);
 
-  // k_task_schedule(demo_mutex_task_a);
-  // k_task_schedule(demo_mutex_task_b);
+  k_task_schedule(demo_mutex_task_a);
+  k_task_schedule(demo_mutex_task_b);
 
   k_task_schedule(demo_sem_task_a);
   k_task_schedule(demo_sem_task_b);
@@ -495,28 +495,24 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // The main loop.
   for (;;)
   {
-    // k_apic_wait(240);
-    // fprintf(stddbg, "This is the main task.\n");
 
-    // if (demo_mutex_task_a != NULL && demo_mutex_task_a->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying mutex task a\n");
-    //   k_task_destroy(demo_mutex_task_a);
-    //   demo_mutex_task_a = NULL;
-    // }
+    if (demo_mutex_task_a != NULL && demo_mutex_task_a->status == TASK_REMOVED)
+    {
+      fprintf(stddbg, "destroying mutex task a\n");
+      k_task_destroy(demo_mutex_task_a);
+      demo_mutex_task_a = NULL;
+    }
 
-    // if (demo_mutex_task_b != NULL && demo_mutex_task_b->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying mutex task b\n");
-    //   k_task_destroy(demo_mutex_task_b);
-    //   demo_mutex_task_b = NULL;
-    // }
+    if (demo_mutex_task_b != NULL && demo_mutex_task_b->status == TASK_REMOVED)
+    {
+      fprintf(stddbg, "destroying mutex task b\n");
+      k_task_destroy(demo_mutex_task_b);
+      demo_mutex_task_b = NULL;
+    }
 
-    // k_apic_wait(60);
     if (msg_count < 3)
     {
-      k_semaphore_sleep(g_demo_sem_pub);
-      // fprintf(stddbg, "publisher has decremented the semaphore\n");
+      k_semaphore_wait(g_demo_sem_pub, 1);
       msg_count++;
       k_semaphore_signal(g_demo_sem_sub);
     }
