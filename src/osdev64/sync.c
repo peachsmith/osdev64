@@ -168,7 +168,8 @@ void k_semaphore_sleep(k_semaphore* s)
 {
   k_mutex_acquire((k_lock*)&s[1], 0);
 
-  k_sem_sleep(s);
+  int64_t sem_sleep_res = k_sem_sleep(s);
+  fprintf(stddbg, "Did a task have to sleep? %s\n", sem_sleep_res ? "YES" : "NO");
 
   k_mutex_release((k_lock*)&s[1]);
 }

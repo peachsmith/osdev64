@@ -582,7 +582,7 @@ k_sem_wait:
 
 
 # Attempts to decrement a semaphore.
-# If the value is less than 0, this procedure loops puts the current task
+# If the value is less than 0, this procedure puts the current task
 # to sleep until it is >= 0, at which point it restarts execution from
 # the beginning.
 #
@@ -590,14 +590,15 @@ k_sem_wait:
 #   RDI - the memory location of a sempahore
 .global k_sem_sleep
 k_sem_sleep:
-  mov (%rdi), %rax
-  test %rax, %rax        # Set the sign flag if the semaphore is < 0.
-  js .sem_sleep          # If the value is < 0, put the current task to sleep.
   mov $-1, %rdx          # Store -1 in RDX so it can be used with XADD.
   lock xadd %rdx, (%rdi) # Add -1 to the value to decrement it.
+  test %rdx, %rdx        # Set the zero flag if the semaphore was 0.
+  jz .sem_sleep          # If the value was 0, put the current task to sleep.
+  mov $0x0, %rax
   retq
 
 .sem_sleep:
   mov $2, %rdx     # Indicate that the task is waiting on a semaphore.
   int $0x40        # Raise interrupt 64 to put the current task to sleep.
-  jmp k_sem_sleep  # Restart the procedure.
+  mov $0x1, %rax
+  retq

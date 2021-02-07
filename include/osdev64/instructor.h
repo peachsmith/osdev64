@@ -146,7 +146,7 @@ void k_sem_wait(int64_t*);
  * Params:
  *   int64_t* - the memory location of a sempahore
  */
-void k_sem_sleep(int64_t*);
+int64_t k_sem_sleep(int64_t*);
 
 
 /**
@@ -163,5 +163,6 @@ void k_cause_exception();
  * Currently, this is used to raise interrupts to debug ISRs.
  */
 void k_nonsense();
+
 
 #endif

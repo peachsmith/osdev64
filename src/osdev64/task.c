@@ -168,8 +168,10 @@ k_regn* k_task_switch(k_regn* reg_stack)
       }
       else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE)
       {
-        if (*g_current_task->sync_val >= 0)
+        // fprintf(stddbg, "sleeping task waiting on semaphore\n");
+        if ((int64_t)*g_current_task->sync_val >= 0)
         {
+          fprintf(stddbg, "waking a task\n");
           g_current_task->status = TASK_RUNNING;
         }
         else
@@ -327,6 +329,8 @@ k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ)
   g_current_task->sync_val = val;
   g_current_task->sync_type = typ;
   g_current_task->status = TASK_SLEEPING;
+
+  fprintf(stddbg, "putting a task to sleep\n");
 
   return k_task_switch(regs);
 }
