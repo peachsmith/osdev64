@@ -36,8 +36,8 @@ void demo_mutex_task_b_action()
 {
   for (int i = 0; i < 10; i++)
   {
-    k_lock_acquire(g_demo_lock);
-    // k_spinlock_acquire(g_demo_lock);
+    // k_lock_acquire(g_demo_lock);
+    k_spinlock_acquire(g_demo_lock);
     k_apic_wait(120);
 
     fprintf(stddbg, "Mutex task B has the spinlock.\n");
