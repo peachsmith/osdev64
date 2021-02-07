@@ -127,16 +127,26 @@ int64_t k_xadd(int64_t, int64_t*);
 
 
 /**
- * Executes the XADD instruction to add the first argument to the value
- * pointed to by the second argument. This function is like k_xadd,
- * but this function loops until the value pointed to by the second
- * argument is greater than or equal to zero.
- *
+ * Attempts to decrement a semaphore.
+ * If the value is less than 0, this procedure loops until it is >= 0,
+ * at which point it restarts execution from the beginning.
+ * 
  * Params:
- *   int64_t - the amount to add to the destination
- *   int64_t* - a pointer to the value to be added
+ *   int64_t* - the memory location of a sempahore
  */
 void k_sem_wait(int64_t*);
+
+
+/**
+ * Attempts to decrement a semaphore.
+ * If the value is less than 0, this procedure loops puts the current task
+ * to sleep until it is >= 0, at which point it restarts execution from
+ * the beginning.
+ *
+ * Params:
+ *   int64_t* - the memory location of a sempahore
+ */
+void k_sem_sleep(int64_t*);
 
 
 /**

@@ -157,6 +157,15 @@ void k_semaphore_wait(k_semaphore* s)
   k_spinlock_release((k_spinlock*)&s[1]);
 }
 
+void k_semaphore_sleep(k_semaphore* s)
+{
+  k_lock_acquire((k_spinlock*)&s[1]);
+
+  k_sem_sleep(s);
+
+  k_spinlock_release((k_spinlock*)&s[1]);
+}
+
 void k_semaphore_signal(k_semaphore* s)
 {
   k_spinlock_acquire((k_spinlock*)&s[2]);

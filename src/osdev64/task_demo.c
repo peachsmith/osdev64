@@ -67,7 +67,7 @@ void demo_sem_task_a_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem_sub);
+    k_semaphore_sleep(g_demo_sem_sub);
     fprintf(
       stddbg,
       "Semaphore task A has performed an action. "
@@ -84,7 +84,7 @@ void demo_sem_task_b_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem_sub);
+    k_semaphore_sleep(g_demo_sem_sub);
     fprintf(
       stddbg,
       "Semaphore task B has performed an action. "
@@ -101,7 +101,7 @@ void demo_sem_task_c_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem_sub);
+    k_semaphore_sleep(g_demo_sem_sub);
     fprintf(
       stddbg,
       "Semaphore task C has performed an action. "

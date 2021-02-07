@@ -153,6 +153,16 @@ void k_semaphore_destroy(k_semaphore*);
  */
 void k_semaphore_wait(k_semaphore*);
 
+
+/**
+ * Decrements a semaphore by 1 to attempt to access a resource.
+ *
+ * Params:
+ *   k_semaphore* - a pointer to the semaphore to be decremented
+ */
+void k_semaphore_sleep(k_semaphore*);
+
+
 /**
  * Increments the value of a sempahore by 1 to allow an additional task
  * to access a resource.
