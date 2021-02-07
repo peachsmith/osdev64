@@ -61,7 +61,7 @@ void k_sync_init()
 }
 
 
-k_spinlock* k_spinlock_create()
+k_lock* k_spinlock_create()
 {
   // Find the first available bit in the spinlock bitmap.
   for (uint64_t b = 0; b < 512; b++)
@@ -78,7 +78,7 @@ k_spinlock* k_spinlock_create()
 }
 
 
-void k_spinlock_destroy(k_spinlock* sl)
+void k_spinlock_destroy(k_lock* sl)
 {
   // Clear the corresponding bit in the spinlock bitmap.
   for (uint64_t b = 0; b < 512; b++)
@@ -92,18 +92,25 @@ void k_spinlock_destroy(k_spinlock* sl)
 }
 
 
-void k_spinlock_acquire(k_spinlock* sl)
+void k_mutex_acquire(k_lock* sl, int busy)
 {
-  k_bts_spin(sl);
+  if (busy)
+  {
+    k_lock_spin(sl);
+  }
+  else
+  {
+    k_lock_sleep(sl);
+  }
 }
 
-void k_lock_acquire(k_spinlock* sl)
-{
-  k_bts_sleep(sl);
-}
+// void k_lock_acquire(k_spinlock* sl)
+// {
+//   k_lock_sleep(sl);
+// }
 
 
-void k_spinlock_release(k_spinlock* sl)
+void k_mutex_release(k_lock* sl)
 {
   k_btr(0, sl);
 }
@@ -150,27 +157,27 @@ void k_semaphore_destroy(k_semaphore* s)
 
 void k_semaphore_wait(k_semaphore* s)
 {
-  k_spinlock_acquire((k_spinlock*)&s[1]);
+  k_mutex_acquire((k_lock*)&s[1], 1);
 
   k_sem_wait(s);
 
-  k_spinlock_release((k_spinlock*)&s[1]);
+  k_mutex_release((k_lock*)&s[1]);
 }
 
 void k_semaphore_sleep(k_semaphore* s)
 {
-  k_lock_acquire((k_spinlock*)&s[1]);
+  k_mutex_acquire((k_lock*)&s[1], 0);
 
   k_sem_sleep(s);
 
-  k_spinlock_release((k_spinlock*)&s[1]);
+  k_mutex_release((k_lock*)&s[1]);
 }
 
 void k_semaphore_signal(k_semaphore* s)
 {
-  k_spinlock_acquire((k_spinlock*)&s[2]);
+  k_mutex_acquire((k_lock*)&s[2], 0);
 
   k_xadd(1, s);
 
-  k_spinlock_release((k_spinlock*)&s[2]);
+  k_mutex_release((k_lock*)&s[2]);
 }

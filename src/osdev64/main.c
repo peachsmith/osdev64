@@ -26,7 +26,7 @@
 #include "klibc/stdio.h"
 
 
-k_spinlock* g_demo_lock;
+k_lock* g_demo_lock;
 k_semaphore* g_demo_sem_sub;
 k_semaphore* g_demo_sem_pub;
 

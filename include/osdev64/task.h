@@ -11,6 +11,7 @@
 #define TASK_STOPPED 3
 #define TASK_REMOVED 4
 
+
 // task structure
 typedef struct k_task {
   void* mem_base;      // base address of all task memory
@@ -25,12 +26,13 @@ typedef struct k_task {
 
 /**
  * Initializes task management.
- * 
+ * This function must be called before any other functions from
+ * the task interface are called.
  */
 void k_task_init();
 
 /**
- * Switches between tasks.
+ * Determines 
  *
  */
 k_regn* k_task_switch(k_regn*);

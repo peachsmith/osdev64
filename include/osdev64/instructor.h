@@ -94,25 +94,25 @@ k_regn k_btr(k_regn, k_regn*);
 
 /**
  * Executes the BTS instruction to set bit 0 of a 64-bit value.
- * If the carry flag is set after executing the BTS instruction,
- * then this procedure loops until bit 0 is no longer set, at
- * which point it makes another attempt to set bit 0.
+ * If bit 0 was already set, then this procedure loops until
+ * bit 0 is no longer set, at which point it restarts execution
+ * from the beginning.
  *
  * Params:
  *   k_regn* - a location in memory containing the bit to set
  */
-void k_bts_spin(k_regn*);
+void k_lock_spin(k_regn*);
 
 /**
  * Executes the BTS instruction to set bit 0 of a 64-bit value.
- * If the carry flag is set after executing the BTS instruction,
- * then this procedure puts the current task to sleep until
- * the lock has a value of 0.
+ * If bit 0 was already set, then this procedure puts the current task
+ * to sleep until bit 0 is no longer set, at which point it restarts
+ * execution from the beginning.
  *
  * Params:
  *   k_regn* - a location in memory containing the bit to set
  */
-void k_bts_sleep(k_regn*);
+void k_lock_sleep(k_regn*);
 
 
 /**

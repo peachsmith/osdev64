@@ -511,48 +511,51 @@ k_btr:
   retq
 
 
-# TODO: come up with better names for these procedures
-
-
-# Attempts to set bit 0 of the value pointed to by RDI.
-# If bit 0 is already set, then this procedure enters a loop and
-# repeatedly tests the value until it is 0. Once bit 0 is cleared,
-# the procedure makes another attempt to set it.
+# Executes the BTS instruction to set bit 0 of a 64-bit value.
+# If bit 0 was already set, then this procedure loops until
+# bit 0 is no longer set, at which point it restarts execution
+# from the beginning.
+#
+# C function signature:
+#   void k_lock_spin(k_regn*);
 #
 # Params:
 #   RDI - a memory location pointing to the byte whose bit 0 will be set
 #
-.global k_bts_spin
-k_bts_spin:
-  lock bts $0, (%rdi) # attempt to set a bit
-  jc .bts_spin_loop     # if the bit was already set, loop until it isn't set
+.global k_lock_spin
+k_lock_spin:
+  lock btsq $0, (%rdi) # Attempt to set bit 0.
+  jc .lock_spin_loop   # If bit 0 was already set, loop until it isn't set.
   retq
 
-.bts_spin_loop:
+.lock_spin_loop:
   pause
-  testq $0x1, (%rdi) # check if the bit is set
-  jnz .bts_spin_loop # if the bit is set, repeat the loop
-  jmp k_bts_spin     # if the bit is not set, jump back to k_bts_spin
+  testq $0x1, (%rdi)  # Check if the bit is set.
+  jnz .lock_spin_loop # If the bit is set, repeat the loop.
+  jmp k_lock_spin     # If the bit is not set, jump back to k_lock_spin.
 
 
 # Executes the BTS instruction to set bit 0 of a 64-bit value.
-# If the carry flag is set after executing the BTS instruction,
-# then this procedure puts the current task to sleep until
-# the lock has a value of 0.
+# If bit 0 was already set, then this procedure puts the current task
+# to sleep until bit 0 is no longer set, at which point it restarts
+# execution from the beginning.
+#
+# C function signature:
+#   void k_lock_sleep(k_regn*);
 #
 # Params:
 #   RDI - a memory location pointing to the byte whose bit 0 will be set
 #
-.global k_bts_sleep
-k_bts_sleep:
-  lock bts $0, (%rdi) # attempt to set a bit
-  jc .bts_sleep       # If the bit was already set, then sleep.
+.global k_lock_sleep
+k_lock_sleep:
+  lock btsq $0, (%rdi) # Attempt to set bit 0.
+  jc .lock_sleep_loop  # If bit 0 was already set, sleep until it isn't set.
   retq
 
-.bts_sleep:
-  mov $1, %rdx    # Indicate that the task is waiting on a lock.
-  int $0x40       # raise interrupt 64 to put the task to sleep
-  jmp k_bts_sleep # restart the procedure
+.lock_sleep_loop:
+  mov $1, %rdx     # Indicate that the task is waiting on a lock.
+  int $0x40        # Raise interrupt 64 to put the task to sleep.
+  jmp k_lock_sleep # Restart the procedure.
 
 
 # Attempts to decrement a semaphore.

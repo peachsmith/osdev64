@@ -48,7 +48,7 @@
 
 
 /**
- * A spinlock is a lock in which the task attempting to obtain the lock
+ * A lock in which the task attempting to obtain the lock
  * waits for the lock to become available. This is used to implement
  * mutual exclusion. Once a task has acquired the lock, no other tasks
  * should be able to acquire the lock until it is released.
@@ -59,7 +59,7 @@
  * on the protected resource, then it releases the lock by calling
  * k_spinlock_release.
  */
-typedef k_regn k_spinlock;
+typedef k_regn k_lock;
 
 /**
  * A sempahore allows one or more tasks to notify other tasks when
@@ -83,7 +83,7 @@ void k_sync_init();
  * Returns:
  *   k_spinlock* - a pointer to a new spinlock or NULL on failure
  */
-k_spinlock* k_spinlock_create();
+k_lock* k_spinlock_create();
 
 
 /**
@@ -92,17 +92,22 @@ k_spinlock* k_spinlock_create();
  * Returns:
  *   k_spinlock* - a pointer to the spinlock to destroy
  */
-void k_spinlock_destroy(k_spinlock*);
+void k_spinlock_destroy(k_lock*);
 
 /**
- * Attempts to acquire a spinlock.
+ * Attempts to acquire a lock to ensure mutual exclusion.
  * The task that calls this function will wait until the lock becomes
- * available.
+ * available. The first argument is a pointer to the lock, and the
+ * second argument is the busy flag.
+ * If the busy flag is 1, then this function wil loop until the lock
+ * becomes available. If the busy flag is 0, then the current task
+ * will be put to sleep until the lock becomes available.
  *
  * Params:
  *   k_spinlock* - a pointer to the spinlock to acquire
+ *   int - busy flag (1 for busy wait, 0 for sleeping wait)
  */
-void k_spinlock_acquire(k_spinlock*);
+void k_mutex_acquire(k_lock*, int);
 
 /**
  * Releases a spinlock.
@@ -110,7 +115,7 @@ void k_spinlock_acquire(k_spinlock*);
  * Params:
  *   k_spinlock* - a pointer to the spinlock to release
  */
-void k_spinlock_release(k_spinlock*);
+void k_mutex_release(k_lock*);
 
 /**
  * Attempts to acquire a lock.
@@ -120,20 +125,20 @@ void k_spinlock_release(k_spinlock*);
  * Params:
  *   k_spinlock* - a pointer to the spinlock to acquire
  */
-void k_lock_acquire(k_spinlock*);
+ // void k_lock_acquire(k_spinlock*);
 
 
 
 
-/**
- * Creates a new counting sempahore.
- *
- * Params:
- *   int64_t - the starting value of the semaphore
- *
- * Returns:
- *   k_semaphore* - a pointer to a new semaphore or NULL on failure
- */
+ /**
+  * Creates a new counting sempahore.
+  *
+  * Params:
+  *   int64_t - the starting value of the semaphore
+  *
+  * Returns:
+  *   k_semaphore* - a pointer to a new semaphore or NULL on failure
+  */
 k_semaphore* k_semaphore_create(int64_t n);
 
 

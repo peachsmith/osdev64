@@ -6,7 +6,7 @@
 
 #include "klibc/stdio.h"
 
-extern k_spinlock* g_demo_lock;
+extern k_lock* g_demo_lock;
 extern k_semaphore* g_demo_sem_pub;
 extern k_semaphore* g_demo_sem_sub;
 
@@ -21,11 +21,10 @@ void demo_mutex_task_a_action()
 {
   for (int i = 0; i < 10; i++)
   {
-    k_lock_acquire(g_demo_lock);
-    // k_spinlock_acquire(g_demo_lock);
+    k_mutex_acquire(g_demo_lock, 0);
     k_apic_wait(120);
     fprintf(stddbg, "Mutex task A has the spinlock.\n");
-    k_spinlock_release(g_demo_lock);
+    k_mutex_release(g_demo_lock);
 
     k_apic_wait(150);
   }
@@ -36,12 +35,11 @@ void demo_mutex_task_b_action()
 {
   for (int i = 0; i < 10; i++)
   {
-    // k_lock_acquire(g_demo_lock);
-    k_spinlock_acquire(g_demo_lock);
+    k_mutex_acquire(g_demo_lock, 0);
     k_apic_wait(120);
 
     fprintf(stddbg, "Mutex task B has the spinlock.\n");
-    k_spinlock_release(g_demo_lock);
+    k_mutex_release(g_demo_lock);
 
     k_apic_wait(180);
   }
