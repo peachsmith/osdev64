@@ -97,8 +97,6 @@ void demo_sem_task_b_action()
 
 void demo_sem_task_c_action()
 {
-  // int msg_count = 0;
-  // k_semaphore_sleep(g_demo_sem_pub);
   for (;;)
   {
     k_semaphore_sleep(g_demo_sem_sub);

@@ -157,21 +157,13 @@ void k_semaphore_destroy(k_semaphore* s)
 
 void k_semaphore_wait(k_semaphore* s)
 {
-  k_mutex_acquire((k_lock*)&s[1], 1);
-
   k_sem_wait(s);
-
-  k_mutex_release((k_lock*)&s[1]);
 }
 
 void k_semaphore_sleep(k_semaphore* s)
 {
-  k_mutex_acquire((k_lock*)&s[1], 0);
-
   int64_t sem_sleep_res = k_sem_sleep(s);
-  fprintf(stddbg, "Did a task have to sleep? %s\n", sem_sleep_res ? "YES" : "NO");
-
-  k_mutex_release((k_lock*)&s[1]);
+  // fprintf(stddbg, "former semaphore value: %lld\n", sem_sleep_res);
 }
 
 void k_semaphore_signal(k_semaphore* s)

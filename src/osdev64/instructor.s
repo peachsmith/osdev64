@@ -593,8 +593,9 @@ k_sem_sleep:
   mov $-1, %rdx          # Store -1 in RDX so it can be used with XADD.
   lock xadd %rdx, (%rdi) # Add -1 to the value to decrement it.
   test %rdx, %rdx        # Set the zero flag if the semaphore was 0.
-  jz .sem_sleep          # If the value was 0, put the current task to sleep.
-  mov $0x0, %rax
+  jz .sem_sleep          # If the value was <= 0, put the task to sleep.
+  js .sem_sleep
+  mov %rdx, %rax
   retq
 
 .sem_sleep:
