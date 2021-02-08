@@ -510,10 +510,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
       demo_mutex_task_b = NULL;
     }
 
-    // k_apic_wait(120);
+    k_apic_wait(20);
     // if (msg_count < 4)
     // {
-    int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 1);
+    int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 0);
     // fprintf(stddbg, "[MAIN] decremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
     msg_count++;
     int64_t sub_res = k_semaphore_signal(g_demo_sem_sub);
