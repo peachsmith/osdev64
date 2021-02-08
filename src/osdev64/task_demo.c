@@ -65,7 +65,7 @@ void demo_sem_task_a_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem_sub, 1);
+    k_semaphore_wait(g_demo_sem_sub, 0);
     fprintf(
       stddbg,
       "Semaphore task A has performed an action. "
@@ -82,7 +82,7 @@ void demo_sem_task_b_action()
 {
   for (;;)
   {
-    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 1);
+    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 0);
     // fprintf(stddbg, "[TASK] B decremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
     fprintf(
       stddbg,
@@ -101,7 +101,7 @@ void demo_sem_task_c_action()
 {
   for (;;)
   {
-    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 1);
+    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 0);
     // fprintf(stddbg, "[TASK] C decremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
     fprintf(
       stddbg,

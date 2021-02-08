@@ -596,6 +596,48 @@ k_sem_wait:
   jmp k_sem_wait
 
 
+
+
+
+
+
+
+.global k_sem_sleep
+k_sem_sleep:
+
+  # Add -1 to the value to decrement it.
+  mov $-1, %rax
+  lock xadd %rax, (%rdi)
+
+  # If the value was <= 0, increment the value and loop until the value
+  # is > 0.
+  test %rax, %rax
+  jz .sem_sleep_rollback
+  js .sem_sleep_rollback
+
+  # If the value was > 0 before decrementing, then return from the
+  # procedure and access the synchronized resource.
+  retq
+
+.sem_sleep_rollback:
+  mov $1, %rax
+  lock xadd %rax, (%rdi)
+
+  # Put the task to sleep until the value is > 0.
+  push %rdi
+  mov $2, %rdx
+  int $0x40
+  pop %rdi
+
+  # The value should be > 0, so restart the procedure.
+  jmp k_sem_sleep
+
+
+
+
+
+
+
 # Attempts to decrement a semaphore.
 # If the value is less than 0, this procedure puts the current task
 # to sleep until it is >= 0, at which point it restarts execution from
@@ -603,18 +645,18 @@ k_sem_wait:
 #
 # Params:
 #   RDI - the memory location of a sempahore
-.global k_sem_sleep
-k_sem_sleep:
-  mov $-1, %rdx          # Store -1 in RDX so it can be used with XADD.
-  lock xadd %rdx, (%rdi) # Add -1 to the value to decrement it.
-  test %rdx, %rdx        # Set the zero flag if the semaphore was 0.
-  jz .sem_sleep          # If the value was <= 0, put the task to sleep.
-  js .sem_sleep
-  mov %rdx, %rax
-  retq
-
-.sem_sleep:
-  mov $2, %rdx     # Indicate that the task is waiting on a semaphore.
-  int $0x40        # Raise interrupt 64 to put the current task to sleep.
-  mov $0x1, %rax
-  retq
+# .global k_sem_sleep
+# k_sem_sleep:
+#   mov $-1, %rdx          # Store -1 in RDX so it can be used with XADD.
+#   lock xadd %rdx, (%rdi) # Add -1 to the value to decrement it.
+#   test %rdx, %rdx        # Set the zero flag if the semaphore was 0.
+#   jz .sem_sleep          # If the value was <= 0, put the task to sleep.
+#   js .sem_sleep
+#   mov %rdx, %rax
+#   retq
+# 
+# .sem_sleep:
+#   mov $2, %rdx     # Indicate that the task is waiting on a semaphore.
+#   int $0x40        # Raise interrupt 64 to put the current task to sleep.
+#   mov $0x1, %rax
+#   retq

@@ -59,7 +59,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     HANG();
   }
 
-  g_demo_sem_pub = k_semaphore_create(2);
+  g_demo_sem_pub = k_semaphore_create(3);
   if (g_demo_sem_pub == NULL)
   {
     fprintf(stddbg, "failed to create demo semaphore\n");

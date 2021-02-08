@@ -168,7 +168,7 @@ k_regn* k_task_switch(k_regn* reg_stack)
       }
       else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE)
       {
-        if ((int64_t)*g_current_task->sync_val >= 0)
+        if ((int64_t)*g_current_task->sync_val > 0)
         {
           g_current_task->status = TASK_RUNNING;
         }
