@@ -59,7 +59,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     HANG();
   }
 
-  g_demo_sem_pub = k_semaphore_create(3);
+  g_demo_sem_pub = k_semaphore_create(2);
   if (g_demo_sem_pub == NULL)
   {
     fprintf(stddbg, "failed to create demo semaphore\n");
@@ -390,8 +390,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_task_schedule(main_task);
 
-  k_task_schedule(demo_mutex_task_a);
-  k_task_schedule(demo_mutex_task_b);
+  // k_task_schedule(demo_mutex_task_a);
+  // k_task_schedule(demo_mutex_task_b);
 
   k_task_schedule(demo_sem_task_a);
   k_task_schedule(demo_sem_task_b);
@@ -510,12 +510,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
       demo_mutex_task_b = NULL;
     }
 
-    if (msg_count < 3)
-    {
-      k_semaphore_wait(g_demo_sem_pub, 1);
-      msg_count++;
-      k_semaphore_signal(g_demo_sem_sub);
-    }
+    // k_apic_wait(120);
+    // if (msg_count < 4)
+    // {
+    int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 1);
+    // fprintf(stddbg, "[MAIN] decremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
+    msg_count++;
+    int64_t sub_res = k_semaphore_signal(g_demo_sem_sub);
+    // fprintf(stddbg, "[MAIN] incremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
+    // }
 
     if (demo_sem_task_a != NULL && demo_sem_task_a->status == TASK_REMOVED)
     {

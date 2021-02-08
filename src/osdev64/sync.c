@@ -144,19 +144,21 @@ void k_semaphore_destroy(k_semaphore* s)
 }
 
 
-void k_semaphore_wait(k_semaphore* s, int busy)
+int64_t k_semaphore_wait(k_semaphore* s, int busy)
 {
   if (busy)
   {
-    k_sem_wait(s);
+    return k_sem_wait(s);
+    // fprintf(stddbg, "WAIT former value: %lld\n", wait_res);
   }
   else
   {
-    k_sem_sleep(s);
+    return k_sem_sleep(s);
   }
 }
 
-void k_semaphore_signal(k_semaphore* s)
+int64_t k_semaphore_signal(k_semaphore* s)
 {
-  k_xadd(1, s);
+  return k_xadd(1, s);
+  // fprintf(stddbg, "SIGNAL former value: %lld\n", sig_res);
 }

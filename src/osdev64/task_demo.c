@@ -19,7 +19,7 @@ k_regn g_sem_data[3];
 //==========================================
 void demo_mutex_task_a_action()
 {
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 1; i++)
   {
     k_mutex_acquire(g_demo_lock, 0);
     k_apic_wait(120);
@@ -33,7 +33,7 @@ void demo_mutex_task_a_action()
 
 void demo_mutex_task_b_action()
 {
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 1; i++)
   {
     k_mutex_acquire(g_demo_lock, 1);
     k_apic_wait(120);
@@ -65,7 +65,7 @@ void demo_sem_task_a_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem_sub, 0);
+    k_semaphore_wait(g_demo_sem_sub, 1);
     fprintf(
       stddbg,
       "Semaphore task A has performed an action. "
@@ -82,7 +82,8 @@ void demo_sem_task_b_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem_sub, 1);
+    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 1);
+    // fprintf(stddbg, "[TASK] B decremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
     fprintf(
       stddbg,
       "Semaphore task B has performed an action. "
@@ -91,7 +92,8 @@ void demo_sem_task_b_action()
       *g_demo_sem_pub
     );
     k_apic_wait(120);
-    k_semaphore_signal(g_demo_sem_pub);
+    int64_t pub_res = k_semaphore_signal(g_demo_sem_pub);
+    // fprintf(stddbg, "[TASK] B incremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
   }
 }
 
@@ -99,7 +101,8 @@ void demo_sem_task_c_action()
 {
   for (;;)
   {
-    k_semaphore_wait(g_demo_sem_sub, 0);
+    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 1);
+    // fprintf(stddbg, "[TASK] C decremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
     fprintf(
       stddbg,
       "Semaphore task C has performed an action. "
@@ -108,7 +111,8 @@ void demo_sem_task_c_action()
       *g_demo_sem_pub
     );
     k_apic_wait(120);
-    k_semaphore_signal(g_demo_sem_pub);
+    int64_t pub_res = k_semaphore_signal(g_demo_sem_pub);
+    // fprintf(stddbg, "[TASK] C incremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
   }
 }
 //==========================================

@@ -134,7 +134,7 @@ int64_t k_xadd(int64_t, int64_t*);
  * Params:
  *   int64_t* - the memory location of a sempahore
  */
-void k_sem_wait(int64_t*);
+int64_t k_sem_wait(int64_t*);
 
 
 /**

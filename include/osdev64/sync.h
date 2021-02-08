@@ -108,7 +108,7 @@ void k_semaphore_destroy(k_semaphore*);
  * Params:
  *   k_semaphore* - a pointer to the semaphore to be decremented
  */
-void k_semaphore_wait(k_semaphore*, int);
+int64_t k_semaphore_wait(k_semaphore*, int);
 
 
 /**
@@ -118,6 +118,6 @@ void k_semaphore_wait(k_semaphore*, int);
  * Params:
  *   k_semaphore* - a pointer to the semaphore to be incremented
  */
-void k_semaphore_signal(k_semaphore*);
+int64_t k_semaphore_signal(k_semaphore*);
 
 #endif
