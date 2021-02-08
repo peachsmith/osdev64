@@ -559,52 +559,41 @@ k_lock_sleep:
 
 
 # Attempts to decrement a semaphore.
-# If the value is less than 0, this procedure loops until it is >= 0,
+# If the value is <= 0, this procedure loops until it is > 0,
 # at which point it restarts execution from the beginning.
 #
 # Params:
 #   RDI - the memory location of a sempahore
 .global k_sem_wait
 k_sem_wait:
-  mov $-1, %rdx          # Store -1 in RDX so it can be used with XADD.
-  lock xadd %rdx, (%rdi) # Add -1 to the value to decrement it.
-  test %rdx, %rdx        # Set the zero flag if the semaphore was 0.
-  jz .sem_wait_rollback  # If the value was <= 0, jump into a loop.
+
+  # Add -1 to the value to decrement it.
+  mov $-1, %rax
+  lock xadd %rax, (%rdi)
+
+  # If the value was <= 0, increment the value and loop until the value
+  # is > 0.
+  test %rax, %rax
+  jz .sem_wait_rollback
   js .sem_wait_rollback
-  mov %rdx, %rax
+
+  # If the value was > 0 before decrementing, then return from the
+  # procedure and access the synchronized resource.
   retq
 
 .sem_wait_rollback:
-  mov $1, %rdx           # Increment the value to roll back the decrement.
-  lock xadd %rdx, (%rdi)
+  mov $1, %rax
+  lock xadd %rax, (%rdi)
 
 .sem_wait_loop:
   pause
   mov (%rdi), %rax
-  test %rax, %rax   # Set the sign flag if the semaphore is < 0.
+  test %rax, %rax
   jz .sem_wait_loop
   js .sem_wait_loop
+
+  # If the value is > 0, restart the procedure.
   jmp k_sem_wait
-  # mov %rdx, %rax
-  # retq    # If the value is >= 0, restart the procedure.
-
-# .global k_sem_wait
-# k_sem_wait:
-#   mov (%rdi), %rdx
-#   test %rdx, %rdx
-#   jz .sem_wait_loop # If the value was <= 0, jump into a loop.
-#   js .sem_wait_loop
-#   mov %rdx, %rax
-#   retq
-# 
-# .sem_wait_loop:
-#   pause
-#   mov (%rdi), %rax
-#   test %rax, %rax   # Set the sign flag if the semaphore is < 0.
-#   js .sem_wait_loop
-#   mov %rdx, %rax
-#   retq    # If the value is >= 0, restart the procedure.
-
 
 
 # Attempts to decrement a semaphore.
