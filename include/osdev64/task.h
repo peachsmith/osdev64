@@ -82,10 +82,10 @@ void k_task_stop(k_task*);
  * This function changes the current task's status to SLEEPING.
  *
  * Params:
+ *   k_regn* - a pointer to the current task's register stack
  *   k_regn* - a pointer to a synchronization primitive
  *   int - the type of synchronization primitive (1 for lock, 2 for semaphore)
  */
-k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ);
-//void k_task_sleep(k_regn*, int);
+k_regn* k_task_sleep(k_regn*, k_regn*, k_regn);
 
 #endif

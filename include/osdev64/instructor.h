@@ -165,4 +165,10 @@ void k_cause_exception();
 void k_nonsense();
 
 
+/**
+ * Calls the FACE syscall.
+ */
+void k_face(k_regn);
+
+
 #endif

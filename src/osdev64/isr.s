@@ -597,21 +597,62 @@ debug_isr:
   iretq
 
 
-.global k_sleep_isr
-k_sleep_isr:
+# .global k_sleep_isr
+# k_sleep_isr:
+# 
+#   # Upon entering this procedure, the following registers should
+#   # have the following values:
+#   # RDX: synchronization type
+#   # RDI: address of synchronization value
+# 
+#   cld
+#   push_task_regs    # Push the current task's registers onto the stack.
+# 
+#   mov %rdi, %rsi    # The synchronization value is the second argument.
+#   mov %rsp, %rdi    # The register stack is the first argument.
+#   call k_task_sleep # Put the current task to sleep.
+#   mov %rax, %rsp    # Retrieve the register stack of the next task.
+# 
+#   pop_task_regs     # Pop the next task's registers from the stack.
+#   iretq
+
+.global k_syscall_isr
+k_syscall_isr:
 
   # Upon entering this procedure, the following registers should
   # have the following values:
-  # RDX: synchronization type
-  # RDI: address of synchronization value
+  # RAX: syscall ID
+  # RCX: syscall data 1
+  # RDX: syscall data 2
+  # RSI: syscall data 3
+  # RDI: syscall data 4
 
   cld
-  push_task_regs    # Push the current task's registers onto the stack.
 
-  mov %rdi, %rsi    # The synchronization value is the second argument.
-  mov %rsp, %rdi    # The register stack is the first argument.
-  call k_task_sleep # Put the current task to sleep.
-  mov %rax, %rsp    # Retrieve the register stack of the next task.
+  # Save current task register stack
+  push_task_regs
 
-  pop_task_regs     # Pop the next task's registers from the stack.
+  # Prepare the arguments for k_syscall
+  # ARG 1: RDI syscall ID
+  # ARG 2: RSI task register stack
+  # ARG 3: RDX syscall data 1
+  # ARG 4: RCX syscall data 2
+  # ARG 5: R8  syscall data 3
+  # ARG 6: R9  syscall data 4
+
+  # R11 is used as a scratch register.
+
+  mov %rdi, %r9  # ARG 6
+  mov %rax, %rdi # ARG 1
+  mov %rsi, %r8  # ARG 5
+  mov %rdx, %r11 # Store RDX
+  mov %rcx, %rdx # ARG 3
+  mov %r11, %rcx # ARG 4
+  mov %rsp, %rsi # ARG 2
+
+  call k_syscall
+  mov %rax, %rsp
+
+  # Restore current task register stack
+  pop_task_regs
   iretq

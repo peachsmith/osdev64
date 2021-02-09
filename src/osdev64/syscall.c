@@ -6,32 +6,41 @@
 #include "klibc/stdio.h"
 
 
-void k_syscall(
+k_regn* k_syscall(
   k_regn id,
-  k_regn arg1,
-  k_regn arg2,
-  k_regn arg3,
-  k_regn arg4
+  k_regn* regs,
+  k_regn data1,
+  k_regn data2,
+  k_regn data3,
+  k_regn data4
 )
 {
-  // current expected register values for syscall
-  // RAX syscall ID
-  // RCX syscall arg 1
-  // RDX syscall arg 2
-  // RSI syscall arg 3
-  // RDI syscall arg 4
+  // syscall arguments
+  //
+  // ARG 1:  syscall ID
+  // ARG 2:  task register stack
+  // ARG 3:  syscall arg 1
+  // ARG 4:  syscall arg 2
+  // ARG 5:  syscall arg 3
+  // ARG 6:  syscall arg 4
 
-  if (id == SYSCALL_SLEEP)
+  switch (id)
   {
-    int64_t* val = (int64_t*)arg2;
 
-    if (arg1 == 1)
-    {
-      fprintf(stddbg, "[SYSCALL] SLEEP waiting for lock %lld\n", *val);
-    }
-    else
-    {
-      fprintf(stddbg, "[SYSCALL] SLEEP waiting for semaphore %lld\n", *val);
-    }
+  case SYSCALL_SLEEP:
+  {
+    // data1 is the synchronization type
+    // data2 is the synchronization value
+    k_regn* next_task = k_task_sleep(regs, (k_regn*)data2, data1);
+
+    return next_task;
+  }
+
+  case SYSCALL_FACE:
+    fprintf(stddbg, "This is the FACE syscall. Data: %llX\n", data1);
+    return regs;
+
+  default:
+    return regs;
   }
 }

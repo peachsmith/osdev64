@@ -65,7 +65,7 @@
 
 
 // ISR for used to call k_task_sleep
-void k_sleep_isr();
+//void k_sleep_isr();
 
 // number of tasks that have been created
 uint64_t g_task_count = 1;
@@ -121,7 +121,7 @@ static void remove_task(k_task* target)
 void k_task_init()
 {
   // Interrupt 64 will be used to put the current task to sleep.
-  k_install_isr(k_sleep_isr, 0x40);
+  //k_install_isr(k_sleep_isr, 0x40);
 }
 
 

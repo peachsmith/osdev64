@@ -5,12 +5,16 @@
 
 #define SYSCALL_SLEEP 1
 
-void k_syscall(
+// used for debugging
+#define SYSCALL_FACE 0xFACE
+
+k_regn* k_syscall(
   k_regn id,
-  k_regn arg1,
-  k_regn arg2,
-  k_regn arg3,
-  k_regn arg4
+  k_regn* regs,
+  k_regn data1,
+  k_regn data2,
+  k_regn data3,
+  k_regn data4
 );
 
 #endif

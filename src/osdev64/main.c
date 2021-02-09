@@ -11,6 +11,7 @@
 #include "osdev64/memory.h"
 #include "osdev64/paging.h"
 #include "osdev64/descriptor.h"
+#include "osdev64/interrupts.h"
 #include "osdev64/acpi.h"
 #include "osdev64/util.h"
 #include "osdev64/mtrr.h"
@@ -30,7 +31,7 @@ k_lock* g_demo_lock;
 k_semaphore* g_demo_sem_sub;
 k_semaphore* g_demo_sem_pub;
 
-
+void k_syscall_isr();
 
 /**
  * Kernel entry point.
@@ -240,6 +241,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // Initialize task management.
   k_task_init();
+
+  // Install the syscall ISR at index 160
+  k_install_isr(k_syscall_isr, 0xA0);
 
   // Enable interrupts.
   k_enable_interrupts();
@@ -492,6 +496,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   int msg_count = 0;
 
+  // Make a silly syscall
+  k_face(0xF00D);
+
   // The main loop.
   for (;;)
   {
@@ -510,7 +517,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
       demo_mutex_task_b = NULL;
     }
 
-    k_apic_wait(20);
+    // k_apic_wait(20);
     // if (msg_count < 4)
     // {
     int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 0);
