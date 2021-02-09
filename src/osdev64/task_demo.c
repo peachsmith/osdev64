@@ -19,50 +19,45 @@ k_regn g_sem_data[3];
 //==========================================
 void demo_mutex_task_a_action()
 {
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 1; i++)
   {
     k_mutex_acquire(g_demo_lock, 0);
-    // k_apic_wait(120);
     k_syscall_sleep(120);
+
     fprintf(stddbg, "Mutex task A has the lock.\n");
     k_mutex_release(g_demo_lock);
 
     k_syscall_sleep(150);
-    // k_apic_wait(150);
   }
   // fprintf(stddbg, "Mutex task A has ended.\n");
 }
 
 void demo_mutex_task_b_action()
 {
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 1; i++)
   {
     k_mutex_acquire(g_demo_lock, 1);
     k_syscall_sleep(120);
-    // k_apic_wait(120);
 
     fprintf(stddbg, "Mutex task B has the lock.\n");
     k_mutex_release(g_demo_lock);
 
     k_syscall_sleep(180);
-    // k_apic_wait(180);
   }
   // fprintf(stddbg, "Mutex task B has ended.\n");
 }
 
 void demo_mutex_task_c_action()
 {
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 1; i++)
   {
     k_mutex_acquire(g_demo_lock, 0);
     k_syscall_sleep(110);
-    // k_apic_wait(110);
 
     fprintf(stddbg, "Mutex task C has the lock.\n");
     k_mutex_release(g_demo_lock);
 
     k_syscall_sleep(160);
-    // k_apic_wait(160);
   }
   // fprintf(stddbg, "Mutex task C has ended.\n");
 }
@@ -94,7 +89,6 @@ void demo_sem_task_a_action()
       *g_demo_sem_sub,
       *g_demo_sem_pub
     );
-    // k_apic_wait(120);
     k_syscall_sleep(120);
     k_semaphore_signal(g_demo_sem_pub);
   }
@@ -113,7 +107,6 @@ void demo_sem_task_b_action()
       *g_demo_sem_sub,
       *g_demo_sem_pub
     );
-    // k_apic_wait(120);
     k_syscall_sleep(120);
     int64_t pub_res = k_semaphore_signal(g_demo_sem_pub);
     // fprintf(stddbg, "[TASK] B incremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
@@ -133,7 +126,6 @@ void demo_sem_task_c_action()
       *g_demo_sem_sub,
       *g_demo_sem_pub
     );
-    // k_apic_wait(120);
     k_syscall_sleep(120);
     int64_t pub_res = k_semaphore_signal(g_demo_sem_pub);
     // fprintf(stddbg, "[TASK] C incremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);

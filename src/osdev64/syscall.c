@@ -14,14 +14,6 @@ k_regn k_syscall(
   k_regn data4
 )
 {
-  // syscall arguments
-  //
-  // ARG 1:  syscall ID
-  // ARG 2:  syscall arg 1
-  // ARG 3:  syscall arg 2
-  // ARG 4:  syscall arg 3
-  // ARG 5:  syscall arg 4
-
   switch (id)
   {
 
