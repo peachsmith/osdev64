@@ -526,8 +526,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
       demo_mutex_task_c = NULL;
     }
 
+    // k_pit_wait(120);
+    // fprintf(stddbg, "This is the main task\n");
     // k_apic_wait(20);
-    int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 0);
+    int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 1);
     // fprintf(stddbg, "[MAIN] decremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
     int64_t sub_res = k_semaphore_signal(g_demo_sem_sub);
     // fprintf(stddbg, "[MAIN] incremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);

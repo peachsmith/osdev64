@@ -6,9 +6,8 @@
 #include "klibc/stdio.h"
 
 
-k_regn* k_syscall(
+k_regn k_syscall(
   k_regn id,
-  k_regn* regs,
   k_regn data1,
   k_regn data2,
   k_regn data3,
@@ -18,33 +17,44 @@ k_regn* k_syscall(
   // syscall arguments
   //
   // ARG 1:  syscall ID
-  // ARG 2:  task register stack
-  // ARG 3:  syscall arg 1
-  // ARG 4:  syscall arg 2
-  // ARG 5:  syscall arg 3
-  // ARG 6:  syscall arg 4
+  // ARG 2:  syscall arg 1
+  // ARG 3:  syscall arg 2
+  // ARG 4:  syscall arg 3
+  // ARG 5:  syscall arg 4
 
   switch (id)
   {
 
-  case SYSCALL_SLEEP:
+  case SYSCALL_SLEEP_SYNC:
   {
-    // data1 is the synchronization type
-    // data2 is the synchronization value
+    // data1 is the register stack
+    // data2 is the synchronization type
+    // data3 is the synchronization value
+    k_regn* next = k_task_sleep((k_regn*)data1, (k_regn*)data3, data2, 0);
 
-    return k_task_sleep(regs, (k_regn*)data2, data1);
+    return PTR_TO_N(next);
+  }
+
+  case SYSCALL_SLEEP_TICK:
+  {
+    // data1 is the register stack
+    // data2 is the tick limit
+    k_regn* next = k_task_sleep((k_regn*)data1, NULL, 3, data2);
+
+    return PTR_TO_N(next);
   }
 
   case SYSCALL_STOP:
   {
-    return k_task_stop(regs);
+    k_regn* next = k_task_stop((k_regn*)data1);
+    return PTR_TO_N(next);
   }
 
   case SYSCALL_FACE:
     fprintf(stddbg, "This is the FACE syscall. Data: %llX\n", data1);
-    return regs;
+    return PTR_TO_N(NULL);
 
   default:
-    return regs;
+    return PTR_TO_N(NULL);
   }
 }

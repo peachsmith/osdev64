@@ -597,25 +597,14 @@ debug_isr:
   iretq
 
 
-# .global k_sleep_isr
-# k_sleep_isr:
-# 
-#   # Upon entering this procedure, the following registers should
-#   # have the following values:
-#   # RDX: synchronization type
-#   # RDI: address of synchronization value
-# 
-#   cld
-#   push_task_regs    # Push the current task's registers onto the stack.
-# 
-#   mov %rdi, %rsi    # The synchronization value is the second argument.
-#   mov %rsp, %rdi    # The register stack is the first argument.
-#   call k_task_sleep # Put the current task to sleep.
-#   mov %rax, %rsp    # Retrieve the register stack of the next task.
-# 
-#   pop_task_regs     # Pop the next task's registers from the stack.
-#   iretq
 
+
+# The system call ISR
+#
+# Currently supported system calls:
+# 2 STOP  stops the current task
+# 3 SLEEP puts the current task to sleep
+# 0xFACE FACE  writes a number somewhere
 .global k_syscall_isr
 k_syscall_isr:
 
@@ -627,32 +616,64 @@ k_syscall_isr:
   # RSI: syscall data 3
   # RDI: syscall data 4
 
-  cld
-
-  # Save current task register stack
-  push_task_regs
-
   # Prepare the arguments for k_syscall
   # ARG 1: RDI syscall ID
-  # ARG 2: RSI task register stack
-  # ARG 3: RDX syscall data 1
-  # ARG 4: RCX syscall data 2
-  # ARG 5: R8  syscall data 3
-  # ARG 6: R9  syscall data 4
+  # ARG 2: RSI syscall data 1
+  # ARG 3: RDX syscall data 2
+  # ARG 4: RCX syscall data 3
+  # ARG 5: R8  syscall data 4
 
-  # R11 is used as a scratch register.
+  cld
 
-  mov %rdi, %r9  # ARG 6
-  mov %rax, %rdi # ARG 1
-  mov %rsi, %r8  # ARG 5
-  mov %rdx, %r11 # Store RDX
-  mov %rcx, %rdx # ARG 3
-  mov %r11, %rcx # ARG 4
-  mov %rsp, %rsi # ARG 2
+  cmpq $2, %rax # check for STOP syscall
+  je .sc_stop
 
-  call k_syscall
-  mov %rax, %rsp
+  cmpq $3, %rax # check for SLEEP_SYNC syscall
+  je .sc_sleep_sync
 
-  # Restore current task register stack
-  pop_task_regs
-  iretq
+  cmpq $4, %rax # check for SLEEP_TICK syscall
+  je .sc_sleep_tick
+
+  cmpq $0xFACE, %rax # check for FACE syscall
+  je .sc_face
+
+  iretq # Unrecognized syscall ID
+
+.sc_stop:
+  push_task_regs # Save the task register stack.
+  mov %rax, %rdi # ARG 1 (syscall ID)
+  mov %rsp, %rsi # ARG 2 (register stack)
+  call k_syscall # Invoke the syscall.
+  mov %rax, %rsp # Get the new register stack.
+  pop_task_regs  # Restore the task register stack.
+  iretq          # return from ISR
+
+.sc_sleep_sync:
+  push_task_regs # Save the task register stack.
+  mov %rax, %rdi # ARG 1 (syscall ID)
+  mov %rsp, %rsi # ARG 2 (register stack)
+  mov %rcx, %r11 # Store RCX in scratch register
+  mov %rdx, %rcx # ARG 4 (address of synchronization value)
+  mov %r11, %rdx # ARG 3 (synchronization type)
+  call k_syscall # Invoke the syscall.
+  mov %rax, %rsp # Get the new register stack.
+  pop_task_regs  # Restore the task register stack.
+  iretq          # return from ISR
+
+.sc_sleep_tick:
+  push_task_regs # Save the task register stack.
+  mov %rax, %rdi # ARG 1 (syscall ID)
+  mov %rsp, %rsi # ARG 2 (register stack)
+  mov %rcx, %rdx # ARG 3 (number of ticks)
+  call k_syscall # Invoke the syscall.
+  mov %rax, %rsp # Get the new register stack.
+  pop_task_regs  # Restore the task register stack.
+  iretq          # return from ISR
+
+.sc_face:
+  push_caller_saved # Save caller-saved registers.
+  mov %rax, %rdi    # ARG 1 (syscall ID)
+  mov %rcx, %rsi    # ARG 2 (a number)
+  call k_syscall    # Invoke the syscall.
+  pop_caller_saved  # Restore caller-saved registers.
+  iretq             # return from ISR

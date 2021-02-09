@@ -17,6 +17,7 @@
 
 #define TASK_SYNC_LOCK 1
 #define TASK_SYNC_SEMAPHORE 2
+#define TASK_SYNC_TICK 3
 
 // Memory for the initial contents of a task's stack.
 // It must be large enough to hold a task's entire register stack,
@@ -65,8 +66,9 @@
 // +-------------------+
 
 
-// ISR for used to call k_task_sleep
-//void k_sleep_isr();
+// global PIT tick count
+extern uint64_t g_pit_ticks;
+
 
 // number of tasks that have been created
 uint64_t g_task_count = 0;
@@ -121,8 +123,7 @@ static void remove_task(k_task* target)
 
 void k_task_init()
 {
-  // Interrupt 64 will be used to put the current task to sleep.
-  //k_install_isr(k_sleep_isr, 0x40);
+
 }
 
 static void print_tasks()
@@ -187,6 +188,17 @@ k_regn* k_task_switch(k_regn* reg_stack)
         else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE)
         {
           if ((int64_t)*g_current_task->sync_val > 0)
+          {
+            g_current_task->status = TASK_RUNNING;
+          }
+          else
+          {
+            g_current_task = g_current_task->next;
+          }
+        }
+        else if (g_current_task->sync_type == TASK_SYNC_TICK)
+        {
+          if (g_pit_ticks - g_current_task->ticks >= g_current_task->limit)
           {
             g_current_task->status = TASK_RUNNING;
           }
@@ -342,12 +354,15 @@ k_regn* k_task_stop(k_regn* regs)
   return k_task_switch(regs);
 }
 
-k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ)
+k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ, k_regn ticks)
 {
   // Set the synchronization value and type in the current task,
   // then set the current task's status to SLEEPING.
   g_current_task->sync_val = val;
   g_current_task->sync_type = typ;
+  g_current_task->ticks = g_pit_ticks;
+  g_current_task->limit = ticks;
+
   g_current_task->status = TASK_SLEEPING;
 
   return k_task_switch(regs);

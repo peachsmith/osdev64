@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+uint64_t g_pit_ticks = 0;
+
 void k_pit_init()
 {
   // This implementation is based on the example provided in James Molloy's
@@ -25,4 +27,11 @@ void k_pit_init()
   // Send the frequency divisor.
   k_outb(0x40, l);
   k_outb(0x40, h);
+}
+
+void k_pit_wait(uint64_t n)
+{
+  uint64_t current = g_pit_ticks;
+
+  while (g_pit_ticks - current < n);
 }

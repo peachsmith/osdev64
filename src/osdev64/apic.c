@@ -40,6 +40,8 @@ volatile uint32_t* volatile g_lapic = NULL;
 volatile uint32_t* volatile g_ioapic = NULL;
 
 
+// PIT tick count
+extern uint64_t g_pit_ticks;
 
 
 // polarity
@@ -178,12 +180,13 @@ void apic_spurious_handler()
   fprintf(stddbg, "[INT] APIC spurious interrupt handler\n");
 }
 
-uint64_t g_apic_ticks = 0;
+// uint64_t g_apic_ticks = 0;
 uint64_t* apic_pit_handler(uint64_t* regs)
 {
   uint64_t* next_task = regs;
 
-  g_apic_ticks++;
+  // g_apic_ticks++;
+  g_pit_ticks++;
 
   next_task = k_task_switch(regs);
 
@@ -198,9 +201,9 @@ uint64_t* apic_pit_handler(uint64_t* regs)
 
 void k_apic_wait(uint64_t ticks)
 {
-  uint64_t current = g_apic_ticks;
+  uint64_t current = g_pit_ticks;
 
-  while (g_apic_ticks - current < ticks);
+  while (g_pit_ticks - current < ticks);
 }
 
 void apic_generic_legacy_handler(uint8_t irqn)

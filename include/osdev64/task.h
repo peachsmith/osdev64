@@ -21,6 +21,8 @@ typedef struct k_task {
   struct k_task* next; // next task in the list
   k_regn* sync_val;    // synchronization value
   k_regn sync_type;    // synchronization type
+  k_regn ticks;        // timer tick count
+  k_regn limit;        // timer tick limit (for sleeping)
 }k_task;
 
 
@@ -92,6 +94,6 @@ k_regn* k_task_stop(k_regn*);
  *   k_regn* - a pointer to a synchronization primitive
  *   int - the type of synchronization primitive (1 for lock, 2 for semaphore)
  */
-k_regn* k_task_sleep(k_regn*, k_regn*, k_regn);
+k_regn* k_task_sleep(k_regn*, k_regn*, k_regn, k_regn);
 
 #endif

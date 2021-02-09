@@ -108,7 +108,8 @@ void k_pic_disable()
   k_outb(MASTER_DAT, 0xFF);
 }
 
-uint64_t g_pic_ticks = 0;
+extern uint64_t g_pit_ticks;
+// uint64_t g_pic_ticks = 0;
 
 // Currently used to handle all IRQs from the PIC.
 void pic_handler(uint8_t irq)
