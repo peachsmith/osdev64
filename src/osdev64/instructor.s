@@ -553,8 +553,12 @@ k_lock_sleep:
   retq
 
 .lock_sleep_loop:
-  mov $1, %rdx     # Indicate that the task is waiting on a lock.
-  int $0x40        # Raise interrupt 64 to put the task to sleep.
+  push %rdi
+  mov $1, %rax   # syscall ID is 1 (for SLEEP)
+  mov $1, %rcx   # synchronization type is 1 (for lock)
+  mov %rdi, %rdx # address of lock
+  int $0xA0      # Raise INT 160 to do the syscall
+  pop %rdi
   jmp k_lock_sleep # Restart the procedure.
 
 
@@ -630,7 +634,7 @@ k_sem_sleep:
   mov $1, %rax   # syscall ID is 1 (for SLEEP)
   mov $2, %rcx   # synchronization type is 2 (for semaphore)
   mov %rdi, %rdx # address of semaphore
-  int $0xA0
+  int $0xA0      # Raise INT 160 to do the syscall
 
   pop %rdi
 

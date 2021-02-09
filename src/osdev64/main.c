@@ -387,6 +387,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_task* demo_mutex_task_a = k_task_create(demo_mutex_task_a_action);
   k_task* demo_mutex_task_b = k_task_create(demo_mutex_task_b_action);
+  k_task* demo_mutex_task_c = k_task_create(demo_mutex_task_c_action);
 
   k_task* demo_sem_task_a = k_task_create(demo_sem_task_a_action);
   k_task* demo_sem_task_b = k_task_create(demo_sem_task_b_action);
@@ -394,8 +395,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_task_schedule(main_task);
 
-  // k_task_schedule(demo_mutex_task_a);
-  // k_task_schedule(demo_mutex_task_b);
+  k_task_schedule(demo_mutex_task_a);
+  k_task_schedule(demo_mutex_task_b);
+  k_task_schedule(demo_mutex_task_c);
 
   k_task_schedule(demo_sem_task_a);
   k_task_schedule(demo_sem_task_b);
@@ -505,27 +507,30 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
     if (demo_mutex_task_a != NULL && demo_mutex_task_a->status == TASK_REMOVED)
     {
-      fprintf(stddbg, "destroying mutex task a\n");
+      fprintf(stddbg, "destroying mutex task A\n");
       k_task_destroy(demo_mutex_task_a);
       demo_mutex_task_a = NULL;
     }
 
     if (demo_mutex_task_b != NULL && demo_mutex_task_b->status == TASK_REMOVED)
     {
-      fprintf(stddbg, "destroying mutex task b\n");
+      fprintf(stddbg, "destroying mutex task B\n");
       k_task_destroy(demo_mutex_task_b);
       demo_mutex_task_b = NULL;
     }
 
+    if (demo_mutex_task_c != NULL && demo_mutex_task_c->status == TASK_REMOVED)
+    {
+      fprintf(stddbg, "destroying mutex task C\n");
+      k_task_destroy(demo_mutex_task_c);
+      demo_mutex_task_c = NULL;
+    }
+
     // k_apic_wait(20);
-    // if (msg_count < 4)
-    // {
-    int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 0);
+    // int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 0);
     // fprintf(stddbg, "[MAIN] decremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
-    msg_count++;
-    int64_t sub_res = k_semaphore_signal(g_demo_sem_sub);
+    // int64_t sub_res = k_semaphore_signal(g_demo_sem_sub);
     // fprintf(stddbg, "[MAIN] incremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
-    // }
 
     if (demo_sem_task_a != NULL && demo_sem_task_a->status == TASK_REMOVED)
     {

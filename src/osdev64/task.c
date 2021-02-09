@@ -155,6 +155,7 @@ k_regn* k_task_switch(k_regn* reg_stack)
     while (g_current_task->next != NULL
       && g_current_task->status == TASK_SLEEPING)
     {
+      // fprintf(stddbg, "a task is still sleeping\n");
       if (g_current_task->sync_type == TASK_SYNC_LOCK)
       {
         if (*g_current_task->sync_val == 0)
@@ -195,8 +196,6 @@ k_regn* k_task_switch(k_regn* reg_stack)
  */
 void k_task_end()
 {
-  fprintf(stddbg, "a task has ended\n");
-
   // Mark the task as STOPPED so it will be removed.
   g_current_task->status = TASK_STOPPED;
 

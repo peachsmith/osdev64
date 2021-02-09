@@ -21,14 +21,14 @@ void demo_mutex_task_a_action()
 {
   for (int i = 0; i < 1; i++)
   {
-    k_mutex_acquire(g_demo_lock, 0);
+    k_mutex_acquire(g_demo_lock, 1);
     k_apic_wait(120);
-    fprintf(stddbg, "Mutex task A has the spinlock.\n");
+    // fprintf(stddbg, "Mutex task A has the lock.\n");
     k_mutex_release(g_demo_lock);
 
     k_apic_wait(150);
   }
-  fprintf(stddbg, "Mutex task A has ended.\n");
+  // fprintf(stddbg, "Mutex task A has ended.\n");
 }
 
 void demo_mutex_task_b_action()
@@ -38,12 +38,27 @@ void demo_mutex_task_b_action()
     k_mutex_acquire(g_demo_lock, 1);
     k_apic_wait(120);
 
-    fprintf(stddbg, "Mutex task B has the spinlock.\n");
+    // fprintf(stddbg, "Mutex task B has the lock.\n");
     k_mutex_release(g_demo_lock);
 
     k_apic_wait(180);
   }
-  fprintf(stddbg, "Mutex task B has ended.\n");
+  // fprintf(stddbg, "Mutex task B has ended.\n");
+}
+
+void demo_mutex_task_c_action()
+{
+  for (int i = 0; i < 1; i++)
+  {
+    k_mutex_acquire(g_demo_lock, 1);
+    k_apic_wait(110);
+
+    // fprintf(stddbg, "Mutex task C has the lock.\n");
+    k_mutex_release(g_demo_lock);
+
+    k_apic_wait(160);
+  }
+  // fprintf(stddbg, "Mutex task C has ended.\n");
 }
 //==========================================
 // END mutex demo
@@ -82,7 +97,7 @@ void demo_sem_task_b_action()
 {
   for (;;)
   {
-    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 0);
+    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 1);
     // fprintf(stddbg, "[TASK] B decremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
     fprintf(
       stddbg,
@@ -101,7 +116,7 @@ void demo_sem_task_c_action()
 {
   for (;;)
   {
-    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 0);
+    int64_t sub_res = k_semaphore_wait(g_demo_sem_sub, 1);
     // fprintf(stddbg, "[TASK] C decremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
     fprintf(
       stddbg,
