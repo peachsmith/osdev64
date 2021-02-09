@@ -155,6 +155,8 @@ k_regn* k_task_switch(k_regn* reg_stack)
     while (g_current_task->next != NULL
       && g_current_task->status == TASK_SLEEPING)
     {
+      // TODO: debug broken task disposal when another task
+      // is stuck sleeping.
       // fprintf(stddbg, "a task is still sleeping\n");
       if (g_current_task->sync_type == TASK_SYNC_LOCK)
       {
