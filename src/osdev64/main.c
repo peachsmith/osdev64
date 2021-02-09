@@ -20,6 +20,7 @@
 #include "osdev64/apic.h"
 #include "osdev64/task.h"
 #include "osdev64/sync.h"
+#include "osdev64/syscall.h"
 
 // temporary task demo for debugging task code
 #include "osdev64/task_demo.h"
@@ -31,7 +32,6 @@ k_lock* g_demo_lock;
 k_semaphore* g_demo_sem_sub;
 k_semaphore* g_demo_sem_pub;
 
-void k_syscall_isr();
 
 /**
  * Kernel entry point.
@@ -60,7 +60,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     HANG();
   }
 
-  g_demo_sem_pub = k_semaphore_create(3);
+  g_demo_sem_pub = k_semaphore_create(2);
   if (g_demo_sem_pub == NULL)
   {
     fprintf(stddbg, "failed to create demo semaphore\n");
@@ -499,7 +499,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   int msg_count = 0;
 
   // Make a silly syscall
-  k_face(0xF00D);
+  k_syscall_face(0xF00D);
 
   // The main loop.
   for (;;)
@@ -527,9 +527,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     }
 
     // k_apic_wait(20);
-    // int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 0);
+    int64_t pub_res = k_semaphore_wait(g_demo_sem_pub, 0);
     // fprintf(stddbg, "[MAIN] decremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
-    // int64_t sub_res = k_semaphore_signal(g_demo_sem_sub);
+    int64_t sub_res = k_semaphore_signal(g_demo_sem_sub);
     // fprintf(stddbg, "[MAIN] incremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
 
     if (demo_sem_task_a != NULL && demo_sem_task_a->status == TASK_REMOVED)

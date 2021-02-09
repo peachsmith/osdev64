@@ -31,9 +31,13 @@ k_regn* k_syscall(
   {
     // data1 is the synchronization type
     // data2 is the synchronization value
-    k_regn* next_task = k_task_sleep(regs, (k_regn*)data2, data1);
 
-    return next_task;
+    return k_task_sleep(regs, (k_regn*)data2, data1);
+  }
+
+  case SYSCALL_STOP:
+  {
+    return k_task_stop(regs);
   }
 
   case SYSCALL_FACE:

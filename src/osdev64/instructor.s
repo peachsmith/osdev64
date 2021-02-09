@@ -554,7 +554,7 @@ k_lock_sleep:
 
 .lock_sleep_loop:
   push %rdi
-  mov $1, %rax   # syscall ID is 1 (for SLEEP)
+  mov $3, %rax   # syscall ID is 3 (for SLEEP)
   mov $1, %rcx   # synchronization type is 1 (for lock)
   mov %rdi, %rdx # address of lock
   int $0xA0      # Raise INT 160 to do the syscall
@@ -631,7 +631,7 @@ k_sem_sleep:
   # Put the task to sleep until the value is > 0.
   push %rdi
 
-  mov $1, %rax   # syscall ID is 1 (for SLEEP)
+  mov $3, %rax   # syscall ID is 3 (for SLEEP)
   mov $2, %rcx   # synchronization type is 2 (for semaphore)
   mov %rdi, %rdx # address of semaphore
   int $0xA0      # Raise INT 160 to do the syscall
@@ -642,13 +642,27 @@ k_sem_sleep:
   jmp k_sem_sleep
 
 
-.global k_face
-k_face:
+# Invokes the FACE syscall.
+.global k_syscall_face
+k_syscall_face:
   push %rbp
   mov %rsp, %rbp
 
-  mov $0xFACE, %rax
+  mov $0xFACE, %rax # syscall ID is 0xFACE (for FACE)
   mov %rdi, %rcx
+  int $0xA0
+
+  leaveq
+  retq
+
+
+# Invokes the STOP syscall.
+.global k_syscall_stop
+k_syscall_stop:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov $2, %rax # syscall ID is 2 (for STOP)
   int $0xA0
 
   leaveq

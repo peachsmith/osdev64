@@ -32,8 +32,7 @@ typedef struct k_task {
 void k_task_init();
 
 /**
- * Determines 
- *
+ * Determines which task is currently executing.
  */
 k_regn* k_task_switch(k_regn*);
 
@@ -61,6 +60,9 @@ void k_task_destroy(k_task*);
 
 /**
  * Schedules a task for execution.
+ * The task should have a status of NEW.
+ * Once a task has been scheduled, its memory is owned by the scheduler
+ * until it is removed from the task list.
  *
  * Params:
  *   k_task* - pointer to a task to be scheduled
@@ -68,18 +70,22 @@ void k_task_destroy(k_task*);
 void k_task_schedule(k_task*);
 
 /**
- * This function changes a task's status to STOPPED.
- * Tasks with this status may be removed.
+ * Changes the current task's status to STOPPED and then calls k_task_switch
+ * to switch to a task with a status of RUNNING.
+ *
+ * Params:
+ *   k_regn* - a pointer to the current task's register stack
  */
-void k_task_stop(k_task*);
+k_regn* k_task_stop(k_regn*);
 
 /**
- * Prevents execution of a task until synchronized resource becomes
- * available. The first argument is a pointer to a synchronization primitive,
- * and the second argument indicates the type of synchronization primitive.
- * If the type is 1, then the first argument points to a lock. If the type
- * is 2, then the first argument points to a semaphore.
- * This function changes the current task's status to SLEEPING.
+ * Changes the current task's status to SLEEPING and then calls k_task_switch
+ * to switch to a task with a status of RUNNING.
+ * The first argument is a pointer to the current task's register stack,
+ * the second argument is a pointer toa  synchronization value, and the
+ * third argument indicates the type of synchronization value.
+ * If the type is 1, then the synchronization value is a lock. If the type
+ * is 2, then the synchronization value is a semaphore.
  *
  * Params:
  *   k_regn* - a pointer to the current task's register stack

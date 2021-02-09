@@ -21,7 +21,7 @@ void demo_mutex_task_a_action()
 {
   for (int i = 0; i < 1; i++)
   {
-    k_mutex_acquire(g_demo_lock, 1);
+    k_mutex_acquire(g_demo_lock, 0);
     k_apic_wait(120);
     // fprintf(stddbg, "Mutex task A has the lock.\n");
     k_mutex_release(g_demo_lock);
@@ -50,7 +50,7 @@ void demo_mutex_task_c_action()
 {
   for (int i = 0; i < 1; i++)
   {
-    k_mutex_acquire(g_demo_lock, 1);
+    k_mutex_acquire(g_demo_lock, 0);
     k_apic_wait(110);
 
     // fprintf(stddbg, "Mutex task C has the lock.\n");

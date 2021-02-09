@@ -3,6 +3,7 @@
 #include "osdev64/interrupts.h"
 #include "osdev64/instructor.h"
 #include "osdev64/apic.h"
+#include "osdev64/syscall.h"
 
 #include "klibc/stdio.h"
 
@@ -68,7 +69,7 @@
 //void k_sleep_isr();
 
 // number of tasks that have been created
-uint64_t g_task_count = 1;
+uint64_t g_task_count = 0;
 
 // the initial memory pointed to by the current task pointer
 k_task g_primer_task;
@@ -124,6 +125,26 @@ void k_task_init()
   //k_install_isr(k_sleep_isr, 0x40);
 }
 
+static void print_tasks()
+{
+  k_task* first = g_task_list;
+  k_task* t = g_task_list;
+
+  fprintf(stddbg, "(%llu,%d)", first->id, first->status);
+
+  if (first->next == NULL)
+  {
+    return;
+  }
+
+  t = first->next;
+  while (t != first)
+  {
+    fprintf(stddbg, " (%llu,%d)", t->id, t->status);
+    t = t->next;
+  }
+  fprintf(stddbg, "\n");
+}
 
 k_regn* k_task_switch(k_regn* reg_stack)
 {
@@ -136,49 +157,58 @@ k_regn* k_task_switch(k_regn* reg_stack)
   // Save the register stack of the current task.
   g_current_task->regs = reg_stack;
 
-  // Remove any stopped tasks from the list.
-  while (g_current_task->next != NULL
-    && g_current_task->next->status == TASK_STOPPED)
-  {
-    k_task* target = g_current_task->next;
-    remove_task(target);
-    target->status = TASK_REMOVED;
-  }
-
   // Select the next task.
   // Currently, we just do round robin, which is really inefficient.
   if (g_current_task->next != NULL)
   {
     g_current_task = g_current_task->next;
 
-    // Handle tasks with a status of SLEEPING.
+    // print_tasks();
+
+    // Attempt to find the next task wit a status of RUNNING.
     while (g_current_task->next != NULL
-      && g_current_task->status == TASK_SLEEPING)
+      && g_current_task->status != TASK_RUNNING)
     {
-      // TODO: debug broken task disposal when another task
-      // is stuck sleeping.
-      // fprintf(stddbg, "a task is still sleeping\n");
-      if (g_current_task->sync_type == TASK_SYNC_LOCK)
+      // For tasks with a status of SLEEPING, check
+      // to see if they can be woken.
+      if (g_current_task->status == TASK_SLEEPING)
       {
-        if (*g_current_task->sync_val == 0)
+        if (g_current_task->sync_type == TASK_SYNC_LOCK)
         {
-          g_current_task->status = TASK_RUNNING;
+          if (*g_current_task->sync_val == 0)
+          {
+            g_current_task->status = TASK_RUNNING;
+          }
+          else
+          {
+            g_current_task = g_current_task->next;
+          }
+        }
+        else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE)
+        {
+          if ((int64_t)*g_current_task->sync_val > 0)
+          {
+            g_current_task->status = TASK_RUNNING;
+          }
+          else
+          {
+            g_current_task = g_current_task->next;
+          }
         }
         else
         {
           g_current_task = g_current_task->next;
         }
       }
-      else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE)
+
+      // For tasks with a status of STOPPED, remove
+      // them from the list.
+      else if (g_current_task->status == TASK_STOPPED)
       {
-        if ((int64_t)*g_current_task->sync_val > 0)
-        {
-          g_current_task->status = TASK_RUNNING;
-        }
-        else
-        {
-          g_current_task = g_current_task->next;
-        }
+        k_task* target = g_current_task;
+        g_current_task = g_current_task->next;
+        remove_task(target);
+        target->status = TASK_REMOVED;
       }
       else
       {
@@ -191,19 +221,6 @@ k_regn* k_task_switch(k_regn* reg_stack)
   return g_current_task->regs;
 }
 
-/**
- * This function waits for the current task to be removed.
- * It's address is placed on the top of the initial stack of a task
- * so that it's called when the task returns from its action.
- */
-void k_task_end()
-{
-  // Mark the task as STOPPED so it will be removed.
-  g_current_task->status = TASK_STOPPED;
-
-  // Hang and wait for task disposal.
-  for (;;);
-}
 
 k_task* k_task_create(void (action)())
 {
@@ -237,8 +254,8 @@ k_task* k_task_create(void (action)())
   rsp = rbp - TASK_STACK_SPACE;
 
 
-  // Put the address of the k_task_end function on the top of the stack.
-  *(k_regn*)(rsp) = PTR_TO_N(k_task_end);
+  // Put the address of the k_syscall_stop function on the top of the stack.
+  *(k_regn*)(rsp) = PTR_TO_N(k_syscall_stop);
 
   // The memory that will hold the task state will start
   // at at an offset of 16 bytes from the start of the fifth page.
@@ -291,6 +308,7 @@ void k_task_schedule(k_task* t)
   // then this task is the first.
   if (g_task_list == NULL)
   {
+    t->status = TASK_RUNNING;
     g_task_list = t;
     g_current_task = t;
     return;
@@ -303,6 +321,7 @@ void k_task_schedule(k_task* t)
   // two entries point to each other.
   if (node->next == NULL)
   {
+    t->status = TASK_RUNNING;
     node->next = t;
     t->next = node;
     return;
@@ -316,9 +335,11 @@ void k_task_schedule(k_task* t)
   t->status = TASK_RUNNING;
 }
 
-void k_task_stop(k_task* t)
+k_regn* k_task_stop(k_regn* regs)
 {
-  t->status = TASK_STOPPED;
+  g_current_task->status = TASK_STOPPED;
+
+  return k_task_switch(regs);
 }
 
 k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ)
