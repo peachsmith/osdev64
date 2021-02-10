@@ -148,7 +148,13 @@ void pic_handler(uint8_t irq)
     }
   }
 
-  // handle PS/2 keyboard interrupts
+  // Handles timer IRQ.
+  if (irq == 0)
+  {
+    g_pit_ticks++;
+  }
+
+  // Handle PS/2 keyboard IRQ.
   // TODO: figure out what's actually going on here.
   // Currently, all I can find is forum posts where
   // people just say "read from port 0x60".

@@ -28,11 +28,6 @@
 #include "klibc/stdio.h"
 
 
-// k_lock* g_demo_lock;
-// k_semaphore* g_demo_sem_sub;
-// k_semaphore* g_demo_sem_pub;
-
-
 /**
  * Kernel entry point.
  */
@@ -52,27 +47,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_memory_init();      // memory management
   k_acpi_init();        // ACPI tables
   k_sync_init();        // synchronization
-
-  // g_demo_lock = k_mutex_create();
-  // if (g_demo_lock == NULL)
-  // {
-  //   fprintf(stddbg, "failed to create demo spinlock\n");
-  //   HANG();
-  // }
-
-  // g_demo_sem_pub = k_semaphore_create(2);
-  // if (g_demo_sem_pub == NULL)
-  // {
-  //   fprintf(stddbg, "failed to create demo semaphore\n");
-  //   HANG();
-  // }
-
-  // g_demo_sem_sub = k_semaphore_create(0);
-  // if (g_demo_sem_sub == NULL)
-  // {
-  //   fprintf(stddbg, "failed to create demo semaphore\n");
-  //   HANG();
-  // }
 
   fprintf(stddbg, "[INFO] graphics, serial, console, and memory have been initialized.\n");
 
@@ -97,7 +71,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     else
     {
       fprintf(stddbg, "[ERROR] CPUID unavailable\n");
-      for (;;);
+      HANG();
     }
   }
 
@@ -114,7 +88,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   else
   {
     fprintf(stddbg, "[ERROR] Max Extension too low: %llu\n", max_e);
-    for (;;);
+    HANG();
   }
 
   // Get MAXPHYADDR from CPUID.80000008H:EAX[bits 7-0]
@@ -125,21 +99,21 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   if (!(rdx_features & BM_5))
   {
     fprintf(stddbg, "[ERROR] MSRs are not supported\n");
-    for (;;);
+    HANG();
   }
 
   // Check for MTRR support.
   if (!(rdx_features & BM_12))
   {
     fprintf(stddbg, "[ERROR] MTRRs are not supported\n");
-    for (;;);
+    HANG();
   }
 
   // Check for PAT support.
   if (!(rdx_features & BM_16))
   {
     fprintf(stddbg, "[ERROR] PAT is not supported\n");
-    for (;;);
+    HANG();
   }
 
   // Write some bits from CR0 and CR4
@@ -248,6 +222,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Enable interrupts.
   k_enable_interrupts();
 
+  // Create the main task to represent this thread of execution.
+  k_task* main_task = k_task_create(NULL);
+  k_task_schedule(main_task);
+
   // END Stage 2 initialization
   //==============================
 
@@ -321,23 +299,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // END physical memory demo
   //==========================================
 
-  // END demo code
-  //==============================
-
-
-  // Test an exception handler.
-  // k_cause_exception();
-
-  // fprintf(stddbg, "RAM Pool:\n");
-  // k_memory_print_pool();
-
-  // fprintf(stddbg, "RAM Ledger:\n");
-  // k_memory_print_ledger();
-
-  // Print the MADT
-  // k_acpi_print_madt();
-
-  fprintf(stddbg, "[INFO] Initialization complete.\n");
 
 
   //==========================================
@@ -373,201 +334,59 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // k_paging_print_ledger();
 
+  // virt_dat3[0] = 'J';
+  // virt_dat3[1] = 'E';
+  // virt_dat3[2] = 'P';
+  // virt_dat3[3] = '\0';
+
+  // // virt_dat3 should be mapped to the physical location phys_dat3,
+  // // so printing both should result in the same output.
+  // fprintf(stddbg, "virt_dat3: %s\n", virt_dat3);
+  // fprintf(stddbg, "phys_dat3: %s\n", phys_dat3);
+
   //==========================================
   // END virtual address ledger
   //==========================================
 
 
+  // Test an exception handler.
+  // k_cause_exception();
 
-  //==========================================
-  // BEGIN task creation
-  //==========================================
+  // fprintf(stddbg, "RAM Pool:\n");
+  // k_memory_print_pool();
 
-  k_task* main_task = k_task_create(NULL);
+  // fprintf(stddbg, "RAM Ledger:\n");
+  // k_memory_print_ledger();
 
-  // k_task* demo_mutex_task_a = k_task_create(demo_mutex_task_a_action);
-  // k_task* demo_mutex_task_b = k_task_create(demo_mutex_task_b_action);
-  // k_task* demo_mutex_task_c = k_task_create(demo_mutex_task_c_action);
-
-  // k_task* demo_sem_task_a = k_task_create(demo_sem_task_a_action);
-  // k_task* demo_sem_task_b = k_task_create(demo_sem_task_b_action);
-  // k_task* demo_sem_task_c = k_task_create(demo_sem_task_c_action);
-
-  k_task_schedule(main_task);
-
-  // k_task_schedule(demo_mutex_task_a);
-  // k_task_schedule(demo_mutex_task_b);
-  // k_task_schedule(demo_mutex_task_c);
-
-  // k_task_schedule(demo_sem_task_a);
-  // k_task_schedule(demo_sem_task_b);
-  // k_task_schedule(demo_sem_task_c);
-
-  //==========================================
-  // BEGIN task creation
-  //==========================================
+  // Print the MADT
+  // k_acpi_print_madt();
 
 
-  //==========================================
-  // BEGIN synchronization demo code
-  //==========================================
-
-  // k_regn val_a = 0;
-
-  // k_xchg(1, &val_a);
-  // fprintf(stddbg, "val a: %X\n", val_a);
-
-  // k_xchg(2, &val_a);
-  // fprintf(stddbg, "val a: %X\n", val_a);
-
-  // k_xchg(3, &val_a);
-  // fprintf(stddbg, "val a: %X\n", val_a);
-
-  // k_xchg(4, &val_a);
-  // fprintf(stddbg, "val a: %X\n", val_a);
-
-
-  //==========================================
-  // END synchronization demo code
-  //==========================================
-
-  int should_stop_b = 0;
-
-  k_regn num = 0;
-  k_regn carry = 0;
-
-  carry = k_bts(0, &num);
-  fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  carry = k_bts(0, &num);
-  fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  carry = k_btr(0, &num);
-  fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  // carry = k_bts(1, &num);
-  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  // carry = k_bts(2, &num);
-  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  // carry = k_bts(3, &num);
-  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  // carry = k_btr(0, &num);
-  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  // carry = k_btr(1, &num);
-  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  // carry = k_btr(2, &num);
-  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-  // carry = k_btr(3, &num);
-  // fprintf(stddbg, "BTS test %llX %llu\n", num, carry);
-
-
-
-  //==========================================
-  // BEGIN XADD demo code
-  //==========================================
-
-  int64_t x_count = 0;
-  int64_t x_result = 0;
-  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
-
-  // count: 1, result: 0
-  x_result = k_xadd(1, &x_count);
-  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
-
-  // count: 3, result: 1
-  x_result = k_xadd(2, &x_count);
-  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
-
-  // count: -1, result: 3
-  x_result = k_xadd(-4, &x_count);
-  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
-
-  // count: 0, result: -1
-  x_result = k_xadd(1, &x_count);
-  fprintf(stddbg, "count: %lld, result: %lld\n", x_count, x_result);
-
-  //==========================================
-  // END XADD demo code
-  //==========================================
-
-  int msg_count = 0;
-
-  // Make a silly syscall
+  // Make a syscall to write a number to some place.
   k_syscall_face(0xF00D);
 
+  // Demonstrate mutual exclusion with locks.
   k_task* mutex1 = k_task_create(mutex_demo_1);
   k_task_schedule(mutex1);
   while (mutex1->status != TASK_REMOVED);
   k_task_destroy(mutex1);
 
+  // Demonstrate producer/consumer with semaphores.
+  k_task* sem1 = k_task_create(semaphore_demo_1);
+  k_task_schedule(sem1);
+  while (sem1->status != TASK_REMOVED);
+  k_task_destroy(sem1);
+
+  // END demo code
+  //==============================
+
+
+  fprintf(stddbg, "[INFO] Initialization complete.\n");
+
   // The main loop.
   for (;;)
   {
-
-    // if (demo_mutex_task_a != NULL && demo_mutex_task_a->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying mutex task A\n");
-    //   k_task_destroy(demo_mutex_task_a);
-    //   demo_mutex_task_a = NULL;
-    // }
-
-    // if (demo_mutex_task_b != NULL && demo_mutex_task_b->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying mutex task B\n");
-    //   k_task_destroy(demo_mutex_task_b);
-    //   demo_mutex_task_b = NULL;
-    // }
-
-    // if (demo_mutex_task_c != NULL && demo_mutex_task_c->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying mutex task C\n");
-    //   k_task_destroy(demo_mutex_task_c);
-    //   demo_mutex_task_c = NULL;
-    // }
-
-    // k_pit_wait(120);
-    // fprintf(stddbg, "This is the main task\n");
-    // k_apic_wait(20);
-    // k_semaphore_wait(g_demo_sem_pub, SYNC_SPIN);
-    // fprintf(stddbg, "[MAIN] decremented pub former: %lld, current: %lld\n", pub_res, *g_demo_sem_pub);
-    // k_semaphore_signal(g_demo_sem_sub);
-    // fprintf(stddbg, "[MAIN] incremented sub former: %lld, current: %lld\n", sub_res, *g_demo_sem_sub);
-
-    // if (demo_sem_task_a != NULL && demo_sem_task_a->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying semaphore task a\n");
-    //   k_task_destroy(demo_sem_task_a);
-    //   demo_sem_task_a = NULL;
-    // }
-
-    // if (demo_sem_task_b != NULL && demo_sem_task_b->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying semaphore task b\n");
-    //   k_task_destroy(demo_sem_task_b);
-    //   demo_sem_task_b = NULL;
-    // }
-
-    // if (demo_sem_task_c != NULL && demo_sem_task_c->status == TASK_REMOVED)
-    // {
-    //   fprintf(stddbg, "destroying semaphore task c\n");
-    //   k_task_destroy(demo_sem_task_c);
-    //   demo_sem_task_c = NULL;
-    // }
-
-    // if (should_stop_b < 10)
-    // {
-    //   should_stop_b++;
-    //   if (should_stop_b == 10)
-    //   {
-    //     k_task_stop(task_b);
-    //   }
-    // }
+    // Do stuff
   }
 
   // We should never get here.
