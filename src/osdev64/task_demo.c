@@ -70,7 +70,7 @@ void mutex_demo_1()
     return;
   }
 
-  if (a != NULL || b != NULL || c != NULL)
+  if (mutex_data != 3)
   {
     fprintf(
       stddbg,
