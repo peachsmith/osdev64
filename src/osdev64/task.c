@@ -170,43 +170,34 @@ k_regn* k_task_switch(k_regn* reg_stack)
     while (g_current_task->next != NULL
       && g_current_task->status != TASK_RUNNING)
     {
-      // For tasks with a status of SLEEPING, check
-      // to see if they can be woken.
+      // For tasks with a status of SLEEPING, check the
+      // wake condition to see if they can changed to RUNNING.
       if (g_current_task->status == TASK_SLEEPING)
       {
-        if (g_current_task->sync_type == TASK_SYNC_LOCK)
+        // Locks
+        // wake condition: sync_val == 0
+        if (g_current_task->sync_type == TASK_SYNC_LOCK
+          && *g_current_task->sync_val == 0)
         {
-          if (*g_current_task->sync_val == 0)
-          {
-            g_current_task->status = TASK_RUNNING;
-          }
-          else
-          {
-            g_current_task = g_current_task->next;
-          }
+          g_current_task->status = TASK_RUNNING;
         }
-        else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE)
+
+        // Semaphores
+        // wake condition: sync_val > 0
+        else if (g_current_task->sync_type == TASK_SYNC_SEMAPHORE
+          && (int64_t)*g_current_task->sync_val > 0)
         {
-          if ((int64_t)*g_current_task->sync_val > 0)
-          {
-            g_current_task->status = TASK_RUNNING;
-          }
-          else
-          {
-            g_current_task = g_current_task->next;
-          }
+          g_current_task->status = TASK_RUNNING;
         }
-        else if (g_current_task->sync_type == TASK_SYNC_TICK)
+
+        // Ticks
+        // wake condition: g_pit_ticks - ticks >= limit
+        else if (g_current_task->sync_type == TASK_SYNC_TICK
+          && g_pit_ticks - g_current_task->ticks >= g_current_task->limit)
         {
-          if (g_pit_ticks - g_current_task->ticks >= g_current_task->limit)
-          {
-            g_current_task->status = TASK_RUNNING;
-          }
-          else
-          {
-            g_current_task = g_current_task->next;
-          }
+          g_current_task->status = TASK_RUNNING;
         }
+
         else
         {
           g_current_task = g_current_task->next;

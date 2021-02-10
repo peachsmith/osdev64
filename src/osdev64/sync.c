@@ -129,7 +129,6 @@ k_semaphore* k_semaphore_create(int64_t n)
 }
 
 
-
 void k_semaphore_destroy(k_semaphore* s)
 {
   // Clear the corresponding bit in the bitmap.
@@ -144,21 +143,20 @@ void k_semaphore_destroy(k_semaphore* s)
 }
 
 
-int64_t k_semaphore_wait(k_semaphore* s, int busy)
+void k_semaphore_wait(k_semaphore* s, int busy)
 {
   if (busy)
   {
-    return k_sem_wait(s);
-    // fprintf(stddbg, "WAIT former value: %lld\n", wait_res);
+    k_sem_wait(s);
   }
   else
   {
-    return k_sem_sleep(s);
+    k_sem_sleep(s);
   }
 }
 
-int64_t k_semaphore_signal(k_semaphore* s)
+
+void k_semaphore_signal(k_semaphore* s)
 {
-  return k_xadd(1, s);
-  // fprintf(stddbg, "SIGNAL former value: %lld\n", sig_res);
+  k_xadd(1, s);
 }

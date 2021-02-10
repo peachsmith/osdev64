@@ -1,40 +1,63 @@
-#ifndef JEP_SYNCHRONIZATION_H
-#define JEP_SYNCHRONIZATION_H
+#ifndef JEP_SYNC_H
+#define JEP_SYNC_H
 
 // Synchronization Interface
+//
+// This interface contains function and data types for synchronizing access
+// to resources across multiple tasks. Mutual exclusion is achieved through
+// the use of locks, and producer/consumer synchronization is achieved
+// through semaphores.
 
 #include "osdev64/axiom.h"
 
 
+// Waiting types
+// When a task is waiting on a synchronization value, it may sleep or spin.
+// Sleeping, is when a task is not given any execution time by the scheduler.
+// The scheduler will check the synchronization value to determine if the
+// task can resume execution.
+// Spinning is when the task enters a loop and repeatedly checks the
+// synchronization value to see if it has become available. Spinning is
+// sometimes referred to as "busy waiting"
+#define SYNC_SLEEP 0
+#define SYNC_SPIN 1
+
+
 /**
- * A lock in which the task attempting to obtain the lock
- * waits for the lock to become available. This is used to implement
- * mutual exclusion. Once a task has acquired the lock, no other tasks
- * should be able to acquire the lock until it is released.
+ * A lock is a binary value that a task sets to gain access to a resource.
+ * This is used to implement mutual exclusion. When a given task acquires
+ * the lock, no other tasks should be able to acquire the lock until the
+ * lock is released. Any task that attempts to acquire a lock that is
+ * already acquired must wait until the lock becomes available.
  *
- * A task utilizes a spinlock through the k_spinlock_acquire and
- * k_spinlock_release functions. A task acquires the lock by calling
- * k_spinlock_acquire, then it performs the desired operations
- * on the protected resource, then it releases the lock by calling
- * k_spinlock_release.
+ * A task may acquire a lock by calling k_mutex_acquire, at which point
+ * it now owns the lock for the duration of the critical section.
+ * Once the task has completed its work in the critical section, it
+ * must release the lock by calling k_mutex_release, at which point
+ * other tasks may acquire the lock.
  */
 typedef k_regn k_lock;
 
 /**
- * A sempahore allows one or more tasks to notify other tasks when
- * a resource is available. For a given semaphore with a value of
- * n, up to n tasks can access the synchronized resource at any given time.
+ * A sempahore is a value that is decremented and incremented to control
+ * access to resources by multiple tasks. A semaphore with a starting value
+ * of n can allow up to n tasks to access a resource simultaneously. Access
+ * is gained by decrementing the semaphore, and availability is broadcast
+ * by incrementing the semaphore.
  *
- * Tasks utilize a sempahore with the k_sempahore_wait and
- * k_sempahore_signal functions. A task that attempts to access a protected
- * resource calls k_sempahore_wait to make sure that the resource is available.
- * Once the resource is available, the task can then access it.
- * When a task wants to notify other tasks that a resource has become available,
- * it calls k_sempahore_signal.
+ * A task attempts to gain access to a resource through a semaphore by
+ * calling k_semaphore_wait. Once it has successfully decremented the value,
+ * it can proceed. A task can notify other tasks waiting on a semaphore by
+ * calling k_semaphore_signal. This function increments the semaphore.
  */
 typedef k_regn k_semaphore;
 
+/**
+ * Initializes the synchronization interface.
+ * This should be called before any aother function in this interface.
+ */
 void k_sync_init();
+
 
 /**
  * Creates a new mutex lock.
@@ -48,7 +71,7 @@ k_lock* k_mutex_create();
 /**
  * Frees the memory allocated for a mutex lock.
  *
- * Returns:
+ * Params:
  *   k_lock* - a pointer to the lock to destroy
  */
 void k_mutex_destroy(k_lock*);
@@ -58,7 +81,7 @@ void k_mutex_destroy(k_lock*);
  * The task that calls this function will wait until the lock becomes
  * available. The first argument is a pointer to the lock, and the
  * second argument is the busy flag.
- * If the busy flag is 1, then this function wil loop until the lock
+ * If the busy flag is 1, then this function will loop until the lock
  * becomes available. If the busy flag is 0, then the current task
  * will be put to sleep until the lock becomes available.
  *
@@ -102,13 +125,13 @@ void k_semaphore_destroy(k_semaphore*);
  * Attempts to decrement a semaphore. The first argument is a pointer to the
  * semaphore, and the second argument is the busy flag.
  * If the busy flag is 1, then this function will loop until the semaphore has
- * a value of >= 0. If the busy flag is 0, then the current task will be put
- * to sleep until the semaphore has a value of >= 0
+ * a value of > 0. If the busy flag is 0, then the current task will be put
+ * to sleep until the semaphore has a value of > 0
  *
  * Params:
  *   k_semaphore* - a pointer to the semaphore to be decremented
  */
-int64_t k_semaphore_wait(k_semaphore*, int);
+void k_semaphore_wait(k_semaphore*, int);
 
 
 /**
@@ -118,6 +141,6 @@ int64_t k_semaphore_wait(k_semaphore*, int);
  * Params:
  *   k_semaphore* - a pointer to the semaphore to be incremented
  */
-int64_t k_semaphore_signal(k_semaphore*);
+void k_semaphore_signal(k_semaphore*);
 
 #endif
