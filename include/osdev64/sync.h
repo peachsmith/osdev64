@@ -54,7 +54,7 @@ typedef k_regn k_semaphore;
 
 /**
  * Initializes the synchronization interface.
- * This should be called before any aother function in this interface.
+ * This must be called before any other functions in this interface.
  */
 void k_sync_init();
 

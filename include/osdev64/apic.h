@@ -1,20 +1,23 @@
 #ifndef JEP_APIC_H
 #define JEP_APIC_H
 
-#include <stdint.h>
 
 // APIC Interface
-// The APIC interface consists of two types of APICs:
-// local APICs, which handle interrupts for individual cores,
-// and I/O APICs, which handle interrupts from external devics.
+//
+// This interface contains functions and data types for interacting with
+// the advanced programmable interrupt controllers (APIC).
+// There are two types of APICs:
+// 1. Local APICs, which receives IRQs coming into individual cores,
+// 2. I/O APICs, which receives IRQs from devices and passes them along
+//    to the local APICs.
+
+
+#include "osdev64/axiom.h"
 
 
 /**
  * Initializes the APIC interface.
- * This function must be called before calling any other functions in this
- * interface.
- * It reads the MADT to find the physical addresses of the local and I/O
- * APIC after which it maps their addresses into virtual address space.
+ * This must be called before any other functions in this interface.
  */
 void k_apic_init();
 
@@ -28,8 +31,6 @@ void k_apic_init();
  *   int - 1 if both local and I/O APICs are present, otherwise 0.
  */
 int k_apic_available();
-
-
 
 
 //============================================================
@@ -67,8 +68,6 @@ uint32_t k_lapic_get_version();
 uint32_t k_lapic_get_maxlvt();
 
 
-
-
 //============================================================
 // I/O APIC
 //============================================================
@@ -94,6 +93,5 @@ uint32_t k_ioapic_get_version();
  */
 uint32_t k_ioapic_get_max_redirect();
 
-void k_apic_wait(uint64_t ticks);
 
 #endif

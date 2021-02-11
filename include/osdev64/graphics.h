@@ -1,31 +1,20 @@
 #ifndef JEP_GRAPHICS_H
 #define JEP_GRAPHICS_H
 
+// Graphics Interface
+//
+// This interface contains functions and data types for displaying graphical
+// output on a screen.
+
+
 #include <stdint.h>
 
 
 /**
  * Initializes the graphics interface.
- * This must be called once before any of the other graphics functions
- * are called.
+ * This must be called before any other functions in this interface.
  */
 void k_graphics_init();
-
-/**
- * Gets the base physical address of the framebuffer.
- *
- * Returns:
- *   uint64_t - the base physical address of the framebuffer
- */
-// uint64_t k_graphics_get_phys_base();
-
-/**
- * Gets the size of the framebuffer in bytes.
- *
- * Returns:
- *   uint64_t - the size of the framebuffer in bytes
- */
-// uint64_t k_graphics_get_size();
 
 
 /**
@@ -34,6 +23,7 @@ void k_graphics_init();
  * this function.
  */
 void k_graphics_map_framebuffer();
+
 
 /**
  * Plots a single pixel on the screen.

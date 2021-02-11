@@ -1,11 +1,19 @@
 #ifndef JEP_FIRMWARE_H
 #define JEP_FIRMWARE_H
 
+// Firmware Interface
+//
+// This interface contains functions and data types for interacting with
+// the firmware. This is used for things like obtaining a map of physical
+// memory and locating a framebuffer for graphical output.
+
+
 #include "osdev64/axiom.h"
 
 
-// The memory map is a structure that provides a layout of all of the
-// available RAM in the system.
+/**
+ * A map of physical memory.
+ */
 typedef struct k_mem_map {
   UINTN map_size;
   EFI_MEMORY_DESCRIPTOR* buffer;
@@ -15,7 +23,9 @@ typedef struct k_mem_map {
 }k_mem_map;
 
 
-// graphics information
+/**
+ * Graphics mode information.
+ */
 typedef struct k_graphics {
   UINT32 width;  // horizontal resolution
   UINT32 height; // vertical resolution
@@ -28,6 +38,7 @@ typedef struct k_graphics {
 
 /**
  * Initializes the firmware service interface.
+ * This must be called before any other functions in this interface.
  *
  * Params:
  *   EFI_HANDLE - a UEFI application image

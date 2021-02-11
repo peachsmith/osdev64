@@ -28,8 +28,7 @@ typedef struct k_task {
 
 /**
  * Initializes task management.
- * This function must be called before any other functions from
- * the task interface are called.
+ * This must be called before any other functions in this interface.
  */
 void k_task_init();
 

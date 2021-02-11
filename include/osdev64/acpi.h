@@ -3,6 +3,7 @@
 
 /**
  * Initializes the ACPI table reader.
+ * This must be called before any other functions in this interface.
  */
 void k_acpi_init();
 

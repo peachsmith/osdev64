@@ -147,8 +147,8 @@ typedef k_regn pte;
 
 
 /**
- * Initializes paging.
- * This function overrides any paging established by the firmware.
+ * Initializes paging interface.
+ * This must be called before any other functions in this interface.
  */
 void k_paging_init();
 

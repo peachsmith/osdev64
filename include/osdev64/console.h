@@ -4,8 +4,7 @@
 
 /**
  * Initializes the text console.
- * This must be called once before any of the other console functions
- * are called.
+ * This must be called before any other functions in this interface.
  */
 void k_console_init();
 

@@ -6,6 +6,7 @@
 #include "osdev64/msr.h"
 #include "osdev64/interrupts.h"
 #include "osdev64/task.h"
+#include "osdev64/instructor.h"
 
 #include "klibc/stdio.h"
 
@@ -199,16 +200,157 @@ uint64_t* apic_pit_handler(uint64_t* regs)
   return next_task;
 }
 
-void k_apic_wait(uint64_t ticks)
-{
-  uint64_t current = g_pit_ticks;
+const char* sc_map[104] = {
+  "ESC", // 0
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", // 9
+  "0", "-", "=", "BSP", "TAB", "Q", "W", "E", "R", "T", // 19
+  "Y", "U", "I", "O", "P", "[", "]", "ENT", "LCT", "A", // 29
+  "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", // 39
+  "`", "LSH", "\\", "Z", "X", "C", "V", "B", "N", "M", // 49
+  ",", ".", "/", "RSH", "K*", "LAT", "SPC", "CAP", "F1", "F2", // 59
+  "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "NUM", "SCL", // 69
+  "K7", "K8", "K9", "K-", "K4", "K5", "K6", "K+", "K1", "K2", // 79
+  "K3", "K0", "K.", "", "", "", "F11", "F12", // 87
 
-  while (g_pit_ticks - current < ticks);
+  // two byte sequences
+  "RAT", "RCT", "LA", "UA", "RA", "DA", // 93
+  "HOM", "PGU", "END", "PGD", "INS", "DEL", // 99
+  "KEN", "K/", // 101
+
+  // four byte sequences
+  "PRT" // 102
+};
+
+static int two_byte_i(uint8_t b)
+{
+  switch (b & 0x7F)
+  {
+  case 0x4B: // left arrow
+    return 90;
+
+  case 0x48: // up arrow
+    return 91;
+
+  case 0x4D: // right arrow
+    return 92;
+
+  case 0x50: // down arrow
+    return 93;
+
+  case 0x38: // right alt
+    return 88;
+
+  case 0x1D: // right control
+    return 89;
+
+
+
+  case 0x47: // home
+    return 94;
+
+  case 0x49: // page up
+    return 95;
+
+  case 0x4F: // end
+    return 96;
+
+  case 0x51: // page down
+    return 97;
+
+  case 0x52: // insert
+    return 98;
+
+  case 0x53: // delete
+    return 99;
+
+  case 0x1C: // keypad enter
+    return 100;
+
+  case 0x35: // keypad /
+    return 101;
+
+
+  default:
+    return 0;
+  }
+}
+
+volatile uint8_t sc_count = 0;
+
+volatile uint8_t sc_seq[6];
+
+volatile uint8_t prev_key = 0;
+
+static inline void handle_scancode(uint8_t sc)
+{
+  if (sc_count > 0)
+  {
+    sc_seq[sc_count++] = sc;
+
+    if (sc_count == 2 && sc_seq[0] == 0xE0)
+    {
+      if (sc_seq[1] != 0xB7 && sc_seq[1] != 0x2A)
+      {
+        // two-byte sequence
+        fprintf(
+          stddbg,
+          "key %s %s\n",
+          sc_map[two_byte_i(sc_seq[1])],
+          (sc_seq[1] < 0x90) ? "pressed" : "released"
+        );
+        sc_count = 0;
+      }
+    }
+    else if (sc_count == 4)
+    {
+      // print screen
+      if (sc_seq[3] == 0x37 || sc_seq[3] == 0xAA)
+      {
+        fprintf(stddbg, "print screen %s\n", (sc_seq[3] == 0x37) ? "pressed" : "released");
+        sc_count = 0;
+      }
+    }
+    else if (sc_count >= 6)
+    {
+      // pause
+      fprintf(stddbg, "pause pressed\n");
+      sc_count = 0;
+    }
+  }
+  else if (sc == 0xE0 || sc == 0xE1)
+  {
+    // Begin a scancode sequence.
+    prev_key = sc;
+    sc_seq[sc_count++] = sc;
+  }
+  else if ((sc & 0x7F) < 89)
+  {
+    fprintf(
+      stddbg,
+      "key %s %s\n",
+      sc_map[(sc & 0x7F) - 1],
+      (sc & 0x80) ? "released" : "pressed"
+    );
+  }
+  else
+  {
+    fprintf(
+      stddbg,
+      "unknown key %X\n",
+      sc
+    );
+  }
 }
 
 void apic_generic_legacy_handler(uint8_t irqn)
 {
-  fprintf(stddbg, "APIC IRQ %u\n", irqn);
+  // fprintf(stddbg, "APIC IRQ %u\n", irqn);
+  if (irqn == 1)
+  {
+    uint8_t sc = k_inb(0x60);
+    handle_scancode(sc);
+    // fprintf(stddbg, "read %X from keyboard\n", kb);
+  }
 
   // Check the local APIC's ISR to see if we need to send an EOI.
   // Since legacy IRQs should have been mapped starting at interrupt 0x30,

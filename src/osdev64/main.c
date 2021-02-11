@@ -387,6 +387,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   for (;;)
   {
     // Do stuff
+    // k_pit_wait(120);
+    // fprintf(stddbg, "This is the main loop\n");
   }
 
   // We should never get here.

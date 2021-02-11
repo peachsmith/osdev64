@@ -1,12 +1,18 @@
 #ifndef JEP_PIC_H
 #define JEP_PIC_H
 
+// PIC Interface
+//
+// The programmable interrupt controller (PIC) is a legacy method of passing
+// hardware IRQs to the CPU. The newer way of doing this is the APIC.
+// This interface must be disabled before attempting to use the APIC.
 
 #include <stdint.h>
 
 
 /**
- * Initializes the PIC or emulation thereof.
+ * Initializes the PIC interface.
+ * This must be called before any other functions in this interface.
  */
 void k_pic_init();
 

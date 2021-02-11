@@ -6,6 +6,7 @@
 
 /**
  * Initializes a serial port.
+ * This must be called before any other functions in this interface.
  */
 void k_serial_com1_init();
 
