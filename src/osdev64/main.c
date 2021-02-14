@@ -412,6 +412,19 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   }
   k_heap_print();
 
+  k_heap_free(h2);
+  k_heap_print();
+
+  k_heap_free(h1);
+  k_heap_print();
+
+  h1 = (k_byte*)k_heap_alloc(8);
+  if (h1 == NULL)
+  {
+    fprintf(stddbg, "failed to allocate first chunk of memory\n");
+  }
+  k_heap_print();
+
   // The main loop.
   for (;;)
   {

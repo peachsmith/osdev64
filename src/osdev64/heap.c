@@ -103,12 +103,47 @@ void* k_heap_alloc(size_t n)
   // Clear the AVAILABLE flag of the allocated region to indicate
   // that it is now allocated.
   h->flags &= ~(AVAILABLE);
+
+  return (void*)start;
 }
 
 
-void k_heap_free()
+void k_heap_free(void* r)
 {
+  k_regn s = PTR_TO_N(r);
 
+  k_heap_header* h = (k_heap_header*)s_heap;
+
+  // Locate the header of the region whose starting address
+  // matches the argument and whose AVAILABLE is cleared.
+  while (h->next != NULL &&
+    (PTR_TO_N(h) + sizeof(k_heap_header) != s
+      || (h->flags & AVAILABLE))
+    )
+  {
+    h = h->next;
+  }
+
+  // If we failed to find an allocated region whose starting
+  // address matched the argument, then return.
+  if (h->next == NULL &&
+    (PTR_TO_N(h) + sizeof(k_heap_header) != s
+      || (h->flags & AVAILABLE)))
+  {
+    return;
+  }
+
+  // Set the AVAILABLE flag to indicate that the region is no longer
+  // allocated.
+  h->flags |= AVAILABLE;
+
+  // Merge the freed region with adjacent regions.
+  if (h->next != NULL && (h->next->flags & AVAILABLE))
+  {
+    h->size = h->size + h->next->size + sizeof(k_heap_header);
+
+    h->next = h->next->next;
+  }
 }
 
 // Prints a description of a region of memory based on information

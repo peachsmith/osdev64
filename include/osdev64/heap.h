@@ -30,7 +30,7 @@ void k_heap_init();
  * Returns:
  *   void* - the base address of the region of newly allocated memory
  */
-void* k_heap_alloc(size_t n);
+void* k_heap_alloc(size_t);
 
 
 /**
@@ -40,7 +40,7 @@ void* k_heap_alloc(size_t n);
  * Params:
  *   void* - the base address of a region of allocated mmeory
  */
-void k_heap_free();
+void k_heap_free(void*);
 
 
 /**
