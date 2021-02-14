@@ -47,7 +47,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_graphics_init();    // graphical output
   k_serial_com1_init(); // serial output
   k_console_init();     // text output
-  k_memory_init();      // memory management
+  k_memory_init();      // physical memory management
+  k_heap_init();        // heap management
   k_acpi_init();        // ACPI tables
   k_sync_init();        // synchronization
 
@@ -162,9 +163,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // Create a new virtual address space.
   k_paging_init();
-
-  // Initialize the kernel heap.
-  k_heap_init();
 
   // Map the framebuffer to some high virtual address.
   k_graphics_map_framebuffer();
