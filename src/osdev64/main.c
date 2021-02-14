@@ -2,14 +2,17 @@
 
 #include "osdev64/bitmask.h"
 #include "osdev64/instructor.h"
-#include "osdev64/control.h"
-#include "osdev64/cpuid.h"
-#include "osdev64/msr.h"
 #include "osdev64/graphics.h"
 #include "osdev64/serial.h"
 #include "osdev64/console.h"
 #include "osdev64/memory.h"
 #include "osdev64/paging.h"
+#include "osdev64/heap.h"
+
+#include "osdev64/control.h"
+#include "osdev64/cpuid.h"
+#include "osdev64/msr.h"
+
 #include "osdev64/descriptor.h"
 #include "osdev64/interrupts.h"
 #include "osdev64/acpi.h"
@@ -159,6 +162,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   // Create a new virtual address space.
   k_paging_init();
+
+  // Initialize the kernel heap.
+  k_heap_init();
 
   // Map the framebuffer to some high virtual address.
   k_graphics_map_framebuffer();
@@ -382,6 +388,29 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
+
+  k_heap_print();
+
+  k_byte* h1 = (k_byte*)k_heap_alloc(16);
+  if (h1 == NULL)
+  {
+    fprintf(stddbg, "failed to allocate first chunk of memory\n");
+  }
+  k_heap_print();
+
+  k_byte* h2 = (k_byte*)k_heap_alloc(24);
+  if (h2 == NULL)
+  {
+    fprintf(stddbg, "failed to allocate second chunk of memory\n");
+  }
+  k_heap_print();
+
+  k_byte* h3 = (k_byte*)k_heap_alloc(24);
+  if (h3 == NULL)
+  {
+    fprintf(stddbg, "failed to allocate third chunk of memory\n");
+  }
+  k_heap_print();
 
   // The main loop.
   for (;;)

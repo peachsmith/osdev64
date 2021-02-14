@@ -34,6 +34,7 @@ serial.o \
 console.o \
 memory.o \
 paging.o \
+heap.o \
 acpi.o \
 gdt.o \
 idt.o \
@@ -79,6 +80,7 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/console.c -o console.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/memory.c -o memory.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/paging.c -o paging.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/heap.c -o heap.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/acpi.c -o acpi.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/gdt.c -o gdt.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/idt.c -o idt.o
