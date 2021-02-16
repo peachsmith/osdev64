@@ -10,14 +10,18 @@
 extern k_mem_map g_sys_mem;
 
 
+// global system font
+extern k_byte* g_sys_font;
 
+// global executable file
+extern k_byte* g_app_bin;
 
 /**
  * A single entry in the physical RAM pool
  */
 typedef struct pool_entry {
-  uint64_t address; // physical address
-  uint64_t pages;   // number of pages
+  k_regn address; // physical address
+  k_regn pages;   // number of pages
 }pool_entry;
 
 /**
@@ -25,9 +29,9 @@ typedef struct pool_entry {
  */
 typedef struct ledger_entry {
   int i; // index of available memory region array
-  uint64_t address;
-  uint64_t pages;
-  unsigned char avail; // availability flag
+  k_regn address;
+  k_regn pages;
+  k_byte avail; // availability flag
 }ledger_entry;
 
 // number of regions in the RAM pool
@@ -239,7 +243,7 @@ void k_memory_init()
   if (!k_firmware_exit())
   {
     fprintf(stddbg, "[ERROR] Failed to exit UEFI boot services.\n");
-    for (;;);
+    HANG();
   }
 
   // Round the total RAM up to the nearest GiB to account for holes.
@@ -255,7 +259,7 @@ void k_memory_init()
     if (g_ram_pool[i].address % 0x1000)
     {
       fprintf(stddbg, "[ERROR] RAM pool entry not 4K aligned\n");
-      for (;;);
+      HANG();
     }
   }
 
@@ -285,14 +289,58 @@ void k_memory_init()
   // Create the page reservation ledger.
   for (int i = 0; i < g_pool_count; i++)
   {
-    // Look for a region that contains at least 8 pages.
-    if (g_ram_pool[i].pages >= 100)
+    // Look for a region that contains at least 41 pages.
+    // Currently, the RAM_LEDGER_MAX is 5000, and each ledger
+    // entry is assumed to be 32 bytes, so 5000 entries would
+    // take up 40 pages. We use page 41 for the system font data.
+    // We use pages 42 and 43 for the temporary loaded app.
+    if (g_ram_pool[i].pages >= 43)
     {
       // Populate the root memory reservation.
       root.i = i;
       root.address = g_ram_pool[i].address;
-      root.pages = 100;
+      root.pages = 43;
       root.avail = 0;
+
+      // Copy the system font loaded by the firmware into the
+      // newly allocated memory.
+      k_byte* font_copy = (k_byte*)(root.address + 40 * 0x1000);
+      if (PTR_TO_N(font_copy) < PTR_TO_N(g_sys_font))
+      {
+        for (int j = 0; j < 4096; j++)
+        {
+          font_copy[j] = g_sys_font[j];
+        }
+      }
+      else
+      {
+        for (int j = 4095; j >= 0; j--)
+        {
+          font_copy[j] = g_sys_font[j];
+        }
+      }
+      g_sys_font = font_copy;
+
+
+      // Copy the executable file loaded by the firmware into the
+      // newly allocated memory.
+      k_byte* app_copy = (k_byte*)(root.address + 41 * 0x1000);
+      if (PTR_TO_N(app_copy) < PTR_TO_N(g_app_bin))
+      {
+        for (int j = 0; j < 8192; j++)
+        {
+          app_copy[j] = g_app_bin[j];
+        }
+      }
+      else
+      {
+        for (int j = 8191; j >= 0; j--)
+        {
+          app_copy[j] = g_app_bin[j];
+        }
+      }
+      g_app_bin = app_copy;
+
 
       // Set the base address of the reservation array.
       g_ram_ledger = (ledger_entry*)(root.address);

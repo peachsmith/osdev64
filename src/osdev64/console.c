@@ -2,10 +2,11 @@
 #include "osdev64/core.h"
 #include "osdev64/console.h"
 #include "osdev64/graphics.h"
+#include "osdev64/memory.h"
 
 
 // global system font
-extern k_byte g_sys_font[4096];
+extern k_byte* g_sys_font;
 
 
 void k_console_init()

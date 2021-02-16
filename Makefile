@@ -49,6 +49,7 @@ task.o \
 sync.o \
 syscall.o \
 task_demo.o \
+app_demo.o \
 klibc.o
 
 
@@ -56,7 +57,7 @@ all: myos.iso
 	xorriso -as mkisofs -R -f -e myos.img -no-emul-boot -o myos.iso iso
 
 
-myos.iso: myos.efi
+myos.iso: myos.efi app.bin
 	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dysym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 main.so myos.efi
 
 	cp myos.efi BOOTX64.EFI
@@ -67,6 +68,7 @@ myos.iso: myos.efi
 	mmd -i myos.img ::/EFI/BOOT
 	mcopy -i myos.img BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i myos.img zap-vga16.psf ::/
+	mcopy -i myos.img app.bin ::/
 
 	cp myos.img iso
 
@@ -95,12 +97,18 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/sync.c -o sync.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/syscall.c -o syscall.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/task_demo.c -o task_demo.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/app_demo.c -o app_demo.o
 
 	$(LD) -shared -Bsymbolic -L$(GNUEFI_DIR)/x86_64/gnuefi -L$(GNUEFI_DIR)/x86_64/lib -T$(GNUEFI_DIR)/gnuefi/elf_x86_64_efi.lds $(OBJECTS) -o main.so -lgnuefi -lefi
 
 
 klibc.o:
 	$(CC) -Iklibc -Iinclude $(CFLAGS) -c src/klibc/klibc.c -o klibc.o
+
+
+app.bin:
+	$(AS) --64 src/app/app.s -o app.o
+	$(LD) -T src/app/app.lds app.o -o app.bin
 
 
 # starts the VM and boots the kernel
@@ -112,4 +120,4 @@ run:
 
 .PHONY : clean
 clean:
-	rm *.o *.so *.iso *.img *.efi *.EFI iso/myos.img
+	rm *.o *.so *.iso *.img *.efi *.EFI *.bin iso/myos.img

@@ -28,6 +28,8 @@
 // temporary task demo for debugging task code
 #include "osdev64/task_demo.h"
 
+#include "osdev64/app_demo.h"
+
 #include "klibc/stdio.h"
 
 
@@ -46,9 +48,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   k_graphics_init();    // graphical output
   k_serial_com1_init(); // serial output
-  k_console_init();     // text output
   k_memory_init();      // physical memory management
   k_heap_init();        // heap management
+  k_console_init();     // text output
   k_acpi_init();        // ACPI tables
   k_sync_init();        // synchronization
 
@@ -369,17 +371,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Make a syscall to write a number to some place.
   k_syscall_face(0xF00D);
 
-  // Demonstrate mutual exclusion with locks.
-  k_task* mutex1 = k_task_create(mutex_demo_1);
-  k_task_schedule(mutex1);
-  while (mutex1->status != TASK_REMOVED);
-  k_task_destroy(mutex1);
+  // // Demonstrate mutual exclusion with locks.
+  // k_task* mutex1 = k_task_create(mutex_demo_1);
+  // k_task_schedule(mutex1);
+  // while (mutex1->status != TASK_REMOVED);
+  // k_task_destroy(mutex1);
 
-  // Demonstrate producer/consumer with semaphores.
-  k_task* sem1 = k_task_create(semaphore_demo_1);
-  k_task_schedule(sem1);
-  while (sem1->status != TASK_REMOVED);
-  k_task_destroy(sem1);
+  // // Demonstrate producer/consumer with semaphores.
+  // k_task* sem1 = k_task_create(semaphore_demo_1);
+  // k_task_schedule(sem1);
+  // while (sem1->status != TASK_REMOVED);
+  // k_task_destroy(sem1);
 
   // END demo code
   //==============================
@@ -387,41 +389,43 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   fprintf(stddbg, "[INFO] Initialization complete.\n");
 
-  k_heap_print();
+  // k_heap_print();
 
-  k_byte* h1 = (k_byte*)k_heap_alloc(16);
-  if (h1 == NULL)
-  {
-    fprintf(stddbg, "failed to allocate first chunk of memory\n");
-  }
-  k_heap_print();
+  // k_byte* h1 = (k_byte*)k_heap_alloc(16);
+  // if (h1 == NULL)
+  // {
+  //   fprintf(stddbg, "failed to allocate first chunk of memory\n");
+  // }
+  // k_heap_print();
 
-  k_byte* h2 = (k_byte*)k_heap_alloc(24);
-  if (h2 == NULL)
-  {
-    fprintf(stddbg, "failed to allocate second chunk of memory\n");
-  }
-  k_heap_print();
+  // k_byte* h2 = (k_byte*)k_heap_alloc(24);
+  // if (h2 == NULL)
+  // {
+  //   fprintf(stddbg, "failed to allocate second chunk of memory\n");
+  // }
+  // k_heap_print();
 
-  k_byte* h3 = (k_byte*)k_heap_alloc(24);
-  if (h3 == NULL)
-  {
-    fprintf(stddbg, "failed to allocate third chunk of memory\n");
-  }
-  k_heap_print();
+  // k_byte* h3 = (k_byte*)k_heap_alloc(24);
+  // if (h3 == NULL)
+  // {
+  //   fprintf(stddbg, "failed to allocate third chunk of memory\n");
+  // }
+  // k_heap_print();
 
-  k_heap_free(h2);
-  k_heap_print();
+  // k_heap_free(h2);
+  // k_heap_print();
 
-  k_heap_free(h1);
-  k_heap_print();
+  // k_heap_free(h1);
+  // k_heap_print();
 
-  h1 = (k_byte*)k_heap_alloc(8);
-  if (h1 == NULL)
-  {
-    fprintf(stddbg, "failed to allocate first chunk of memory\n");
-  }
-  k_heap_print();
+  // h1 = (k_byte*)k_heap_alloc(8);
+  // if (h1 == NULL)
+  // {
+  //   fprintf(stddbg, "failed to allocate first chunk of memory\n");
+  // }
+  // k_heap_print();
+
+  k_app_demo();
 
   // The main loop.
   for (;;)

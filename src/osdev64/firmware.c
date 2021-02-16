@@ -10,7 +10,11 @@ static EFI_SYSTEM_TABLE* sys_tab;
 
 // default system font
 // needed for printing basic text
-k_byte g_sys_font[4096];
+// Expected size: 4096
+k_byte* g_sys_font;
+
+// binary application code used to test loading executables
+k_byte* g_app_bin;
 
 // graphics information
 // needed to output information to the screen
@@ -76,6 +80,23 @@ static void get_font()
     UEFI_PANIC("failed to open zap-vga16.psf: %r\n", res);
   }
 
+  // Allocate memory for the font.
+  res = uefi_call_wrapper(
+    sys_tab->BootServices->AllocatePool,
+    3,
+    EfiLoaderData,
+    4096,
+    (void**)&g_sys_font
+  );
+  if (res != EFI_SUCCESS)
+  {
+    UEFI_PANIC(
+      "failed to allocate memory"
+      " for font: %r\n",
+      res
+    );
+  }
+
   // Read the PSF1 header.
   size = 4;
   res = uefi_call_wrapper(
@@ -112,6 +133,95 @@ static void get_font()
   if (res != EFI_SUCCESS)
   {
     UEFI_PANIC("failed to close zap-vga16.psf: %r\n", res);
+  }
+}
+
+static void get_app()
+{
+  EFI_STATUS res;
+  EFI_GUID sfs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* sfs;
+  EFI_FILE* root;
+  EFI_FILE* app_file; // the app file
+  UINTN size;
+  char* buffer;
+
+  // Get the simple file system protocol to give us access to files.
+  res = uefi_call_wrapper(
+    sys_tab->BootServices->LocateProtocol,
+    3,
+    &sfs_guid,
+    NULL,
+    (void**)&sfs
+  );
+
+  if (res != EFI_SUCCESS)
+  {
+    UEFI_PANIC("failed to get file system protocol: %r\n", res);
+  }
+
+  // Open the root volume.
+  res = uefi_call_wrapper(sfs->OpenVolume, 2, sfs, (void**)&root);
+
+  if (res != EFI_SUCCESS)
+  {
+    UEFI_PANIC("failed to open root volume: %r\n", res);
+  }
+
+  // Open the executable app.
+  res = uefi_call_wrapper(
+    root->Open,
+    5,
+    root,
+    (void**)&app_file,
+    L"app.bin",
+    EFI_FILE_MODE_READ,
+    EFI_FILE_READ_ONLY
+  );
+
+  if (res != EFI_SUCCESS)
+  {
+    UEFI_PANIC("failed to open app.bin: %r\n", res);
+  }
+
+  // Allocate memory for the app.
+  res = uefi_call_wrapper(
+    sys_tab->BootServices->AllocatePool,
+    3,
+    EfiLoaderData,
+    8192,
+    (void**)&g_app_bin
+  );
+  if (res != EFI_SUCCESS)
+  {
+    UEFI_PANIC(
+      "failed to allocate memory"
+      " for app: %r\n",
+      res
+    );
+  }
+
+  // Read the binary data.
+  size = 8192;
+  res = uefi_call_wrapper(
+    app_file->Read,
+    3,
+    app_file,
+    &size,
+    (void*)g_app_bin
+  );
+
+  if (res != EFI_SUCCESS)
+  {
+    UEFI_PANIC("failed to read data from app.bin: %r\n", res);
+  }
+
+  // Close the app file.
+  res = uefi_call_wrapper(app_file->Close, 1, app_file);
+
+  if (res != EFI_SUCCESS)
+  {
+    UEFI_PANIC("failed to close app.bin: %r\n", res);
   }
 }
 
@@ -384,6 +494,8 @@ void k_firmware_init(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   sys_tab = systab;
 
   get_font();
+
+  get_app();
 
   get_graphics();
 
