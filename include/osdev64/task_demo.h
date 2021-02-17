@@ -11,6 +11,7 @@ void demo_sem_task_a_action();
 void demo_sem_task_b_action();
 void demo_sem_task_c_action();
 
+void demo_keyboard_task_action();
 
 /**
  * Demonstrates three tasks that attempt to acquire a lock.
@@ -23,6 +24,12 @@ void mutex_demo_1();
  * with one producer.
  */
 void semaphore_demo_1();
+
+
+/**
+ * Demonstrates a task that handles keybaord input.
+ */
+void keyboard_demo();
 
 
 #endif

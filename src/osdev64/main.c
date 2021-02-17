@@ -24,6 +24,8 @@
 #include "osdev64/task.h"
 #include "osdev64/sync.h"
 #include "osdev64/syscall.h"
+#include "osdev64/ps2.h"
+#include "osdev64/shell.h"
 
 // temporary task demo for debugging task code
 #include "osdev64/task_demo.h"
@@ -53,6 +55,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   k_console_init();     // text output
   k_acpi_init();        // ACPI tables
   k_sync_init();        // synchronization
+  k_ps2_init();         // PS/2 keyboard emulation
 
   fprintf(stddbg, "[INFO] graphics, serial, console, and memory have been initialized.\n");
 
@@ -425,13 +428,22 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // }
   // k_heap_print();
 
-  k_app_demo();
+  // Start the kernel shell.
+  k_shell_init();
 
   // The main loop.
   for (;;)
   {
     // Do stuff
-    // k_pit_wait(120);
+    // k_pit_wait(60);
+
+    // fprintf(
+    //   stddbg,
+    //   "LEFT: %d, UP: %d, RIGHT: %d\n",
+    //   kstates[PS2_SC_LEFT] ? 1 : 0,
+    //   kstates[PS2_SC_UP] ? 1 : 0,
+    //   kstates[PS2_SC_RIGHT] ? 1 : 0
+    // );
     // fprintf(stddbg, "This is the main loop\n");
   }
 

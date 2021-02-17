@@ -5,6 +5,7 @@
 #include "osdev64/task_demo.h"
 #include "osdev64/syscall.h"
 #include "osdev64/instructor.h"
+#include "osdev64/ps2.h"
 
 #include "klibc/stdio.h"
 
@@ -158,6 +159,14 @@ void semaphore_demo_1()
   );
 }
 
+void keyboard_demo()
+{
+  k_task* kbd_demo = k_task_create(demo_keyboard_task_action);
+  k_task_schedule(kbd_demo);
+  while (kbd_demo->status != TASK_REMOVED);
+  k_task_destroy(kbd_demo);
+}
+
 
 
 //==========================================
@@ -274,3 +283,24 @@ void demo_sem_task_c_action()
 //==========================================
 // BEGIN counting semaphore demo
 //==========================================
+
+
+
+void demo_keyboard_task_action()
+{
+  k_ps2_event e;
+
+  for (;;)
+  {
+    int res = k_ps2_consume_event(&e);
+    if (res)
+    {
+      fprintf(
+        stddbg,
+        "consumed a key event: %s was %s\n",
+        k_ps2_get_scstr(e.i),
+        e.type == 1 ? "pressed" : "released"
+      );
+    }
+  }
+}

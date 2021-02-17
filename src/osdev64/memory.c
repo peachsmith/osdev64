@@ -5,16 +5,9 @@
 #include "klibc/stdio.h"
 
 
-
 // global system memory map
 extern k_mem_map g_sys_mem;
 
-
-// global system font
-extern k_byte* g_sys_font;
-
-// global executable file
-extern k_byte* g_app_bin;
 
 /**
  * A single entry in the physical RAM pool
@@ -301,46 +294,6 @@ void k_memory_init()
       root.address = g_ram_pool[i].address;
       root.pages = 43;
       root.avail = 0;
-
-      // Copy the system font loaded by the firmware into the
-      // newly allocated memory.
-      k_byte* font_copy = (k_byte*)(root.address + 40 * 0x1000);
-      if (PTR_TO_N(font_copy) < PTR_TO_N(g_sys_font))
-      {
-        for (int j = 0; j < 4096; j++)
-        {
-          font_copy[j] = g_sys_font[j];
-        }
-      }
-      else
-      {
-        for (int j = 4095; j >= 0; j--)
-        {
-          font_copy[j] = g_sys_font[j];
-        }
-      }
-      g_sys_font = font_copy;
-
-
-      // Copy the executable file loaded by the firmware into the
-      // newly allocated memory.
-      k_byte* app_copy = (k_byte*)(root.address + 41 * 0x1000);
-      if (PTR_TO_N(app_copy) < PTR_TO_N(g_app_bin))
-      {
-        for (int j = 0; j < 8192; j++)
-        {
-          app_copy[j] = g_app_bin[j];
-        }
-      }
-      else
-      {
-        for (int j = 8191; j >= 0; j--)
-        {
-          app_copy[j] = g_app_bin[j];
-        }
-      }
-      g_app_bin = app_copy;
-
 
       // Set the base address of the reservation array.
       g_ram_ledger = (ledger_entry*)(root.address);

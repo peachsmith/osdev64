@@ -15,7 +15,7 @@ void k_pit_init()
   // The value we send to the PIT is the value to divide it's input clock
   // (1193180 Hz) by, to get our required frequency. Important to note is
   // that the divisor must be small enough to fit into 16-bits.
-  uint32_t divisor = 1193180 / 60;
+  uint32_t divisor = 1193180 / 120;
 
   // Send the command byte.
   k_outb(0x43, 0x36);

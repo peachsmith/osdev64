@@ -6,7 +6,7 @@
 
 
 // global system font
-extern k_byte* g_sys_font;
+extern k_byte g_sys_font[4096];
 
 
 void k_console_init()
