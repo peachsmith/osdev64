@@ -439,9 +439,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   for (;;)
   {
     // Do stuff
-    k_pit_wait(120);
-    // printf("Hello, World!\n");
-    fprintf(shell_out, "[DEBUG] count: %d\n", count++);
+    // if (count < 5)
+    // {
+    //   k_pit_wait(120);
+    //   // printf("Hello, World!\n");
+    //   fprintf(shell_out, "[DEBUG] count: %d\n", count++);
+    // }
 
     // fprintf(
     //   stddbg,

@@ -24,20 +24,30 @@ static uint64_t shell_text_y = 0; // multiple of GLYPH_HEIGHT
 #define SHELL_HEIGHT 480
 
 #define OUT_BUF_SIZE 0x1000
+#define CMD_BUF_SIZE 16
 #define VIEW_BUF_SIZE ((SHELL_HEIGHT / GLYPH_HEIGHT) * (SHELL_WIDTH / GLYPH_WIDTH))
+
+static k_regn shell_append_output(char*, size_t);
+static k_regn shell_append_command(char*, size_t);
+static int shell_decrement_command();
+static void shell_draw_glyph(unsigned char*, uint64_t, uint64_t);
+static void shell_draw_cursor();
+static void shell_draw_blank();
+static void shell_putc(char);
 
 /**
  * The output buffer contains all data that can potentially be viewed
  * on the screen. This data may exist outside the range of the current
  * view buffer
  */
-static char* output_buffer;
+static char* out_buffer;
+static char* out_writer;
 
 static char* view_buffer;
 
-static char* command_buffer;
+static char* cmd_buffer;
+static char* cmd_writer;
 
-static char* buf_writer;
 
 static char read_buffer[IO_BUF_SIZE];
 
@@ -47,21 +57,54 @@ static char read_buffer[IO_BUF_SIZE];
 static FILE* shell_stdout = NULL;
 
 
-static k_regn shell_write(char* str, size_t n)
+static k_regn shell_append_output(char* str, size_t n)
 {
   k_regn count = 0;
   for (size_t i = 0; i < n; i++)
   {
-    char* next = buf_writer + 1;
-    if (next >= output_buffer && next <= output_buffer + (OUT_BUF_SIZE - 1))
+    char* next = out_writer + 1;
+    if (next >= out_buffer && next <= out_buffer + (OUT_BUF_SIZE - 1))
     {
-      *buf_writer = str[i];
-      buf_writer++;
+      *out_writer = str[i];
+      out_writer++;
       count++;
     }
   }
 
   return count;
+}
+
+static k_regn shell_append_command(char* str, size_t n)
+{
+  k_regn count = 0;
+  for (size_t i = 0; i < n; i++)
+  {
+    char* next = cmd_writer + 1;
+    if (next >= cmd_buffer && next <= cmd_buffer + (CMD_BUF_SIZE - 1))
+    {
+      *cmd_writer = str[i];
+      cmd_writer++;
+      count++;
+    }
+  }
+
+  return count;
+}
+
+static int shell_decrement_command()
+{
+  if (cmd_writer > cmd_buffer)
+  {
+    cmd_writer--;
+    if (out_writer > out_buffer)
+    {
+      out_writer--;
+    }
+    shell_draw_blank();
+    return 1;
+  }
+
+  return 0;
 }
 
 static void shell_draw_glyph(
@@ -83,6 +126,30 @@ static void shell_draw_glyph(
       {
         k_put_pixel(x + j, y + i, 0, 0, 0);
       }
+    }
+  }
+}
+
+static void shell_draw_blank()
+{
+  // Draw a solid block of background color.
+  for (int i = 0; i < GLYPH_HEIGHT; i++)
+  {
+    for (int j = 0; j < GLYPH_WIDTH; j++)
+    {
+      k_put_pixel(shell_text_x + j, shell_text_y + i, 0, 0, 0);
+    }
+  }
+}
+
+static void shell_draw_cursor()
+{
+  // Draw a solid block of foreground color.
+  for (int i = 0; i < GLYPH_HEIGHT; i++)
+  {
+    for (int j = 0; j < GLYPH_WIDTH; j++)
+    {
+      k_put_pixel(shell_text_x + j, shell_text_y + i, 220, 220, 220);
     }
   }
 }
@@ -131,19 +198,43 @@ static void shell_putc(char c)
   }
 }
 
+static void shell_submit_command()
+{
+  shell_draw_blank();
+  shell_append_output("\n", 1);
+  cmd_writer = cmd_buffer;
+}
+
 static void draw()
 {
   shell_text_x = 0;
   shell_text_y = 0;
 
   int count = 0;
+  int drawn_cursor = 0;
+
   // Draw the contents of the output buffer to the screen.
-  for (char* reader = view_buffer; reader < buf_writer && count < VIEW_BUF_SIZE; reader++, count++)
+  for (char* reader = view_buffer; reader < out_writer && count < VIEW_BUF_SIZE; reader++, count++)
   {
     shell_putc(*reader);
   }
-}
 
+  if (count++ < VIEW_BUF_SIZE)
+  {
+    shell_draw_cursor();
+  }
+
+  // if (count++ < VIEW_BUF_SIZE)
+  // {
+  //   shell_putc('\n');
+  // }
+
+  // // Draw the contents of the command buffer.
+  // for (char* reader = cmd_buffer; reader < out_writer && count < CMD_BUF_SIZE; reader++, count++)
+  // {
+  //   shell_putc(*reader);
+  // }
+}
 
 static const char decoder_table[102] = {
   27,  49,  50,  51,  52,  53,  54,  55,  56,  57,  // escape 1 - 9
@@ -218,6 +309,8 @@ static void shell_action()
   const k_byte* key_states = k_ps2_get_key_states();
   k_ps2_event ke;
 
+  draw();
+
   for (;;)
   {
     int redraw = 0;
@@ -243,18 +336,33 @@ static void shell_action()
           }
         }
 
-        // Calculate the next output buffer position to
-        // determine if there is room in the buffer to write.
-        // char* next = buf_writer + 1;
-        // if (next >= output_buffer && next <= output_buffer + (OUT_BUF_SIZE - 1))
-        // {
-        //   *buf_writer = c;
-        //   buf_writer++;
-        //   redraw = 1;
-        // }
-        if (shell_write(&c, 1))
+        if (shell_append_command(&c, 1))
         {
+          shell_append_output(&c, 1);
           redraw = 1;
+        }
+      }
+      else if (ke.type == PS2_PRESSED)
+      {
+        switch (ke.i)
+        {
+        case PS2_SC_ENTER:
+        case PS2_SC_KP_ENTER:
+          shell_submit_command();
+          redraw = 1;
+          break;
+
+        case PS2_SC_BSP:
+        {
+          if (shell_decrement_command())
+          {
+            redraw = 1;
+          }
+        }
+        break;
+
+        default:
+          break;
         }
       }
     }
@@ -262,7 +370,7 @@ static void shell_action()
     size_t r = k_syscall_read(shell_stdout, read_buffer, IO_BUF_SIZE);
     if (r)
     {
-      if (shell_write(read_buffer, r))
+      if (shell_append_output(read_buffer, r))
       {
         redraw = 1;
       }
@@ -280,14 +388,23 @@ static void shell_action()
 void k_shell_init()
 {
   // Create the output buffer.
-  output_buffer = (char*)k_heap_alloc(OUT_BUF_SIZE);
-  if (output_buffer == NULL)
+  out_buffer = (char*)k_heap_alloc(OUT_BUF_SIZE);
+  if (out_buffer == NULL)
   {
     fprintf(stddbg, "[ERROR] failed to allocate output buffer for shell\n");
     return;
   }
-  buf_writer = output_buffer;
-  view_buffer = output_buffer;
+  out_writer = out_buffer;
+  view_buffer = out_buffer;
+
+  // Create the command buffer.
+  cmd_buffer = (char*)k_heap_alloc(CMD_BUF_SIZE);
+  if (cmd_buffer == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to allocate command buffer for shell\n");
+    return;
+  }
+  cmd_writer = cmd_buffer;
 
 
   // Create a file object for standard output.
