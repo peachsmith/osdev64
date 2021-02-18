@@ -24,16 +24,26 @@ static uint64_t shell_text_y = 0; // multiple of GLYPH_HEIGHT
 #define SHELL_HEIGHT 480
 
 #define OUT_BUF_SIZE 0x1000
-#define CMD_BUF_SIZE 16
+#define CMD_BUF_SIZE 82
 #define VIEW_BUF_SIZE ((SHELL_HEIGHT / GLYPH_HEIGHT) * (SHELL_WIDTH / GLYPH_WIDTH))
 
+#define is_printable(c) (c >= 32 && c <= 126)
+#define is_alpha(c) ((c >= 65 && c <= 90) || (c >= 97 && c <= 122))
+#define is_num(c) (c >= 48 && c <= 57)
+#define is_other(c) (shift_other(c) != '\0')
+
+// TODO add some doc comments for these
 static k_regn shell_append_output(char*, size_t);
 static k_regn shell_append_command(char*, size_t);
 static int shell_decrement_command();
+static void shell_submit_command();
 static void shell_draw_glyph(unsigned char*, uint64_t, uint64_t);
 static void shell_draw_cursor();
 static void shell_draw_blank();
-static void shell_putc(char);
+static void shell_draw_char(char);
+static inline char decode(int);
+static inline char shift_num(char);
+static inline char shift_other(char);
 
 /**
  * The output buffer contains all data that can potentially be viewed
@@ -44,12 +54,14 @@ static char* out_buffer;
 static char* out_writer;
 
 static char* view_buffer;
+static int view_offset;
 
 static char* cmd_buffer;
 static char* cmd_writer;
 
-
+// A buffer for reading from output streams.
 static char read_buffer[IO_BUF_SIZE];
+
 
 /**
  * Standard output for the shell.
@@ -69,6 +81,44 @@ static k_regn shell_append_output(char* str, size_t n)
       out_writer++;
       count++;
     }
+  }
+
+  // Determine if we need to scroll the view offset.
+  char* view_start = view_buffer;
+  char* next_view_start = NULL;
+  int lines = 0;
+  int line_chars = 0;
+  for (char* reader = view_buffer; reader < out_writer; reader++)
+  {
+    if (*reader != '\n')
+    {
+      line_chars++;
+      if (line_chars == SHELL_WIDTH / GLYPH_WIDTH)
+      {
+        line_chars = 0;
+        lines++;
+        if (lines == 2)
+        {
+          view_start = reader;
+        }
+      }
+    }
+    else
+    {
+      line_chars = 0;
+      lines++;
+      if (lines == 2)
+      {
+        view_start = reader;
+      }
+    }
+  }
+
+  // If the output buffer exceeds the view window,
+  // update the view offset.
+  if (lines >= SHELL_HEIGHT / GLYPH_HEIGHT)
+  {
+    view_buffer = view_start;
   }
 
   return count;
@@ -105,6 +155,18 @@ static int shell_decrement_command()
   }
 
   return 0;
+}
+
+static void shell_submit_command()
+{
+  // Clear the previous cursor.
+  shell_draw_blank();
+
+  // Add a newline to the output buffer.
+  shell_append_output("\n", 1);
+
+  // Reset the command buffer.
+  cmd_writer = cmd_buffer;
 }
 
 static void shell_draw_glyph(
@@ -144,6 +206,14 @@ static void shell_draw_blank()
 
 static void shell_draw_cursor()
 {
+  // If we've reached the end of the line,
+  // reset x and increment y.
+  if (shell_text_x >= SHELL_WIDTH)
+  {
+    shell_text_x = 0;
+    shell_text_y += GLYPH_HEIGHT;
+  }
+
   // Draw a solid block of foreground color.
   for (int i = 0; i < GLYPH_HEIGHT; i++)
   {
@@ -152,23 +222,31 @@ static void shell_draw_cursor()
       k_put_pixel(shell_text_x + j, shell_text_y + i, 220, 220, 220);
     }
   }
+
+  // Increment x.
+  if (shell_text_x < SHELL_WIDTH)
+  {
+    shell_text_x += GLYPH_WIDTH;
+  }
 }
 
-static void shell_putc(char c)
+static void shell_draw_char(char c)
 {
   // Limit the number of lines.
-  if (shell_text_y >= CONSOLE_HEIGHT)
+  if (shell_text_y >= SHELL_HEIGHT)
   {
     return;
   }
 
-  uint8_t n = (uint8_t)c;
-
-  if (n < 32 || n > 126)
+  if (!is_printable(c))
   {
     // Handle newlines.
-    if (n == 10)
+    if (c == '\n')
     {
+      for (;shell_text_x < SHELL_WIDTH;)
+      {
+        shell_draw_char(' ');
+      }
       shell_text_x = 0;
       shell_text_y += GLYPH_HEIGHT;
     }
@@ -178,7 +256,7 @@ static void shell_putc(char c)
 
   // If we've reached the end of the line,
   // reset x and increment y.
-  if (shell_text_x >= CONSOLE_WIDTH)
+  if (shell_text_x >= SHELL_WIDTH)
   {
     shell_text_x = 0;
     shell_text_y += GLYPH_HEIGHT;
@@ -192,17 +270,10 @@ static void shell_putc(char c)
   shell_draw_glyph(glyph, shell_text_x, shell_text_y);
 
   // Increment x.
-  if (shell_text_x < CONSOLE_WIDTH)
+  if (shell_text_x < SHELL_WIDTH)
   {
-    shell_text_x += 8;
+    shell_text_x += GLYPH_WIDTH;
   }
-}
-
-static void shell_submit_command()
-{
-  shell_draw_blank();
-  shell_append_output("\n", 1);
-  cmd_writer = cmd_buffer;
 }
 
 static void draw()
@@ -216,24 +287,19 @@ static void draw()
   // Draw the contents of the output buffer to the screen.
   for (char* reader = view_buffer; reader < out_writer && count < VIEW_BUF_SIZE; reader++, count++)
   {
-    shell_putc(*reader);
+    shell_draw_char(*reader);
   }
 
+  // Draw the cursor after everything else.
   if (count++ < VIEW_BUF_SIZE)
   {
     shell_draw_cursor();
   }
 
-  // if (count++ < VIEW_BUF_SIZE)
-  // {
-  //   shell_putc('\n');
-  // }
-
-  // // Draw the contents of the command buffer.
-  // for (char* reader = cmd_buffer; reader < out_writer && count < CMD_BUF_SIZE; reader++, count++)
-  // {
-  //   shell_putc(*reader);
-  // }
+  for (;shell_text_x < SHELL_WIDTH;)
+  {
+    shell_draw_char(' ');
+  }
 }
 
 static const char decoder_table[102] = {
@@ -260,11 +326,6 @@ static inline char decode(int sc)
 
   return '\0';
 }
-
-#define is_printable(c) (c >= 32 && c <= 126)
-#define is_alpha(c) ((c >= 65 && c <= 90) || (c >= 97 && c <= 122))
-#define is_num(c) (c >= 48 && c <= 57)
-#define is_other(c) (shift_other(c) != '\0')
 
 static inline char shift_num(char c)
 {
@@ -428,6 +489,7 @@ void k_shell_init()
 
   shell_stdout->info = info;
 
+  view_offset = 0;
 
   // Start the shell task.
   k_task* t = k_task_create(shell_action);

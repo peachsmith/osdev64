@@ -439,7 +439,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   for (;;)
   {
     // Do stuff
-    // if (count < 5)
+    // if (count < 1000)
     // {
     //   k_pit_wait(120);
     //   // printf("Hello, World!\n");

@@ -97,7 +97,7 @@ void k_console_putc(char c)
   // Increment x.
   if (text_x < CONSOLE_WIDTH)
   {
-    text_x += 8;
+    text_x += GLYPH_WIDTH;
   }
 }
 
