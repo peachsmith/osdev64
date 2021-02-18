@@ -68,6 +68,21 @@ static char read_buffer[IO_BUF_SIZE];
  */
 static FILE* shell_stdout = NULL;
 
+// Used for decoding PS2 scancodes.
+static const char decoder_table[102] = {
+  27,  49,  50,  51,  52,  53,  54,  55,  56,  57,  // escape 1 - 9
+  48,  45,  61,  8,   9,   113, 119, 101, 114, 116, // 0 - = backspace, horizontal tab QWERT
+  121, 117, 105, 111, 112, 91,  93,  10,  0,   97,  // YUIOP[] enter ctrl A
+  115, 100, 102, 103, 104, 106, 107, 108, 59,  39,  // SDFGHJKL;'
+  96,  0,   92,  122, 120, 99,  118, 98,  110, 109, // ` shift '\' ZXCVBNM
+  44,  46,  47,  0,   42,  0,   32,  0,   0,   0,   // , . / shift * alt space caps F1 F2
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   // F3 F4 F5 F6 F7 F8 F9 F10 num lock scroll lock
+  55,  56,  57,  45,  52,  53,  54,  43,  49,  50,  // (keypad) 7 8 9 - 4 5 6 + 1 2 3 
+  51,  48,  46,  0,   0,   0,   0,   0,   0,   0,   // (keypad) 0 . pad pad pad F11 F12 alt ctrl 
+  0,   0,   0,   0,   0,   0,   0,   0,   0,   127, // ctrl left up right down home pageup end pagedown insert delete
+  10,  47                                           // (keypad) enter /
+};
+
 
 static k_regn shell_append_output(char* str, size_t n)
 {
@@ -301,21 +316,6 @@ static void draw()
     shell_draw_char(' ');
   }
 }
-
-static const char decoder_table[102] = {
-  27,  49,  50,  51,  52,  53,  54,  55,  56,  57,  // escape 1 - 9
-  48,  45,  61,  8,   9,   113, 119, 101, 114, 116, // 0 - = backspace, horizontal tab QWERT
-  121, 117, 105, 111, 112, 91,  93,  10,  0,   97,  // YUIOP[] enter ctrl A
-  115, 100, 102, 103, 104, 106, 107, 108, 59,  39,  // SDFGHJKL;'
-  96,  0,   92,  122, 120, 99,  118, 98,  110, 109, // ` shift '\' ZXCVBNM
-  44,  46,  47,  0,   42,  0,   32,  0,   0,   0,   // , . / shift * alt space caps F1 F2
-  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   // F3 F4 F5 F6 F7 F8 F9 F10 num lock scroll lock
-  55,  56,  57,  45,  52,  53,  54,  43,  49,  50,  // (keypad) 7 8 9 - 4 5 6 + 1 2 3 
-  51,  48,  46,  0,   0,   0,   0,   0,   0,   0,   // (keypad) 0 . pad pad pad F11 F12 alt ctrl 
-  0,   0,   0,   0,   0,   0,   0,   0,   0,   127, // ctrl left up right down home pageup end pagedown insert delete
-  10,  47                                           // (keypad) enter /
-};
-
 
 static inline char decode(int sc)
 {
