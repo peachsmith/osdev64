@@ -1,11 +1,10 @@
 #include "klibc/stdio.h"
 
-#include <stddef.h>
+#include "osdev64/file.h"
+#include "osdev64/shell.h"
+#include "osdev64/syscall.h"
 
-struct k_finfo {
-  int type;
-  size_t pos;
-};
+#include <stddef.h>
 
 // standard I/O streams.
 struct k_finfo k_in_info = { __FILE_NO_STDIN, 0 };
@@ -13,7 +12,7 @@ struct k_finfo k_out_info = { __FILE_NO_STDOUT, 0 };
 struct k_finfo k_err_info = { __FILE_NO_STDERR, 0 };
 
 FILE k_stdin = { (void*)&k_in_info };
-FILE k_stdout = { (void*)&k_out_info };
+// FILE k_stdout = { (void*)&k_out_info };
 FILE k_stderr = { (void*)&k_err_info };
 
 // custom I/O stream for debugging.
@@ -25,7 +24,7 @@ FILE* k_get_iobuf(int id)
   switch (id)
   {
   case 1: return &k_stdin;
-  case 2: return &k_stdout;
+  case 2: return k_shell_get_stdout();
   case 3: return &k_stderr;
   case 4: return &k_stddbg;
   default: return NULL;
@@ -47,12 +46,13 @@ int putc(int c, FILE* stream)
 int fputc(int c, FILE* stream)
 {
   struct k_finfo* inf = (struct k_finfo*)(stream->info);
-
+  char b;
   switch (inf->type)
   {
   case __FILE_NO_STDOUT:
   case __FILE_NO_STDERR:
-    k_console_putc(c & 0xFF);
+    b = c & 0xFF;
+    k_syscall_write(stream, &b, 1);
     return 1;
 
   case __FILE_NO_STDDBG:

@@ -49,6 +49,7 @@ ps2.o \
 task.o \
 sync.o \
 syscall.o \
+file.o \
 shell.o \
 task_demo.o \
 klibc.o
@@ -97,6 +98,7 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/task.c -o task.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/sync.c -o sync.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/syscall.c -o syscall.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/file.c -o file.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/shell.c -o shell.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/task_demo.c -o task_demo.o
 
@@ -104,7 +106,7 @@ myos.efi: klibc.o
 
 
 klibc.o:
-	$(CC) -Iklibc -Iinclude $(CFLAGS) -c src/klibc/klibc.c -o klibc.o
+	$(CC) -Iklibc -Iinclude $(CINCLUDES) $(CFLAGS) -c src/klibc/klibc.c -o klibc.o
 
 
 # starts the VM and boots the kernel

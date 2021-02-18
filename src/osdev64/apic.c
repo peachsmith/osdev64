@@ -231,7 +231,7 @@ void k_apic_init()
 {
   if (g_madt == NULL)
   {
-    printf("[MADT] No MADT detected\n");
+    fprintf(stddbg, "[MADT] No MADT detected\n");
     return;
   }
 
@@ -307,13 +307,13 @@ void k_apic_init()
   // Ensure that we found the base addresses of the local and IO APICs.
   if (lapic_base == 0)
   {
-    printf("[ERROR] could not find local APIC physical base\n");
+    fprintf(stddbg, "[ERROR] could not find local APIC physical base\n");
     return;
   }
 
   if (ioapic_base == 0)
   {
-    printf("[ERROR] could not find I/O APIC physical base\n");
+    fprintf(stddbg, "[ERROR] could not find I/O APIC physical base\n");
     return;
   }
 
@@ -325,7 +325,7 @@ void k_apic_init()
   uint64_t lapic_virt = k_paging_map_range(lapic_base, lapic_base + 0x3F0);
   if (lapic_virt == 0)
   {
-    printf("[ERROR] failed to map local APIC virtual base\n");
+    fprintf(stddbg, "[ERROR] failed to map local APIC virtual base\n");
     for (;;);
   }
   g_lapic = (volatile uint32_t*)lapic_virt;
@@ -334,7 +334,7 @@ void k_apic_init()
   uint64_t ioapic_virt = k_paging_map_range(ioapic_base, ioapic_base + 0x3F0);
   if (ioapic_virt == 0)
   {
-    printf("[ERROR] failed to map IO APIC virtual base\n");
+    fprintf(stddbg, "[ERROR] failed to map IO APIC virtual base\n");
     for (;;);
   }
   g_ioapic = (volatile uint32_t*)ioapic_virt;
@@ -560,7 +560,7 @@ void k_ioapic_configure()
       uint16_t pol = (flags & 0x3);
       uint16_t trig = (flags & 0xC) >> 2;
 
-      printf("[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %3u, Trig: %3u }\n",
+      fprintf(stddbg, "[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %3u, Trig: %3u }\n",
         bus_src,
         irq_src,
         gsi,

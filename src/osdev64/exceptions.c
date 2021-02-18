@@ -35,5 +35,5 @@ void page_fault_handler()
 
 void my_irq()
 {
-  printf("Hello from an IRQ handler!\n");
+  fprintf(stddbg, "Hello from an IRQ handler!\n");
 }

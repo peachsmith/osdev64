@@ -257,7 +257,7 @@ void k_acpi_print_madt()
 {
   if (g_madt == NULL)
   {
-    printf("[MADT] No MADT detected\n");
+    fprintf(stddbg, "[MADT] No MADT detected\n");
     return;
   }
 
@@ -279,10 +279,10 @@ void k_acpi_print_madt()
     madt_check += g_madt[i];
   }
 
-  printf("[MADT] Checksum: %u\n", madt_check);
-  printf("[MADT] Length: %d\n", table_len);
-  printf("[MADT] 32-bit Local APIC Base: %X\n", lapic_base);
-  printf("[MADT] Flags: %X\n", flags);
+  fprintf(stddbg, "[MADT] Checksum: %u\n", madt_check);
+  fprintf(stddbg, "[MADT] Length: %d\n", table_len);
+  fprintf(stddbg, "[MADT] 32-bit Local APIC Base: %X\n", lapic_base);
+  fprintf(stddbg, "[MADT] Flags: %X\n", flags);
 
   // Print the entries of the MADT.
   // The index i represents the byte offset from the start of the
@@ -300,7 +300,7 @@ void k_acpi_print_madt()
     case 0:
     {
       uint8_t lapic_ver = *((uint8_t*)(entry + 3));
-      printf("[MADT] Local APIC: { ID: %u }\n", lapic_ver);
+      fprintf(stddbg, "[MADT] Local APIC: { ID: %u }\n", lapic_ver);
     }
     break;
 
@@ -312,7 +312,7 @@ void k_acpi_print_madt()
 
       if (gsi == 0)
       {
-        printf("[MADT] I/O APIC: { ID: %u, Base: %X, GSI: %u }\n",
+        fprintf(stddbg, "[MADT] I/O APIC: { ID: %u, Base: %X, GSI: %u }\n",
           id,
           (uint64_t)ioapic32,
           gsi
@@ -332,7 +332,7 @@ void k_acpi_print_madt()
       uint64_t pol = ((uint64_t)flags & BM_2_BITS);
       uint64_t trig = ((uint64_t)flags & (BM_2_BITS << 2)) >> 2;
 
-      printf("[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %5s, Trig: %5s }\n",
+      fprintf(stddbg, "[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %5s, Trig: %5s }\n",
         bus_src,
         irq_src,
         gsi,
@@ -351,7 +351,7 @@ void k_acpi_print_madt()
       // polarity and trigger mode
       uint64_t pol = ((uint64_t)flags & BM_2_BITS);
       uint64_t trig = ((uint64_t)flags & (BM_2_BITS << 2)) >> 2;
-      printf("[MADT] NMI: { ID: %3X, Pol: %5s, Trig: %5s, LINT: %u }\n",
+      fprintf(stddbg, "[MADT] NMI: { ID: %3X, Pol: %5s, Trig: %5s, LINT: %u }\n",
         id,
         iso_polarity_str(pol),
         iso_trigger_str(trig),
@@ -363,12 +363,12 @@ void k_acpi_print_madt()
     case 5:
     {
       uint64_t lapic_ovr = *((uint64_t*)(entry + 4));
-      printf("[MADT] Local APIC Override: { Addr: %p }\n", lapic_ovr);
+      fprintf(stddbg, "[MADT] Local APIC Override: { Addr: %p }\n", lapic_ovr);
     }
     break;
 
     default:
-      printf("[MADT] Unknown: { type: %u } ", entry_type);
+      fprintf(stddbg, "[MADT] Unknown: { type: %u } ", entry_type);
       break;
     }
 

@@ -634,12 +634,19 @@ k_syscall_isr:
   cmpq $4, %rax # check for SLEEP_TICK syscall
   je .sc_sleep_tick
 
+  cmpq $5, %rax # check for WRITE syscall
+  je .sc_write
+
+  cmpq $6, %rax # check for READ syscall
+  je .sc_read
+
   cmpq $0xFACE, %rax # check for FACE syscall
   je .sc_face
 
   iretq # Unrecognized syscall ID
 
 .sc_stop:
+  # TODO: make a macro for swapping all the argument registers
   push_task_regs # Save the task register stack.
   mov %rax, %rdi # ARG 1 (syscall ID)
   mov %rsp, %rsi # ARG 2 (register stack)
@@ -676,4 +683,22 @@ k_syscall_isr:
   mov %rcx, %rsi    # ARG 2 (a number)
   call k_syscall    # Invoke the syscall.
   pop_caller_saved  # Restore caller-saved registers.
+  iretq             # return from ISR
+
+.sc_write:
+  # RDX already contains ARG 3 (source buffer)
+  mov %rax, %rdi    # ARG 1 (syscall ID)
+  mov %rcx, %r8     # Store RCX
+  mov %rsi, %rcx    # ARG 4 (number of bytes to write) 
+  mov %r8, %rsi     # ARG 2 (file pointer)
+  call k_syscall    # Invoke the syscall.
+  iretq             # return from ISR
+
+.sc_read:
+  # RDX already contains ARG 3 (destination buffer)
+  mov %rax, %rdi    # ARG 1 (syscall ID)
+  mov %rcx, %r8     # Store RCX
+  mov %rsi, %rcx    # ARG 4 (number of bytes to read) 
+  mov %r8, %rsi     # ARG 2 (file pointer)
+  call k_syscall    # Invoke the syscall.
   iretq             # return from ISR

@@ -187,23 +187,23 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   {
     // Get the local APIC ID.
     uint32_t lapic_id = k_lapic_get_id();
-    printf("Local APIC ID: %u\n", lapic_id);
+    fprintf(stddbg, "Local APIC ID: %u\n", lapic_id);
 
     // Get the local APIC version.
     uint32_t lapic_ver = k_lapic_get_version();
-    printf("Local APIC Version: 0x%X\n", lapic_ver);
+    fprintf(stddbg, "Local APIC Version: 0x%X\n", lapic_ver);
 
     // Get the local APIC max LVT.
     uint32_t lapic_maxlvt = k_lapic_get_maxlvt();
-    printf("Local APIC Max LVT: %u\n", lapic_maxlvt);
+    fprintf(stddbg, "Local APIC Max LVT: %u\n", lapic_maxlvt);
 
     // Get the I/O APIC version.
     uint32_t ioapic_ver = k_ioapic_get_version();
-    printf("I/O APIC Version: 0x%X\n", ioapic_ver);
+    fprintf(stddbg, "I/O APIC Version: 0x%X\n", ioapic_ver);
 
     // Get the I/O APIC max redirects - 1.
     uint32_t ioapic_max = k_ioapic_get_max_redirect();
-    printf("I/O APIC Max Redirects: %u\n", ioapic_max);
+    fprintf(stddbg, "I/O APIC Max Redirects: %u\n", ioapic_max);
 
 
     // Disable the PIC since we're using APIC.
@@ -215,11 +215,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
     // Configure the IRQ redirection in the I/O APIC.
     k_ioapic_configure();
 
-    printf("---------------------------------------\n");
+    fprintf(stddbg, "---------------------------------------\n");
   }
   else
   {
-    printf("APIC unavailable\n");
+    fprintf(stddbg, "APIC unavailable\n");
   }
 
   // Initialize task management.
@@ -431,11 +431,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Start the kernel shell.
   k_shell_init();
 
+  FILE* shell_out = (FILE*)k_shell_get_stdout();
+
+  int count = 0;
+
   // The main loop.
   for (;;)
   {
     // Do stuff
-    // k_pit_wait(60);
+    k_pit_wait(120);
+    // printf("Hello, World!\n");
+    fprintf(shell_out, "[DEBUG] count: %d\n", count++);
 
     // fprintf(
     //   stddbg,

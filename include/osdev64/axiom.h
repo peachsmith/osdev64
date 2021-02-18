@@ -43,6 +43,9 @@
 // uint8_t
 #include <stdint.h>
 
+// For size_t
+#include <stddef.h>
+
 
 // UEFI functions and data types, including, but not limited to:
 // NULL - a macro that exapnds to an expression of a pointer with a 0 value

@@ -169,7 +169,7 @@ static int read_event(k_ps2_event* e)
   // be able to advance the reader pointer.
 
   // If the reader pointer has overtaken the writer pointer,
-  // don't read any mroe events.
+  // don't read any more events.
   if (buf_reader == buf_writer)
   {
     return 0;
@@ -204,15 +204,8 @@ void k_ps2_handle_scancode(k_byte sc)
       if (sc_seq[1] != 0xB7 && sc_seq[1] != 0x2A)
       {
         // Two-byte scancode
-        // fprintf(
-        //   stddbg,
-        //   "key %s %s\n",
-        //   sc1_map[two_byte_i(sc_seq[1])],
-        //   (sc_seq[1] < 0x90) ? "pressed" : "released"
-        // );
         ke.i = two_byte_i(sc_seq[1]);
         ke.type = (sc_seq[1] < 0x90) ? PS2_PRESSED : PS2_RELEASED;
-        // key_states[two_byte_i(sc_seq[1])] = (sc_seq[1] < 0x90) ? 1 : 0;
         key_states[ke.i] = ke.type;
 
         sc_count = 0;
@@ -226,10 +219,8 @@ void k_ps2_handle_scancode(k_byte sc)
       // Four-byte scancode (print screen key)
       if (sc_seq[3] == 0x37 || sc_seq[3] == 0xAA)
       {
-        // fprintf(stddbg, "print screen %s\n", (sc_seq[3] == 0x37) ? "pressed" : "released");
         ke.i = PS2_SC_PRTSC;
         ke.type = (sc_seq[3] == 0x37) ? PS2_PRESSED : PS2_RELEASED;
-        // key_states[PS2_SC_PRTSC] = (sc_seq[3] == 0x37) ? 1 : 0;
         key_states[PS2_SC_PRTSC] = ke.type;
 
         sc_count = 0;
@@ -241,7 +232,6 @@ void k_ps2_handle_scancode(k_byte sc)
     else if (sc_count >= 6)
     {
       // Size-byte scancode (pause key)
-      // fprintf(stddbg, "pause pressed\n");
       sc_count = 0;
     }
   }
@@ -254,15 +244,8 @@ void k_ps2_handle_scancode(k_byte sc)
   else if ((sc & 0x7F) < 89)
   {
     // Single-byte scancode
-    // fprintf(
-    //   stddbg,
-    //   "key %s %s\n",
-    //   sc1_map[(sc & 0x7F) - 1],
-    //   (sc & 0x80) ? "released" : "pressed"
-    // );
     ke.i = (sc & 0x7F) - 1;
     ke.type = (sc & 0x80) ? PS2_RELEASED : PS2_PRESSED;
-    // key_states[(sc & 0x7F) - 1] = (sc & 0x80) ? 0 : 1;
     key_states[ke.i] = ke.type;
 
     // key_event = ke;
@@ -271,11 +254,6 @@ void k_ps2_handle_scancode(k_byte sc)
   else
   {
     // Unknown key
-    // fprintf(
-    //   stddbg,
-    //   "unknown key %X\n",
-    //   sc
-    // );
   }
 }
 

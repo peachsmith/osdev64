@@ -10,5 +10,6 @@
 
 void k_shell_init();
 
+void* k_shell_get_stdout();
 
 #endif

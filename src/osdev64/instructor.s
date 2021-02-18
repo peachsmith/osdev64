@@ -679,3 +679,37 @@ k_syscall_sleep:
 
   leaveq
   retq
+
+.global k_syscall_write
+k_syscall_write:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov $5, %rax   # syscall ID is 5 (for WRITE)
+  mov %rdi, %rcx # file pointer
+  mov %rdx, %r8  # save the contents of RDX
+  mov %rsi, %rdx # source buffer
+  mov %r8, %rsi  # number of bytes to write
+  int $0xA0
+
+  # RAX should now contain the number of bytes written
+
+  leaveq
+  retq
+
+.global k_syscall_read
+k_syscall_read:
+  push %rbp
+  mov %rsp, %rbp
+
+  mov $6, %rax   # syscall ID is 6 (for READ)
+  mov %rdi, %rcx # file pointer
+  mov %rdx, %r8  # save the contents of RDX
+  mov %rsi, %rdx # destination buffer
+  mov %r8, %rsi  # number of bytes to read
+  int $0xA0
+
+  # RAX should now contain the number of bytes read
+
+  leaveq
+  retq
