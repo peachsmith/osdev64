@@ -1,18 +1,19 @@
 #ifndef JEP_STDIO_H
 #define JEP_STDIO_H
 
+#include "osdev64/file.h"
 #include <stdarg.h>
 
 typedef struct k_iobuf {
   void* info;
 }FILE;
 
-FILE* k_get_iobuf(int id);
+FILE* k_get_iobuf(int);
 
-#define __FILE_NO_STDIN  1
-#define __FILE_NO_STDOUT 2
-#define __FILE_NO_STDERR 3
-#define __FILE_NO_STDDBG 4
+// #define __FILE_NO_STDIN  1
+// #define __FILE_NO_STDOUT 2
+// #define __FILE_NO_STDERR 3
+// #define __FILE_NO_STDDBG 4
 
 #define stdin k_get_iobuf(__FILE_NO_STDIN)
 #define stdout k_get_iobuf(__FILE_NO_STDOUT)

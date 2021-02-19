@@ -3,6 +3,7 @@
 #include "osdev64/file.h"
 #include "osdev64/tty.h"
 #include "osdev64/syscall.h"
+#include "osdev64/task.h"
 
 #include <stddef.h>
 
@@ -19,15 +20,20 @@ FILE k_stderr = { (void*)&k_err_info };
 struct k_finfo k_dbg_info = { __FILE_NO_STDDBG, 0 };
 FILE k_stddbg = { (void*)&k_dbg_info };
 
-FILE* k_get_iobuf(int id)
+FILE* k_get_iobuf(int type)
 {
-  switch (id)
+  switch (type)
   {
-  case 1: return &k_stdin;
-  case 2: return k_tty_get_shell_stdout();
-  case 3: return &k_stderr;
-  case 4: return &k_stddbg;
-  default: return NULL;
+  case __FILE_NO_STDIN:
+  case __FILE_NO_STDOUT:
+  case __FILE_NO_STDERR:
+    return k_task_get_io_buffer(type);
+
+  case __FILE_NO_STDDBG:
+    return &k_stddbg;
+
+  default:
+    return NULL;
   }
 }
 

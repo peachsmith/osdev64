@@ -24,6 +24,10 @@ k_finfo* k_file_create_info(int type)
     {
       return NULL;
     }
+
+    info->type = type;
+    info->writer = info->buf;
+    info->reader = info->buf;
   }
   break;
 

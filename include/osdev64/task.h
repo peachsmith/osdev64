@@ -95,4 +95,20 @@ k_regn* k_task_stop(k_regn*);
  */
 k_regn* k_task_sleep(k_regn*, k_regn*, k_regn, k_regn);
 
+
+/**
+ * Gets an I/O buffer used for standard I/O streams.
+ * This function's argument indicates the type of I/O buffer to return.
+ * 1: stdin
+ * 2: stdout
+ * 3: stderr
+ *
+ * Params:
+ *   int - the type of I/O stream
+ *
+ * Returns:
+ *   void* - a pointer to the I/O stream
+ */
+void* k_task_get_io_buffer(int);
+
 #endif

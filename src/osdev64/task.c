@@ -1,9 +1,11 @@
 #include "osdev64/task.h"
 #include "osdev64/memory.h"
+#include "osdev64/heap.h"
 #include "osdev64/interrupts.h"
 #include "osdev64/instructor.h"
 #include "osdev64/apic.h"
 #include "osdev64/syscall.h"
+#include "osdev64/file.h"
 
 #include "klibc/stdio.h"
 
@@ -83,6 +85,12 @@ k_task* g_current_task = &g_primer_task;
 k_task* g_task_list = NULL;
 
 
+// Standard I/O streams.
+// TODO: implement the ability for each process to ahve their own.
+static FILE* current_stdin;
+static FILE* current_stdout;
+static FILE* current_stderr;
+
 /**
  * Removes a task from the global task list.
  * This function does not free the memory used by a task.
@@ -123,7 +131,44 @@ static void remove_task(k_task* target)
 
 void k_task_init()
 {
+  current_stdin = (FILE*)k_heap_alloc(sizeof(FILE));
+  if (current_stdin == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to create stdin\n");
+    HANG();
+  }
+  current_stdin->info = (void*)k_file_create_info(__FILE_NO_STDIN);
+  if (current_stdin->info == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to create stdin internal structure\n");
+    HANG();
+  }
 
+  current_stdout = (FILE*)k_heap_alloc(sizeof(FILE));
+  if (current_stdout == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to create stdout\n");
+    HANG();
+  }
+  current_stdout->info = (void*)k_file_create_info(__FILE_NO_STDOUT);
+  if (current_stdout->info == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to create stdout internal structure\n");
+    HANG();
+  }
+
+  current_stderr = (FILE*)k_heap_alloc(sizeof(FILE));
+  if (current_stderr == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to create stderr\n");
+    HANG();
+  }
+  current_stderr->info = (void*)k_file_create_info(__FILE_NO_STDERR);
+  if (current_stderr->info == NULL)
+  {
+    fprintf(stddbg, "[ERROR] failed to create stderr internal structure\n");
+    HANG();
+  }
 }
 
 static void print_tasks()
@@ -357,4 +402,22 @@ k_regn* k_task_sleep(k_regn* regs, k_regn* val, k_regn typ, k_regn ticks)
   g_current_task->status = TASK_SLEEPING;
 
   return k_task_switch(regs);
+}
+
+void* k_task_get_io_buffer(int type)
+{
+  switch (type)
+  {
+  case __FILE_NO_STDIN:
+    return current_stdin;
+
+  case __FILE_NO_STDOUT:
+    return current_stdout;
+
+  case __FILE_NO_STDERR:
+    return current_stderr;
+
+  default:
+    return NULL;
+  }
 }

@@ -3,6 +3,11 @@
 
 #include "osdev64/axiom.h"
 
+#define __FILE_NO_STDIN  1
+#define __FILE_NO_STDOUT 2
+#define __FILE_NO_STDERR 3
+#define __FILE_NO_STDDBG 4
+
 #define IO_BUF_SIZE 1024
 
 typedef struct k_finfo {

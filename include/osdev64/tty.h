@@ -20,7 +20,7 @@ void k_tty_init();
  * Temporary function to allow other processes to get a handle to
  * stdout.
  */
-void* k_tty_get_shell_stdout();
+// void* k_tty_get_shell_stdout();
 
 
 #endif

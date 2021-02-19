@@ -431,7 +431,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // Start the kernel terminal emulator.
   k_tty_init();
 
-  FILE* shell_out = (FILE*)k_tty_get_shell_stdout();
+  FILE* shell_out = (FILE*)k_task_get_io_buffer(__FILE_NO_STDOUT);
 
   int count = 0;
 
@@ -439,12 +439,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   for (;;)
   {
     // Do stuff
-    // if (count < 1000)
-    // {
-    //   k_pit_wait(120);
-    //   // printf("Hello, World!\n");
-    //   fprintf(shell_out, "[DEBUG] count: %d\n", count++);
-    // }
+    if (count < 5)
+    {
+      k_pit_wait(120);
+      // printf("Hello, World!\n");
+      fprintf(shell_out, "[DEBUG] count: %d\n", count++);
+    }
 
     // fprintf(
     //   stddbg,
