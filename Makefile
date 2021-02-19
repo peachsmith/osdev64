@@ -50,7 +50,7 @@ task.o \
 sync.o \
 syscall.o \
 file.o \
-shell.o \
+tty.o \
 task_demo.o \
 klibc.o
 
@@ -99,7 +99,7 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/sync.c -o sync.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/syscall.c -o syscall.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/file.c -o file.o
-	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/shell.c -o shell.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/tty.c -o tty.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/task_demo.c -o task_demo.o
 
 	$(LD) -shared -Bsymbolic -L$(GNUEFI_DIR)/x86_64/gnuefi -L$(GNUEFI_DIR)/x86_64/lib -T$(GNUEFI_DIR)/gnuefi/elf_x86_64_efi.lds $(OBJECTS) -o main.so -lgnuefi -lefi
@@ -115,6 +115,12 @@ klibc.o:
 run:
 	qemu-system-x86_64 -serial stdio -L $(OVMF_DIR) -bios OVMF.fd -cdrom myos.iso -m 512M
 
+
+mount:
+	/usr/bin/vmhgfs-fuse .host:/ /home/john/shares -o subtype=vmhgfs-fuse,allow_other
+
+share:
+	cp myos.iso ~/shares/host_share/
 
 .PHONY : clean
 clean:

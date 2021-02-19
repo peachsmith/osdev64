@@ -25,7 +25,7 @@
 #include "osdev64/sync.h"
 #include "osdev64/syscall.h"
 #include "osdev64/ps2.h"
-#include "osdev64/shell.h"
+#include "osdev64/tty.h"
 
 // temporary task demo for debugging task code
 #include "osdev64/task_demo.h"
@@ -428,10 +428,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   // }
   // k_heap_print();
 
-  // Start the kernel shell.
-  k_shell_init();
+  // Start the kernel terminal emulator.
+  k_tty_init();
 
-  FILE* shell_out = (FILE*)k_shell_get_stdout();
+  FILE* shell_out = (FILE*)k_tty_get_shell_stdout();
 
   int count = 0;
 

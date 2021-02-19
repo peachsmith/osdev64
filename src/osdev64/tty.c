@@ -1,4 +1,4 @@
-#include "osdev64/shell.h"
+#include "osdev64/tty.h"
 #include "osdev64/ps2.h"
 #include "osdev64/graphics.h"
 #include "osdev64/task.h"
@@ -11,39 +11,93 @@
 #include "klibc/stdio.h"
 
 
+// TODO: separate the TTY and shell into two separate interfaces.
+
 
 // global system font
 extern k_byte g_sys_font[4096];
 
 // coordinates of the next character to be written
-static uint64_t shell_text_x = 0; // multiple of GLYPH_WIDTH
-static uint64_t shell_text_y = 0; // multiple of GLYPH_HEIGHT
+static uint64_t tty_cursor_x = 0; // multiple of GLYPH_WIDTH
+static uint64_t tty_cursor_y = 0; // multiple of GLYPH_HEIGHT
 
 // The kernel shell is assumed to be 640 pixels wide and 480 pixels high.
-#define SHELL_WIDTH 640
-#define SHELL_HEIGHT 480
+#define TTY_WIDTH 640
+#define TTY_HEIGHT 480
 
 #define OUT_BUF_SIZE 0x1000
-#define CMD_BUF_SIZE 82
-#define VIEW_BUF_SIZE ((SHELL_HEIGHT / GLYPH_HEIGHT) * (SHELL_WIDTH / GLYPH_WIDTH))
+#define CMD_BUF_SIZE 1024
+#define VIEW_BUF_SIZE ((TTY_HEIGHT / GLYPH_HEIGHT) * (TTY_WIDTH / GLYPH_WIDTH))
 
 #define is_printable(c) (c >= 32 && c <= 126)
 #define is_alpha(c) ((c >= 65 && c <= 90) || (c >= 97 && c <= 122))
 #define is_num(c) (c >= 48 && c <= 57)
 #define is_other(c) (shift_other(c) != '\0')
 
-// TODO add some doc comments for these
-static k_regn shell_append_output(char*, size_t);
-static k_regn shell_append_command(char*, size_t);
-static int shell_decrement_command();
-static void shell_submit_command();
-static void shell_draw_glyph(unsigned char*, uint64_t, uint64_t);
-static void shell_draw_cursor();
-static void shell_draw_blank();
-static void shell_draw_char(char);
-static inline char decode(int);
-static inline char shift_num(char);
-static inline char shift_other(char);
+
+/**
+ * Appends a string of bytes to the output buffer.
+ */
+static k_regn tty_append_output(char*, size_t);
+
+/**
+ * Appends a string of bytes to the command buffer.
+ */
+static k_regn tty_append_command(char*, size_t);
+
+/**
+ * Removes a single byte from the command buffer.
+ */
+static int tty_decrement_command();
+
+/**
+ * Writes the contents of the command buffer to the standard input
+ * of a process.
+ */
+static void tty_submit_command();
+
+/**
+ * Draws the TTY to the screen.
+ */
+static void tty_draw();
+
+/**
+ * Draws a symbol from font data to the screen.
+ */
+static void tty_draw_glyph(unsigned char*, uint64_t, uint64_t);
+
+/**
+ * Draws the cursor on the screen.
+ */
+static void tty_draw_cursor();
+
+/**
+ * Draws a blank space on the screen.
+ */
+static void tty_draw_blank();
+
+/**
+ * Draws a character to the screen.
+ */
+static void tty_draw_char(char);
+
+/**
+ * Converts a keyboard scancode into ASCII encoding.
+ */
+static inline char tty_decode(int);
+
+/**
+ * Converts a numeric character into its "shift" version.
+ * This is used when the shift key is pressed.
+ */
+static inline char tty_shift_num(char);
+
+/**
+ * Converts a character into its "shift" version.
+ * This is used when the shift key is pressed.
+ */
+static inline char tty_shift_other(char);
+
 
 /**
  * The output buffer contains all data that can potentially be viewed
@@ -54,7 +108,6 @@ static char* out_buffer;
 static char* out_writer;
 
 static char* view_buffer;
-static int view_offset;
 
 static char* cmd_buffer;
 static char* cmd_writer;
@@ -84,7 +137,7 @@ static const char decoder_table[102] = {
 };
 
 
-static k_regn shell_append_output(char* str, size_t n)
+static k_regn tty_append_output(char* str, size_t n)
 {
   k_regn count = 0;
   for (size_t i = 0; i < n; i++)
@@ -108,7 +161,7 @@ static k_regn shell_append_output(char* str, size_t n)
     if (*reader != '\n')
     {
       line_chars++;
-      if (line_chars == SHELL_WIDTH / GLYPH_WIDTH)
+      if (line_chars == TTY_WIDTH / GLYPH_WIDTH)
       {
         line_chars = 0;
         lines++;
@@ -131,7 +184,7 @@ static k_regn shell_append_output(char* str, size_t n)
 
   // If the output buffer exceeds the view window,
   // update the view offset.
-  if (lines >= SHELL_HEIGHT / GLYPH_HEIGHT)
+  if (lines >= TTY_HEIGHT / GLYPH_HEIGHT)
   {
     view_buffer = view_start;
   }
@@ -139,7 +192,7 @@ static k_regn shell_append_output(char* str, size_t n)
   return count;
 }
 
-static k_regn shell_append_command(char* str, size_t n)
+static k_regn tty_append_command(char* str, size_t n)
 {
   k_regn count = 0;
   for (size_t i = 0; i < n; i++)
@@ -156,7 +209,7 @@ static k_regn shell_append_command(char* str, size_t n)
   return count;
 }
 
-static int shell_decrement_command()
+static int tty_decrement_command()
 {
   if (cmd_writer > cmd_buffer)
   {
@@ -165,26 +218,26 @@ static int shell_decrement_command()
     {
       out_writer--;
     }
-    shell_draw_blank();
+    tty_draw_blank();
     return 1;
   }
 
   return 0;
 }
 
-static void shell_submit_command()
+static void tty_submit_command()
 {
   // Clear the previous cursor.
-  shell_draw_blank();
+  tty_draw_blank();
 
   // Add a newline to the output buffer.
-  shell_append_output("\n", 1);
+  tty_append_output("\n", 1);
 
   // Reset the command buffer.
   cmd_writer = cmd_buffer;
 }
 
-static void shell_draw_glyph(
+static void tty_draw_glyph(
   unsigned char* glyph,
   uint64_t x,
   uint64_t y
@@ -207,26 +260,33 @@ static void shell_draw_glyph(
   }
 }
 
-static void shell_draw_blank()
+static void tty_draw_blank()
 {
+  // If we've reached the end of the line, then return.
+  // Blanks aren't used to fill multiple lines.
+  if (tty_cursor_x >= TTY_WIDTH)
+  {
+    return;
+  }
+
   // Draw a solid block of background color.
   for (int i = 0; i < GLYPH_HEIGHT; i++)
   {
     for (int j = 0; j < GLYPH_WIDTH; j++)
     {
-      k_put_pixel(shell_text_x + j, shell_text_y + i, 0, 0, 0);
+      k_put_pixel(tty_cursor_x + j, tty_cursor_y + i, 0, 0, 0);
     }
   }
 }
 
-static void shell_draw_cursor()
+static void tty_draw_cursor()
 {
   // If we've reached the end of the line,
   // reset x and increment y.
-  if (shell_text_x >= SHELL_WIDTH)
+  if (tty_cursor_x >= TTY_WIDTH)
   {
-    shell_text_x = 0;
-    shell_text_y += GLYPH_HEIGHT;
+    tty_cursor_x = 0;
+    tty_cursor_y += GLYPH_HEIGHT;
   }
 
   // Draw a solid block of foreground color.
@@ -234,21 +294,15 @@ static void shell_draw_cursor()
   {
     for (int j = 0; j < GLYPH_WIDTH; j++)
     {
-      k_put_pixel(shell_text_x + j, shell_text_y + i, 220, 220, 220);
+      k_put_pixel(tty_cursor_x + j, tty_cursor_y + i, 220, 220, 220);
     }
-  }
-
-  // Increment x.
-  if (shell_text_x < SHELL_WIDTH)
-  {
-    shell_text_x += GLYPH_WIDTH;
   }
 }
 
-static void shell_draw_char(char c)
+static void tty_draw_char(char c)
 {
   // Limit the number of lines.
-  if (shell_text_y >= SHELL_HEIGHT)
+  if (tty_cursor_y >= TTY_HEIGHT)
   {
     return;
   }
@@ -258,12 +312,12 @@ static void shell_draw_char(char c)
     // Handle newlines.
     if (c == '\n')
     {
-      for (;shell_text_x < SHELL_WIDTH;)
+      for (;tty_cursor_x < TTY_WIDTH;)
       {
-        shell_draw_char(' ');
+        tty_draw_char(' ');
       }
-      shell_text_x = 0;
-      shell_text_y += GLYPH_HEIGHT;
+      tty_cursor_x = 0;
+      tty_cursor_y += GLYPH_HEIGHT;
     }
 
     return;
@@ -271,10 +325,10 @@ static void shell_draw_char(char c)
 
   // If we've reached the end of the line,
   // reset x and increment y.
-  if (shell_text_x >= SHELL_WIDTH)
+  if (tty_cursor_x >= TTY_WIDTH)
   {
-    shell_text_x = 0;
-    shell_text_y += GLYPH_HEIGHT;
+    tty_cursor_x = 0;
+    tty_cursor_y += GLYPH_HEIGHT;
   }
 
   // Locate the glyph in the font data that can be used
@@ -282,19 +336,19 @@ static void shell_draw_char(char c)
   unsigned char* glyph = &(g_sys_font[(int)c * GLYPH_HEIGHT]);
 
   // Draw the character on the screen.
-  shell_draw_glyph(glyph, shell_text_x, shell_text_y);
+  tty_draw_glyph(glyph, tty_cursor_x, tty_cursor_y);
 
   // Increment x.
-  if (shell_text_x < SHELL_WIDTH)
+  if (tty_cursor_x < TTY_WIDTH)
   {
-    shell_text_x += GLYPH_WIDTH;
+    tty_cursor_x += GLYPH_WIDTH;
   }
 }
 
-static void draw()
+static void tty_draw()
 {
-  shell_text_x = 0;
-  shell_text_y = 0;
+  tty_cursor_x = 0;
+  tty_cursor_y = 0;
 
   int count = 0;
   int drawn_cursor = 0;
@@ -302,22 +356,36 @@ static void draw()
   // Draw the contents of the output buffer to the screen.
   for (char* reader = view_buffer; reader < out_writer && count < VIEW_BUF_SIZE; reader++, count++)
   {
-    shell_draw_char(*reader);
+    tty_draw_char(*reader);
   }
 
   // Draw the cursor after everything else.
   if (count++ < VIEW_BUF_SIZE)
   {
-    shell_draw_cursor();
+    tty_draw_cursor();
   }
 
-  for (;shell_text_x < SHELL_WIDTH;)
+  uint64_t cx = tty_cursor_x;
+
+  // UNDER CONSTRUCTION:
+  // Clear the rest of the current line after the cursor.
+  tty_cursor_x += GLYPH_WIDTH;
+  for (;tty_cursor_x < TTY_WIDTH;)
   {
-    shell_draw_char(' ');
+    // tty_draw_char(' ');
+    tty_draw_blank();
+    tty_cursor_x += GLYPH_WIDTH;
   }
+
+  tty_cursor_x = cx;
+
+  // for (tty_cursor_x += GLYPH_WIDTH;tty_cursor_x < TTY_WIDTH;)
+  // {
+  //   tty_draw_char(' ');
+  // }
 }
 
-static inline char decode(int sc)
+static inline char tty_decode(int sc)
 {
   if (sc < 102)
   {
@@ -327,7 +395,7 @@ static inline char decode(int sc)
   return '\0';
 }
 
-static inline char shift_num(char c)
+static inline char tty_shift_num(char c)
 {
   switch (c)
   {
@@ -345,7 +413,7 @@ static inline char shift_num(char c)
   }
 }
 
-static inline char shift_other(char c)
+static inline char tty_shift_other(char c)
 {
   switch (c)
   {
@@ -365,19 +433,19 @@ static inline char shift_other(char c)
   }
 }
 
-static void shell_action()
+static void tty_action()
 {
   const k_byte* key_states = k_ps2_get_key_states();
   k_ps2_event ke;
 
-  draw();
+  tty_draw();
 
   for (;;)
   {
     int redraw = 0;
     if (k_ps2_consume_event(&ke))
     {
-      char c = decode(ke.i);
+      char c = tty_decode(ke.i);
 
       if (ke.type == PS2_PRESSED && is_printable(c))
       {
@@ -389,17 +457,17 @@ static void shell_action()
           }
           else if (is_num(c))
           {
-            c = shift_num(c);
+            c = tty_shift_num(c);
           }
           else
           {
-            c = shift_other(c);
+            c = tty_shift_other(c);
           }
         }
 
-        if (shell_append_command(&c, 1))
+        if (tty_append_command(&c, 1))
         {
-          shell_append_output(&c, 1);
+          tty_append_output(&c, 1);
           redraw = 1;
         }
       }
@@ -409,13 +477,13 @@ static void shell_action()
         {
         case PS2_SC_ENTER:
         case PS2_SC_KP_ENTER:
-          shell_submit_command();
+          tty_submit_command();
           redraw = 1;
           break;
 
         case PS2_SC_BSP:
         {
-          if (shell_decrement_command())
+          if (tty_decrement_command())
           {
             redraw = 1;
           }
@@ -428,25 +496,26 @@ static void shell_action()
       }
     }
 
+    // Read the standard output from the shell.
     size_t r = k_syscall_read(shell_stdout, read_buffer, IO_BUF_SIZE);
     if (r)
     {
-      if (shell_append_output(read_buffer, r))
+      if (tty_append_output(read_buffer, r))
       {
         redraw = 1;
       }
     }
 
-    // redraw the shell if there was an update.
+    // redraw the terminal if there was an update.
     if (redraw)
     {
-      draw();
+      tty_draw();
     }
   }
 }
 
 
-void k_shell_init()
+void k_tty_init()
 {
   // Create the output buffer.
   out_buffer = (char*)k_heap_alloc(OUT_BUF_SIZE);
@@ -489,10 +558,8 @@ void k_shell_init()
 
   shell_stdout->info = info;
 
-  view_offset = 0;
-
   // Start the shell task.
-  k_task* t = k_task_create(shell_action);
+  k_task* t = k_task_create(tty_action);
   if (t == NULL)
   {
     fprintf(
@@ -504,7 +571,7 @@ void k_shell_init()
   k_task_schedule(t);
 }
 
-void* k_shell_get_stdout()
+void* k_tty_get_shell_stdout()
 {
   return (void*)shell_stdout;
 }

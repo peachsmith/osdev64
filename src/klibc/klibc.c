@@ -1,7 +1,7 @@
 #include "klibc/stdio.h"
 
 #include "osdev64/file.h"
-#include "osdev64/shell.h"
+#include "osdev64/tty.h"
 #include "osdev64/syscall.h"
 
 #include <stddef.h>
@@ -24,7 +24,7 @@ FILE* k_get_iobuf(int id)
   switch (id)
   {
   case 1: return &k_stdin;
-  case 2: return k_shell_get_stdout();
+  case 2: return k_tty_get_shell_stdout();
   case 3: return &k_stderr;
   case 4: return &k_stddbg;
   default: return NULL;
