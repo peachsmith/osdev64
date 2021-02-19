@@ -165,9 +165,9 @@ static k_regn tty_append_output(char* str, size_t n)
       {
         line_chars = 0;
         lines++;
-        if (lines == 2)
+        if (lines == 1 && reader < out_writer)
         {
-          view_start = reader;
+          view_start = reader + 1;
         }
       }
     }
@@ -175,9 +175,9 @@ static k_regn tty_append_output(char* str, size_t n)
     {
       line_chars = 0;
       lines++;
-      if (lines == 2)
+      if (lines == 1 && reader < out_writer)
       {
-        view_start = reader;
+        view_start = reader + 1;
       }
     }
   }
@@ -347,6 +347,7 @@ static void tty_draw_char(char c)
 
 static void tty_draw()
 {
+  // Reset the text drawing cursor position.
   tty_cursor_x = 0;
   tty_cursor_y = 0;
 
@@ -365,24 +366,19 @@ static void tty_draw()
     tty_draw_cursor();
   }
 
+  // Save the cursor x coordinate.
   uint64_t cx = tty_cursor_x;
 
-  // UNDER CONSTRUCTION:
   // Clear the rest of the current line after the cursor.
   tty_cursor_x += GLYPH_WIDTH;
   for (;tty_cursor_x < TTY_WIDTH;)
   {
-    // tty_draw_char(' ');
     tty_draw_blank();
     tty_cursor_x += GLYPH_WIDTH;
   }
 
+  // Restore the cursor x coordinate.
   tty_cursor_x = cx;
-
-  // for (tty_cursor_x += GLYPH_WIDTH;tty_cursor_x < TTY_WIDTH;)
-  // {
-  //   tty_draw_char(' ');
-  // }
 }
 
 static inline char tty_decode(int sc)
