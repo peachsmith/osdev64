@@ -435,15 +435,18 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   int count = 0;
 
+  k_acpi_read_mcfg();
+
   // The main loop.
   for (;;)
   {
     // Do stuff
-    if (count < 5)
+    if (count < 10)
     {
       k_pit_wait(120);
       // printf("Hello, World!\n");
-      fprintf(shell_out, "[DEBUG] count: %d\n", count++);
+      printf("[DEBUG] count: %d\n", count++);
+      // printf(shell_out, "[DEBUG] count: %d\n", count++);
     }
 
     // fprintf(

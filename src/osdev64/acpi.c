@@ -8,6 +8,23 @@
 // The MADT
 k_byte* g_madt = NULL;
 
+// The MCFG
+k_byte* g_mcfg = NULL;
+
+
+typedef struct mcfg_entry {
+  uint64_t phys_base;
+  uint64_t virt_base;
+  uint16_t group;
+  uint8_t bus_start;
+  uint8_t bus_end;
+}mcfg_entry;
+
+static mcfg_entry pci_base;
+
+// k_regn g_pci_phys = 0;
+// k_regn g_pci_virt = 0;
+
 extern k_byte* g_sys_rsdp;
 extern int g_sys_acpi_ver;
 
@@ -219,7 +236,6 @@ void k_acpi_init()
     // The signature "APIC" indicates the MADT.
     if (sdt[0] == 'A' && sdt[1] == 'P' && sdt[2] == 'I' && sdt[3] == 'C')
     {
-      // madt = sdt;
       uint32_t len = *(uint32_t*)(sdt + 4);
 
       // Calculate the checksum.
@@ -232,7 +248,7 @@ void k_acpi_init()
       // If we validated the checksum, then we found the MADT.
       if (check == 0)
       {
-        fprintf(stddbg, "[DEBUG] located the MADT\n");
+        fprintf(stddbg, "[ACPI] located the MADT\n");
 
         // Allocate memory to store the MADT
         g_madt = k_memory_alloc_pages(len / 0x1000 + 1);
@@ -249,6 +265,39 @@ void k_acpi_init()
         }
       }
     }
+
+    // The signature "MCFG" indicates the MADT.
+    if (sdt[0] == 'M' && sdt[1] == 'C' && sdt[2] == 'F' && sdt[3] == 'G')
+    {
+      uint32_t len = *(uint32_t*)(sdt + 4);
+
+      // Calculate the checksum.
+      k_byte check = 0;
+      for (uint32_t j = 0; j < len; j++)
+      {
+        check += sdt[j];
+      }
+
+      // If we validated the checksum, then we found the MADT.
+      if (check == 0)
+      {
+        fprintf(stddbg, "[ACPI] located the MCFG\n");
+
+        // Allocate memory to store the MADT
+        g_mcfg = k_memory_alloc_pages(len / 0x1000 + 1);
+        if (g_mcfg == NULL)
+        {
+          fprintf(stddbg, "[ERROR] failed to allocate memory for the MCFG\n");
+          HANG();
+        }
+
+        // Copy the MCFG into our dynamic memory.
+        for (uint32_t j = 0; j < len; j++)
+        {
+          g_mcfg[j] = sdt[j];
+        }
+      }
+    }
   }
 }
 
@@ -257,7 +306,7 @@ void k_acpi_print_madt()
 {
   if (g_madt == NULL)
   {
-    fprintf(stddbg, "[MADT] No MADT detected\n");
+    fprintf(stddbg, "[ACPI] No MADT detected\n");
     return;
   }
 
@@ -279,10 +328,10 @@ void k_acpi_print_madt()
     madt_check += g_madt[i];
   }
 
-  fprintf(stddbg, "[MADT] Checksum: %u\n", madt_check);
-  fprintf(stddbg, "[MADT] Length: %d\n", table_len);
-  fprintf(stddbg, "[MADT] 32-bit Local APIC Base: %X\n", lapic_base);
-  fprintf(stddbg, "[MADT] Flags: %X\n", flags);
+  fprintf(stddbg, "[ACPI] MADT Checksum: %u\n", madt_check);
+  fprintf(stddbg, "[ACPI] MADT Length: %d\n", table_len);
+  fprintf(stddbg, "[ACPI] MADT 32-bit Local APIC Base: %X\n", lapic_base);
+  fprintf(stddbg, "[ACPI] MADT Flags: %X\n", flags);
 
   // Print the entries of the MADT.
   // The index i represents the byte offset from the start of the
@@ -300,7 +349,7 @@ void k_acpi_print_madt()
     case 0:
     {
       uint8_t lapic_ver = *((uint8_t*)(entry + 3));
-      fprintf(stddbg, "[MADT] Local APIC: { ID: %u }\n", lapic_ver);
+      fprintf(stddbg, "[ACPI] Local APIC: { ID: %u }\n", lapic_ver);
     }
     break;
 
@@ -312,7 +361,7 @@ void k_acpi_print_madt()
 
       if (gsi == 0)
       {
-        fprintf(stddbg, "[MADT] I/O APIC: { ID: %u, Base: %X, GSI: %u }\n",
+        fprintf(stddbg, "[ACPI] I/O APIC: { ID: %u, Base: %X, GSI: %u }\n",
           id,
           (uint64_t)ioapic32,
           gsi
@@ -332,7 +381,7 @@ void k_acpi_print_madt()
       uint64_t pol = ((uint64_t)flags & BM_2_BITS);
       uint64_t trig = ((uint64_t)flags & (BM_2_BITS << 2)) >> 2;
 
-      fprintf(stddbg, "[MADT] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %5s, Trig: %5s }\n",
+      fprintf(stddbg, "[ACPI] ISO: { Bus: %3u, IRQ: %3u, GSI: %3u Pol: %5s, Trig: %5s }\n",
         bus_src,
         irq_src,
         gsi,
@@ -351,7 +400,7 @@ void k_acpi_print_madt()
       // polarity and trigger mode
       uint64_t pol = ((uint64_t)flags & BM_2_BITS);
       uint64_t trig = ((uint64_t)flags & (BM_2_BITS << 2)) >> 2;
-      fprintf(stddbg, "[MADT] NMI: { ID: %3X, Pol: %5s, Trig: %5s, LINT: %u }\n",
+      fprintf(stddbg, "[ACPI] NMI: { ID: %3X, Pol: %5s, Trig: %5s, LINT: %u }\n",
         id,
         iso_polarity_str(pol),
         iso_trigger_str(trig),
@@ -363,15 +412,225 @@ void k_acpi_print_madt()
     case 5:
     {
       uint64_t lapic_ovr = *((uint64_t*)(entry + 4));
-      fprintf(stddbg, "[MADT] Local APIC Override: { Addr: %p }\n", lapic_ovr);
+      fprintf(stddbg, "[ACPI] Local APIC Override: { Addr: %p }\n", lapic_ovr);
     }
     break;
 
     default:
-      fprintf(stddbg, "[MADT] Unknown: { type: %u } ", entry_type);
+      fprintf(stddbg, "[ACPI] Unknown: { type: %u } ", entry_type);
       break;
     }
 
     i += entry_len;
+  }
+}
+
+static void print_pci_device(uint64_t phys, uint64_t bd, uint64_t bus)
+{
+  uint64_t virt = k_paging_map_range(phys + bd, phys + bd + 0x1000);
+
+  if (virt == 0)
+  {
+    fprintf(stddbg, "[ERROR] failed to map PCI device\n");
+  }
+  else
+  {
+    k_byte* dev = (k_byte*)virt;
+    uint16_t deviceID = (((*(uint32_t*)(dev)) & 0xFFFF0000) >> 16);
+    uint16_t vendorID = ((*(uint32_t*)(dev)) & 0xFFFF);
+    uint8_t clas = (((*(uint32_t*)(dev + 8)) & 0xFF000000) >> 24);
+    uint8_t subclass = (((*(uint32_t*)(dev + 8)) & 0xFF0000) >> 16);
+    uint8_t header_type = (((*(uint32_t*)(dev + 12)) & 0xFF0000) >> 16);
+
+    // Header Type:
+    // 0 general device
+    // 1 PCI to PCI bridge
+    // 2 card bus bridge
+    // if bit 7 is set, then the device has multiple functions
+
+    if (vendorID != 0xFFFF)
+    {
+      fprintf(stddbg,
+        "[PCI DEV] Ven: %4X, Dev: %4X, Head: %2X, Class: %2X, Sub: %2X\n",
+        vendorID,
+        deviceID,
+        header_type & 0x7F,
+        clas,
+        subclass
+      );
+
+      if (header_type & 0x80)
+      {
+        fprintf(stddbg, "--------------------------------------------------\n");
+        // There are 8 functions for each device.
+        for (uint64_t f = 0; f < 8; f++)
+        {
+          uint64_t phys_fun = phys + (bd | (f << 12));
+          uint64_t virt_fun = k_paging_map_range(phys_fun, phys_fun + 0x1000);
+
+          if (virt_fun == 0)
+          {
+            fprintf(stddbg, "[ERROR] failed to map PCI function\n");
+          }
+          else
+          {
+            uint32_t* fun = (uint32_t*)virt_fun;
+            uint16_t fdeviceID = (((*(uint32_t*)(fun)) & 0xFFFF0000) >> 16);
+            uint16_t fvendorID = ((*(uint32_t*)(fun)) & 0xFFFF);
+            uint8_t fclas = (((*(uint32_t*)(fun + 8)) & 0xFF000000) >> 24);
+            uint8_t fsubclass = (((*(uint32_t*)(fun + 8)) & 0xFF0000) >> 16);
+            uint8_t fheader_type = (((*(uint32_t*)(fun + 12)) & 0xFF0000) >> 16);
+
+            if (fvendorID != 0xFFFF && fdeviceID != 0xFFFF)
+            {
+              fprintf(stddbg,
+                "[PCI FUN] Ven: %4X, Dev: %4X, Head: %2X, Class: %2X, Sub: %2X\n",
+                fvendorID,
+                fdeviceID,
+                fheader_type & 0x7F,
+                fclas,
+                fsubclass
+              );
+            }
+
+            k_paging_unmap_range(virt_fun);
+          }
+        }
+        fprintf(stddbg, "--------------------------------------------------\n");
+      }
+    }
+
+    k_paging_unmap_range(virt);
+  }
+}
+
+static void print_pci()
+{
+  if (pci_base.virt_base == 0)
+  {
+    fprintf(stddbg, "no PCI configuration space found\n");
+    return;
+  }
+
+  fprintf(
+    stddbg,
+    "[PCI] bus start: %u, end: %u\n",
+    pci_base.bus_start,
+    pci_base.bus_end
+  );
+
+  uint64_t pci_count = 0;
+
+  // Iterate over all busses in the configuration space.
+  for (uint64_t b = pci_base.bus_start; b < pci_base.bus_end; b++)
+  {
+    // pci_base.phys_base;
+    uint64_t phys = 0;
+    // phys = (b << 20);
+
+    // There are 32 devices per bus.
+    for (uint64_t d = 0; d < 32; d++)
+    {
+      // phys += (d << 15);
+
+      print_pci_device(pci_base.phys_base, ((b << 20) | (d << 15)), b);
+
+      // There are 8 functions for each device.
+      // for (uint64_t f = 0; f < 8; f++)
+      // {
+      //   pci_count++; // tmp
+
+      //   phys += (f << 12);
+      // }
+    }
+  }
+
+  fprintf(stddbg, "[PCI] %llu PCI functions scanned\n", pci_count);
+}
+
+
+void k_acpi_read_mcfg()
+{
+  if (g_mcfg == NULL)
+  {
+    fprintf(stddbg, "[ACPI] No MCFG detected\n");
+    return;
+  }
+
+  uint32_t table_len = *((uint32_t*)(g_mcfg + 4));
+
+  // Calculate the checksum.
+  k_byte mcfg_check = 0;
+  for (uint32_t i = 0; i < table_len; i++)
+  {
+    mcfg_check += g_mcfg[i];
+  }
+
+  fprintf(stddbg, "[ACPI] MCFG Checksum: %u\n", mcfg_check);
+  fprintf(stddbg, "[ACPI] MCFG Length: %d\n", table_len);
+
+  // Print the entries of the MCFG.
+  // The index i represents the byte offset from the start of the
+  // entry list.
+  // The entry list starts at offset 44.
+  // Each entry is 16 bytes.
+  for (uint32_t i = 0; i < table_len - 44;)
+  {
+    k_byte* entry = &g_mcfg[44 + i];
+
+    uint64_t base = *((uint64_t*)(entry));
+    uint16_t seg_group = *((uint16_t*)(entry + 8));
+    uint8_t bus_start = *((uint8_t*)(entry + 10));
+    uint8_t bus_end = *((uint8_t*)(entry + 11));
+
+    fprintf(
+      stddbg,
+      "[ACPI] MCFG base: %llX, group: %u, start bus: %d, end bus: %d\n",
+      base,
+      seg_group,
+      bus_start,
+      bus_end
+    );
+
+    if (pci_base.phys_base == 0)
+    {
+      pci_base.phys_base = base;
+      pci_base.bus_start = bus_start;
+      pci_base.bus_end = bus_end;
+    }
+
+    // Increment i by the size of an MCFG entry.
+    i += 16;
+  }
+
+  if (pci_base.phys_base)
+  {
+    pci_base.virt_base = k_paging_map_range(pci_base.phys_base, pci_base.phys_base + 0x1000);
+
+    if (pci_base.virt_base == 0)
+    {
+      fprintf(
+        stddbg,
+        "[ERROR] could not map PCI configuration space into virtual memory\n"
+      );
+    }
+    else
+    {
+      fprintf(
+        stddbg,
+        "[ACPI] PCI phys base: %llX, virt base: %llX\n",
+        pci_base.phys_base,
+        pci_base.virt_base
+      );
+
+      print_pci();
+    }
+  }
+  else
+  {
+    fprintf(
+      stddbg,
+      "[ERROR] could not find PCI configuration space\n"
+    );
   }
 }

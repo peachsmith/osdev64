@@ -532,28 +532,6 @@ void k_tty_init()
   }
   cmd_writer = cmd_buffer;
 
-
-  // Create a file object for standard output.
-  // shell_stdout = (FILE*)k_heap_alloc(sizeof(FILE));
-  // if (shell_stdout == NULL)
-  // {
-  //   fprintf(stddbg, "[ERROR] failed to allocate memory for shell stdout\n");
-  //   return;
-  // }
-
-  // k_finfo* info = k_file_create_info(__FILE_NO_STDOUT);
-  // if (info == NULL)
-  // {
-  //   fprintf(stddbg, "[ERROR] failed to allocate memory for shell info\n");
-  //   return;
-  // }
-
-  // info->type = __FILE_NO_STDOUT;
-  // info->writer = info->buf;
-  // info->reader = info->buf;
-
-  // shell_stdout->info = info;
-
   shell_stdout = k_task_get_io_buffer(__FILE_NO_STDOUT);
 
   // Start the shell task.
@@ -568,8 +546,3 @@ void k_tty_init()
   }
   k_task_schedule(t);
 }
-
-// void* k_tty_get_shell_stdout()
-// {
-//   return (void*)shell_stdout;
-// }

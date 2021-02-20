@@ -25,4 +25,11 @@ void k_acpi_read_madt();
 void k_acpi_print_madt();
 
 
+
+/**
+ * Reads the Memory-Mapped Configuration (MCFG) table.
+ */
+void k_acpi_read_mcfg();
+
+
 #endif

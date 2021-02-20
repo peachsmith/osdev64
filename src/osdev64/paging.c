@@ -586,7 +586,7 @@ k_regn k_paging_map_range(k_regn start, k_regn end)
   }
 
   // Create a new virtual address reservation.
-  for (int i = 0, entry = 0; i < RAM_LEDGER_MAX && !entry; i++)
+  for (int i = 0, entry = 0; i < MAP_LEDGER_MAX && !entry; i++)
   {
     if (g_map_ledger[i].avail)
     {
@@ -595,8 +595,13 @@ k_regn k_paging_map_range(k_regn start, k_regn end)
       g_map_ledger[i].end = virt_end;
       entry = 1;
     }
-  }
 
+    // If there was no available entry, the reservation failed.
+    if (i == MAP_LEDGER_MAX - 1)
+    {
+      return 0;
+    }
+  }
 
 
   //=====================================
