@@ -26,6 +26,7 @@
 #include "osdev64/syscall.h"
 #include "osdev64/ps2.h"
 #include "osdev64/tty.h"
+#include "osdev64/pci.h"
 
 // temporary task demo for debugging task code
 #include "osdev64/task_demo.h"
@@ -435,7 +436,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
 
   int count = 0;
 
-  k_acpi_read_mcfg();
+  k_pci_init();
 
   // The main loop.
   for (;;)
