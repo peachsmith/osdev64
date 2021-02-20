@@ -144,14 +144,31 @@ typedef struct pci_id_map {
 #define PCI_BRIG_RACEWAY 0x8
 
 // serial
-#define PCI_CLASS_SERL 0xC
+#define PCI_CLASS_SERL  0xC
+#define PCI_SERL_IEEE   0x0
+#define PCI_SERL_ACCESS 0x1
+#define PCI_SERL_SSA    0x2
+#define PCI_SERL_USB    0x3
+#define PCI_SERL_FIBRE  0x4
+#define PCI_SERL_SMB    0x5
+#define PCI_SERL_IPMI   0x7
+#define PCI_SERL_SERCOS 0x8
+#define PCI_SERL_CANBUS 0x9
+#define PCI_SERL_MIPI   0xA
 
 // wireless
-#define PCI_CLASS_WIRE 0xD
+#define PCI_CLASS_WIRL   0xD
+#define PCI_WIRL_IRDA    0x0
+#define PCI_WIRL_IR_UWB  0x1
+#define PCI_WIRL_RF      0x10
+#define PCI_WIRL_BLUE    0x11
+#define PCI_WIRL_BROAD   0x12
+#define PCI_WIRL_ETH_5   0x20
+#define PCI_WIRL_ETH_2_4 0x21
+#define PCI_WIRL_CELL    0x21
+#define PCI_WIRL_CELL_E  0x21
 
-
-
-
+// unknown
 #define PCI_SUBC_OTHER    0x80
 
 
