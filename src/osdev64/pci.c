@@ -21,6 +21,139 @@ static mcfg_entry pci_base;
 static void pci_print_bdf();
 
 
+typedef struct pci_id_map {
+  uint16_t vendorID;
+  uint16_t deviceID;
+  char name[48];
+}pci_id_map;
+
+
+// PCI device descriptions
+// Ven  Dev  Vendor Description  Device Description
+// 8086 7190 Intel Corporation   440BX/ZX/DX - 82443BX/ZX/DX Host bridge
+// 8086 7191 Intel Corporation   440BX/ZX/DX - 82443BX/ZX/DX AGP bridge
+// 8086 7110 Intel Corporation   82371AB/EB/MB PIIX4 ISA
+// 8086 7111 Intel Corporation   82371AB/EB/MB PIIX4 IDE
+// 8086 7113 Intel Corporation   82371AB/EB/MB PIIX4 ACPI
+// 15AD 740  VMWare              Virtual Machine Communication Interface
+// 15AD 405  VMWare              SVGA II Adapter
+// 15AD 790  VMWare              PCI bridge
+// 15AD 7A0  VMWare              PCI Express Root Port
+// 8086 100F Intel Corporation   82545EM Gigabit Ethernet Controller (Copper)
+// 1274 1371 Ensoniq             ES1371/ES1373 / Creative Labs CT2518
+// 15AD 774  VMWare              USB1.1 UHCI Controller
+// 15AD 770  VMWare              USB2 EHCI Controller
+
+
+
+// PCI device class and subclass descriptions
+//
+// 0x1 Mass Storage
+//  - 0x0 SCSI controller
+//  - 0x1 IDE controller
+//  - 0x2 Floppy controller
+//  - 0x3 IPI bus controller
+//  - 0x4 RAID controller 
+//
+// 0x2 Network Controller
+//  - 0x1 Ethernet
+//
+// 0x3 Display Controller
+//  - 0x0 VGA-compatible
+//  - 0x1 XGA
+//  - 0x2 3D controller
+//
+// 0x4 Multimedia Device
+//  - 0x0 video
+//  - 0x1 audio
+//  - 0x2 telephony
+//  - 0x3 high definition audio
+//
+// 0x6 Bridge Device
+//  - 0x0 host bridge
+//  - 0x1 ISA bridge
+//  - 0x2 EISA bridge
+//  - 0x3 MCA bridge
+//  - 0x4 PCI-to-PCI bridge
+//  - 0x5 PCMCIA bridge
+//  - 0x6 NuBus bridge
+//  - 0x7 CardBus bridge
+//  - 0x8 RACEway bridge
+//
+// 0xC  Serial Bus Controller
+//  - 0x0 IEEE 1394
+//  - 0x1 ACCESS.bus
+//  - 0x2 SSA
+//  - 0x3 serial bus, host controller, or device 
+//  - 0x4 Fibre channel
+//  - 0x5 SMBus
+//  - 0x7 IPMI
+//  - 0x8 SERCOS interface
+//  - 0x9 CANbus
+//  - 0xA MIPI I3C host controller interface
+//
+// 0xD Wireless Controller
+//  - 0x0 iRDA controller
+//  - 0x1 consumer IR controller or UWB radio controller
+//  - 0x10 RF controller
+//  - 0x11 Bluetooth
+//  - 0x12 Broadband
+//  - 0x20 Ethernet 5 GHz
+//  - 0x21 Ethernet 2.4 GHz
+//  - 0x40 Cellular Modem
+//  - 0x41 Cellular Modem (with Ethernet)
+
+
+
+// Classes
+// mass storage
+#define PCI_CLASS_STOR  0x1
+#define PCI_STOR_SCSI   0x0
+#define PCI_STOR_IDE    0x1
+#define PCI_STOR_FLOPPY 0x2
+#define PCI_STOR_IDI    0x3
+#define PCI_STOR_RAID   0x4
+
+// network
+#define PCI_CLASS_NETW    0x2
+#define PCI_NETW_ETHERNET 0x1
+
+// display
+#define PCI_CLASS_DISP 0x3
+#define PCI_DISP_VGA   0x0
+#define PCI_DISP_XGA   0x1
+#define PCI_DISP_3D    0x2
+
+// multimedia
+#define PCI_CLASS_MULT 0x4
+#define PCI_MULT_VIDEO 0x0
+#define PCI_MULT_AUDIO 0x1
+#define PCI_MULT_PHON  0x2
+#define PCI_MULT_HDAUD 0x3
+
+// bridge
+#define PCI_CLASS_BRIG   0x6
+#define PCI_BRIG_HOST    0x0
+#define PCI_BRIG_ISA     0x1
+#define PCI_BRIG_EISA    0x2
+#define PCI_BRIG_MCA     0x3
+#define PCI_BRIG_PCI     0x4
+#define PCI_BRIG_PCMCIA  0x5
+#define PCI_BRIG_NUBUS   0x6
+#define PCI_BRIG_CARDBUS 0x7
+#define PCI_BRIG_RACEWAY 0x8
+
+// serial
+#define PCI_CLASS_SERL 0xC
+
+// wireless
+#define PCI_CLASS_WIRE 0xD
+
+
+
+
+#define PCI_SUBC_OTHER    0x80
+
 
 // bus/device/function (B/D/F or BDF) address structure
 //
