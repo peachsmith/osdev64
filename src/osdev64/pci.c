@@ -113,6 +113,9 @@ typedef struct pci_id_map {
 #define PCI_STOR_FLOPPY 0x2
 #define PCI_STOR_IDI    0x3
 #define PCI_STOR_RAID   0x4
+#define PCI_STOR_ATA    0x5
+#define PCI_STOR_SATA   0x6
+#define PCI_STOR_SAS    0x7
 
 // network
 #define PCI_CLASS_NETW    0x2
