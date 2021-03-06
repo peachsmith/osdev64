@@ -27,22 +27,39 @@ typedef uint8_t pci_dev;
 
 static mcfg_entry pci_base;
 
-// prints all the valid PCI endpoints
-static void pci_dump();
-
-// prints a PCI endpoint
-static int print_bdf(uint8_t, uint8_t, uint8_t);
 
 
-
-// collects the available devices into a list.
+/**
+ * Gathers the available devices into a list.
+ */
 static void pci_collect();
 
-// maps a devices configuration space into virtual memory.
-static pci_dev* pci_map(uint8_t, uint8_t, uint8_t);
+/**
+ * Checks a PCI endpoint for a valid device and stores it in a list.
+ * If the device is a multi function device, this function returns 1,
+ * otherwise this function returns 0.
+ *
+ * Params:
+ *   uint8_t - bus index
+ *   uint8_t - device index
+ *   uint8_t - function index
+ *
+ * Returns:
+ *   int - 1 if the device is multi function, otherwise 0
+ */
+static int pci_check_bdf(uint8_t, uint8_t, uint8_t);
+
+/**
+ * Prints information about a PCI device.
+ *
+ * Params:
+ *   pci_dev* - a pointer to a PCI device
+ */
+static void pci_describe(pci_dev* dev);
 
 
-static pci_dev* k_storage_dev;
+// a mass storage device
+static pci_dev* k_storage_dev = NULL;
 
 // very primitive list of devices
 static pci_dev* devices[10];
@@ -64,66 +81,6 @@ static int dev_count = 0;
 // 1274 1371 Ensoniq             ES1371/ES1373 / Creative Labs CT2518
 // 15AD 774  VMWare              USB1.1 UHCI Controller
 // 15AD 770  VMWare              USB2 EHCI Controller
-
-
-
-// PCI device class and subclass descriptions
-//
-// 0x1 Mass Storage
-//  - 0x0 SCSI controller
-//  - 0x1 IDE controller
-//  - 0x2 Floppy controller
-//  - 0x3 IPI bus controller
-//  - 0x4 RAID controller 
-//
-// 0x2 Network Controller
-//  - 0x1 Ethernet
-//
-// 0x3 Display Controller
-//  - 0x0 VGA-compatible
-//  - 0x1 XGA
-//  - 0x2 3D controller
-//
-// 0x4 Multimedia Device
-//  - 0x0 video
-//  - 0x1 audio
-//  - 0x2 telephony
-//  - 0x3 high definition audio
-//
-// 0x6 Bridge Device
-//  - 0x0 host bridge
-//  - 0x1 ISA bridge
-//  - 0x2 EISA bridge
-//  - 0x3 MCA bridge
-//  - 0x4 PCI-to-PCI bridge
-//  - 0x5 PCMCIA bridge
-//  - 0x6 NuBus bridge
-//  - 0x7 CardBus bridge
-//  - 0x8 RACEway bridge
-//
-// 0xC  Serial Bus Controller
-//  - 0x0 IEEE 1394
-//  - 0x1 ACCESS.bus
-//  - 0x2 SSA
-//  - 0x3 serial bus, host controller, or device 
-//  - 0x4 Fibre channel
-//  - 0x5 SMBus
-//  - 0x7 IPMI
-//  - 0x8 SERCOS interface
-//  - 0x9 CANbus
-//  - 0xA MIPI I3C host controller interface
-//
-// 0xD Wireless Controller
-//  - 0x0 iRDA controller
-//  - 0x1 consumer IR controller or UWB radio controller
-//  - 0x10 RF controller
-//  - 0x11 Bluetooth
-//  - 0x12 Broadband
-//  - 0x20 Ethernet 5 GHz
-//  - 0x21 Ethernet 2.4 GHz
-//  - 0x40 Cellular Modem
-//  - 0x41 Cellular Modem (with Ethernet)
-
 
 
 // Classes
@@ -189,8 +146,8 @@ static int dev_count = 0;
 #define PCI_WIRL_BROAD   0x12
 #define PCI_WIRL_ETH_5   0x20
 #define PCI_WIRL_ETH_2_4 0x21
-#define PCI_WIRL_CELL    0x21
-#define PCI_WIRL_CELL_E  0x21
+#define PCI_WIRL_CELL    0x40
+#define PCI_WIRL_CELL_E  0x41
 
 // unknown
 #define PCI_SUBC_OTHER    0x80
@@ -209,156 +166,39 @@ static int dev_count = 0;
 // space for the given b/d/f can be calculated by
 // c = p + ((b << 20) | (d << 15) | (f << 12))
 
-static int print_bdf(uint8_t b, uint8_t d, uint8_t f)
-{
-  uint64_t p = pci_base.phys_base;
-
-  p += (
-    ((uint64_t)b << 20)
-    | ((uint64_t)d << 15)
-    | ((uint64_t)f << 12)
-    );
-
-  // Map the 4KiB configuration space into virtual memory.
-  k_regn v = k_paging_map_range(p, p + 0x1000);
-  if (v == 0)
-  {
-    fprintf(stddbg, "[ERROR] failed to map PCI b/d/f into virtual memory\n");
-    return 0;
-  }
-
-  uint8_t* cfg = (uint8_t*)v;
-
-  uint16_t ven = *(uint16_t*)cfg;       // vendor ID
-  uint16_t dev = *(uint16_t*)(cfg + 2); // device ID
-  uint8_t sub = *(uint8_t*)(cfg + 10);  // subclass
-  uint8_t cls = *(uint8_t*)(cfg + 11);  // class
-  uint8_t hea = *(uint8_t*)(cfg + 14);  // header type
-
-  // Unmap the configuration space, since we're not using it yet.
-  k_paging_unmap_range(v);
-
-  if (ven != 0xFFFF && dev != 0xFFFF)
-  {
-    fprintf(stddbg,
-      "| (%2X/%2X/%2X) %-4X  %-4X  %-5X  %-8X  %-6X |\n",
-      b, d, f, ven, dev, cls, sub, hea & 0x7F
-    );
-
-    // Return 1 to indicate a multi-function device,
-    // or 2 to indicate a single-function device.
-    return (hea & 0x80) ? 1 : 2;
-  }
-
-  return 0;
-}
-
-static void pci_dump()
-{
-  if (pci_base.virt_base == 0)
-  {
-    fprintf(stddbg, "no PCI configuration space found\n");
-    return;
-  }
-
-  fprintf(
-    stddbg,
-    "[PCI] bus start: %u, end: %u\n",
-    pci_base.bus_start,
-    pci_base.bus_end
-  );
-
-  // table start
-  fprintf(stddbg, "+------------------------------------------------+\n");
-  fprintf(stddbg, "| (b/d/f)    VID   DID   Class  Subclass  Header |\n");
-  fprintf(stddbg, "+------------------------------------------------+\n");
-
-  // Iterate over all busses in the configuration space.
-  for (uint8_t b = pci_base.bus_start; b < pci_base.bus_end; b++)
-  {
-    // There are 32 devices per bus.
-    for (uint8_t d = 0; d < 32; d++)
-    {
-      // All PCI devices are required to implement function 0.
-      int res = print_bdf(b, d, 0);
-      if (res == 1)
-      {
-        // There are 8 functions for each device.
-        for (uint8_t f = 1; f < 8; f++)
-        {
-          print_bdf(b, d, f);
-        }
-      }
-
-      if (res && b < pci_base.bus_end - 1)
-      {
-        // device separator
-        fprintf(stddbg, "|------------------------------------------------|\n");
-      }
-    }
-  }
-
-  // table end
-  fprintf(stddbg, "+------------------------------------------------+\n");
-}
 
 
-
-static pci_dev* pci_map(uint8_t b, uint8_t d, uint8_t f)
+static int pci_check_bdf(uint8_t b, uint8_t d, uint8_t f)
 {
   pci_dev* dev = NULL;
 
-  uint64_t p = pci_base.phys_base;
-
-  p += (
+  uint64_t bdf = (
     ((uint64_t)b << 20)
     | ((uint64_t)d << 15)
     | ((uint64_t)f << 12)
     );
 
-  // Map the 4KiB configuration space into virtual memory.
-  k_regn v = k_paging_map_range(p, p + 0x1000);
-  if (v == 0)
-  {
-    return NULL;
-  }
+  uint64_t endpoint = pci_base.virt_base + bdf;
 
-  dev = (pci_dev*)v;
+  dev = (pci_dev*)endpoint;
 
   uint16_t venID = *(uint16_t*)dev;       // vendor ID
   uint16_t devID = *(uint16_t*)(dev + 2); // device ID
   // uint8_t sub = *(uint8_t*)(dev + 10);  // subclass
-  // uint8_t cls = *(uint8_t*)(dev + 11);  // class
-  // uint8_t hea = *(uint8_t*)(dev + 14);  // header type
+  uint8_t cls = *(uint8_t*)(dev + 11);  // class
+  uint8_t hea = *(uint8_t*)(dev + 14);  // header type
 
-  if (venID != 0xFFFF && devID != 0xFFFF)
-  {
-    return dev;
-  }
-
-  k_paging_unmap_range(v);
-  return NULL;
-}
-
-
-static int store_or_unmap(pci_dev* dev)
-{
-  uint16_t venID = *(uint16_t*)dev;       // vendor ID
-  uint16_t devID = *(uint16_t*)(dev + 2); // device ID
-  // uint8_t sub = *(uint8_t*)(dev + 10);  // subclass
-  uint8_t dclass = *(uint8_t*)(dev + 11);  // class
-  uint8_t dheader = *(uint8_t*)(dev + 14);  // header type
-
-  if (dev == NULL)
+  // Skip invalid devices.
+  if (venID == 0xFFFF || devID == 0xFFFF)
   {
     return 0;
   }
 
-  // Only collect devices of class 1, 2, 3, 4, 12, or 13
-  if (dclass == 0 || (dclass > 4 && dclass < 0xC) || dclass > 0xD)
+  // Only add devices with a class of 1, 2, 3, 4, 12, or 13
+  // to the list.
+  if (cls == 0 || (cls > 4 && cls < 0xC) || cls > 0xD)
   {
-    k_paging_unmap_range(PTR_TO_N(dev));
-    return dheader & 0x80;
+    return hea & 0x80;
   }
 
   // Add the device to the list.
@@ -367,8 +207,28 @@ static int store_or_unmap(pci_dev* dev)
     devices[dev_count++] = dev;
   }
 
-  // Indicate whether the device is multi function.
-  return dheader & 0x80;
+  // Locate a mass storage device.
+  if (cls == PCI_CLASS_STOR && k_storage_dev == NULL)
+  {
+    k_storage_dev = dev;
+  }
+
+  return hea & 0x80;
+}
+
+
+static void pci_describe(pci_dev* dev)
+{
+  uint16_t venID = *(uint16_t*)dev;       // vendor ID
+  uint16_t devID = *(uint16_t*)(dev + 2); // device ID
+  uint8_t sub = *(uint8_t*)(dev + 10);  // subclass
+  uint8_t dclass = *(uint8_t*)(dev + 11);  // class
+  uint8_t dheader = *(uint8_t*)(dev + 14);  // header type
+
+  fprintf(stddbg,
+    "VID: %4X, DID: %4X, Class: %2X Subclass: %2X, Header: %2X\n",
+    venID, devID, dclass, sub, dheader & 0x7F
+  );
 }
 
 static void pci_collect()
@@ -386,14 +246,12 @@ static void pci_collect()
     for (uint8_t d = 0; d < 32; d++)
     {
       // All PCI devices are required to implement function 0.
-      pci_dev* dev = pci_map(b, d, 0);
-      if (store_or_unmap(dev))
+      if (pci_check_bdf(b, d, 0))
       {
         // There are 8 functions for each device.
         for (uint8_t f = 1; f < 8; f++)
         {
-          pci_dev* fun = pci_map(b, d, f);
-          store_or_unmap(fun);
+          pci_check_bdf(b, d, f);
         }
       }
     }
@@ -454,70 +312,88 @@ void k_pci_init()
     i += 16;
   }
 
-  if (pci_base.phys_base)
-  {
-    pci_base.virt_base = k_paging_map_range(pci_base.phys_base, pci_base.phys_base + 0x1000);
-
-    if (pci_base.virt_base == 0)
-    {
-      fprintf(
-        stddbg,
-        "[ERROR] could not map PCI configuration space into virtual memory\n"
-      );
-    }
-    else
-    {
-      fprintf(
-        stddbg,
-        "[ACPI] PCI phys base: %llX, virt base: %llX\n",
-        pci_base.phys_base,
-        pci_base.virt_base
-      );
-
-      // pci_dump();
-      pci_collect();
-
-      for (int j = 0; j < dev_count; j++)
-      {
-        uint8_t cls = *(uint8_t*)(devices[j] + 11);
-        switch (cls)
-        {
-        case PCI_CLASS_STOR:
-          fprintf(stddbg, "mass storage device\n");
-          break;
-
-        case PCI_CLASS_NETW:
-          fprintf(stddbg, "network device\n");
-          break;
-
-        case PCI_CLASS_DISP:
-          fprintf(stddbg, "display device\n");
-          break;
-
-        case PCI_CLASS_MULT:
-          fprintf(stddbg, "multimedia device\n");
-          break;
-
-        case PCI_CLASS_SERL:
-          fprintf(stddbg, "serial device\n");
-          break;
-
-        case PCI_CLASS_WIRL:
-          fprintf(stddbg, "wireless device\n");
-          break;
-
-        default:
-          fprintf(stddbg, "unknown device class\n");
-          break;
-        }
-      }
-    }
-  }
-  else
+  if (!pci_base.phys_base)
   {
     fprintf(
       stddbg,
       "[ERROR] could not find PCI configuration space\n"
     );
+    return;
+  }
+
+  uint64_t cfg_max = (
+    (((uint64_t)(pci_base.bus_end - 1)) << 20)
+    | ((uint64_t)31 << 15)
+    | ((uint64_t)7 << 12)
+    );
+
+  pci_base.virt_base = k_paging_map_range(pci_base.phys_base, pci_base.phys_base + cfg_max);
+
+  if (pci_base.virt_base == 0)
+  {
+    fprintf(
+      stddbg,
+      "[ERROR] could not map PCI configuration space into virtual memory\n"
+    );
+    return;
+  }
+
+  fprintf(
+    stddbg,
+    "[ACPI] PCI phys base: %llX, virt base: %llX\n",
+    pci_base.phys_base,
+    pci_base.virt_base
+  );
+
+  k_paging_print_ledger();
+
+  // Gather all available PCI devices into a list.
+  pci_collect();
+
+  fprintf(stddbg, "Device List\n");
+
+  // Print out the device classes.
+  for (int j = 0; j < dev_count; j++)
+  {
+    uint16_t venID = *(uint16_t*)devices[j];
+    uint16_t devID = *(uint16_t*)(devices[j] + 2);
+    uint8_t cls = *(uint8_t*)(devices[j] + 11);
+
+    switch (cls)
+    {
+    case PCI_CLASS_STOR:
+      fprintf(stddbg, "  Class: storage     VID/DID: %4X / %4X\n", venID, devID);
+      break;
+
+    case PCI_CLASS_NETW:
+      fprintf(stddbg, "  Class: network     VID/DID: %4X / %4X\n", venID, devID);
+      break;
+
+    case PCI_CLASS_DISP:
+      fprintf(stddbg, "  Class: display     VID/DID: %4X / %4X\n", venID, devID);
+      break;
+
+    case PCI_CLASS_MULT:
+      fprintf(stddbg, "  Class: multimedia  VID/DID: %4X / %4X\n", venID, devID);
+      break;
+
+    case PCI_CLASS_SERL:
+      fprintf(stddbg, "  Class: serial      VID/DID: %4X / %4X\n", venID, devID);
+      break;
+
+    case PCI_CLASS_WIRL:
+      fprintf(stddbg, "  Class: wireless    VID/DID: %4X / %4X\n", venID, devID);
+      break;
+
+    default:
+      fprintf(stddbg, "  Class: unknown     VID/DID: %4X / %4X\n", venID, devID);
+      break;
+    }
+  }
+
+  if (k_storage_dev != NULL)
+  {
+    fprintf(stddbg, "found mass storage device\n");
+    pci_describe(k_storage_dev);
   }
 }

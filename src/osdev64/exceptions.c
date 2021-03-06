@@ -1,7 +1,11 @@
 // This file contains functions for handling exceptions.
 // These functions are called from ISRs.
 
+#include "osdev64/axiom.h"
+
 #include "klibc/stdio.h"
+
+extern uint64_t g_endpoint;
 
 /**
  * Handles a divide error, which triggers interrupt 0.
@@ -9,7 +13,7 @@
 void div0_handler()
 {
   fprintf(stddbg, "divide error\n");
-  fprintf(stderr, "divide error\n");
+  // fprintf(stderr, "divide error\n");
   for (;;);
 }
 
@@ -19,7 +23,7 @@ void div0_handler()
 void gp_fault_handler()
 {
   fprintf(stddbg, "general protection fault\n");
-  fprintf(stderr, "general protection fault\n");
+  // fprintf(stderr, "general protection fault\n");
   for (;;);
 }
 
@@ -28,8 +32,8 @@ void gp_fault_handler()
  */
 void page_fault_handler()
 {
-  fprintf(stddbg, "page fault\n");
-  fprintf(stderr, "page fault\n");
+  fprintf(stddbg, "page fault. last endpoint: %llX\n", g_endpoint);
+  // fprintf(stderr, "page fault\n");
   for (;;);
 }
 

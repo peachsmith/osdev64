@@ -675,6 +675,9 @@ k_regn k_paging_map_range(k_regn start, k_regn end)
   k_regn pd_end = (virt_end & (BM_9_BITS << 21)) >> 21;
   k_regn pt_end = (virt_end & (BM_9_BITS << 12)) >> 12;
 
+  // fprintf(stddbg, "[PAGING] virt start: %llX, virt end: %llX\n", virt_start, virt_end);
+  // fprintf(stddbg, "[PAGING] START PDPT: %3llu, PD: %3llu, PT: %3llu\n", pml4_start, pdpt_start, pd_start);
+  // fprintf(stddbg, "[PAGING] END   PDPT: %3llu, PD: %3llu, PT: %3llu\n", pml4_end, pdpt_end, pd_end);
 
   // Currently, we don't allow mappings that pass 0xFFFFFFFFFF
   if (pml4_end > 1)
@@ -683,6 +686,14 @@ k_regn k_paging_map_range(k_regn start, k_regn end)
   }
 
   k_regn addr = phys_start;
+
+  // Starting values for the index values of the table and directory.
+  // When completing a mapping in the middle of a paging structure,
+  // we want to resume from the next index when creating a new mapping.
+  // If we fill a structure during a single mapping, we want to reset
+  // the index to 0.
+  k_regn pt_index = pt_start;
+  k_regn pd_index = pd_start;
 
   // Allocate page directories
   for (uint64_t i = pdpt_start; i <= pdpt_end; i++)
@@ -727,13 +738,13 @@ k_regn k_paging_map_range(k_regn start, k_regn end)
     pde* dir = (pde*)(g_dyn_pdpt[i] & (BM_40_BITS << 12));
 
     // Populate the page directory.
-    for (uint64_t j = pd_start; j <= (i < pdpt_end ? 511 : pd_end); j++)
+    for (uint64_t j = pd_index; j <= (i < pdpt_end ? 511 : pd_end); j++)
     {
       // Extract the table address from the directory.
       pte* tab = (pte*)(dir[j] & (BM_40_BITS << 12));
 
       // Populate the page table.
-      for (uint64_t k = pt_start; k <= (i < pdpt_end || j < pd_end ? 511 : pt_end); k++)
+      for (uint64_t k = pt_index; k <= (i < pdpt_end || j < pd_end ? 511 : pt_end); k++)
       {
         if (addr <= phys_end)
         {
@@ -748,7 +759,16 @@ k_regn k_paging_map_range(k_regn start, k_regn end)
           addr += 0x1000;
         }
       }
+
+      // Reset the page table index so that we start at the
+      // beginning of the next page table.
+      pt_index = 0;
+
     }
+
+    // Reset the page directory index so that we start at the
+    // beginning of the next page directory.
+    pd_index = 0;
   }
 
   // END paging structure population
