@@ -27,6 +27,17 @@ void k_outb(uint16_t port, uint8_t val);
  */
 uint8_t k_inb(uint16_t port);
 
+/**
+ * Reads a word from an I/O port.
+ *
+ * Params:
+ *   uint16_t - an I/O port
+ *
+ * Returns:
+ *   uint16_t - a two-byte word
+ */
+uint8_t k_inw(uint16_t port);
+
 
 /**
  * Disables interrupts.

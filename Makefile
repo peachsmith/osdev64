@@ -52,6 +52,7 @@ syscall.o \
 file.o \
 tty.o \
 pci.o \
+ide.o \
 task_demo.o \
 klibc.o
 
@@ -102,6 +103,7 @@ myos.efi: klibc.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/file.c -o file.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/tty.c -o tty.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/pci.c -o pci.o
+	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/ide.c -o ide.o
 	$(CC) $(CINCLUDES) $(CFLAGS) -c src/osdev64/task_demo.c -o task_demo.o
 
 	$(LD) -shared -Bsymbolic -L$(GNUEFI_DIR)/x86_64/gnuefi -L$(GNUEFI_DIR)/x86_64/lib -T$(GNUEFI_DIR)/gnuefi/elf_x86_64_efi.lds $(OBJECTS) -o main.so -lgnuefi -lefi

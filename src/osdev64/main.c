@@ -27,6 +27,7 @@
 #include "osdev64/ps2.h"
 #include "osdev64/tty.h"
 #include "osdev64/pci.h"
+#include "osdev64/ide.h"
 
 // temporary task demo for debugging task code
 #include "osdev64/task_demo.h"
@@ -437,6 +438,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE* systab)
   int count = 0;
 
   k_pci_init();
+
+  k_ide_init();
 
   // The main loop.
   for (;;)

@@ -203,13 +203,8 @@ uint64_t* apic_pit_handler(uint64_t* regs)
 
 void apic_generic_legacy_handler(uint8_t irqn)
 {
-  // fprintf(stddbg, "APIC IRQ %u\n", irqn);
-  if (irqn == 1)
-  {
-    uint8_t sc = k_inb(0x60);
-    k_ps2_handle_scancode(sc);
-    // fprintf(stddbg, "read %X from keyboard\n", kb);
-  }
+  // DEBUG
+  fprintf(stddbg, "[APIC] IRQ %u\n", irqn);
 
   // Check the local APIC's ISR to see if we need to send an EOI.
   // Since legacy IRQs should have been mapped starting at interrupt 0x30,
@@ -217,8 +212,20 @@ void apic_generic_legacy_handler(uint8_t irqn)
   uint32_t isr1 = lapic_read(LAPIC_ISR1);
   if (isr1 & (0x10000 << irqn))
   {
+    // Handle keyboard IRQ.
+    if (irqn == 1)
+    {
+      uint8_t sc = k_inb(0x60);
+      k_ps2_handle_scancode(sc);
+    }
+
     lapic_write(LAPIC_EOI, 0);
   }
+  // DEBUG
+  // else
+  // {
+  //   fprintf(stddbg, "[APIC] received an IRQ whose ISR pin was not set\n");
+  // }
 }
 
 void debug_handler()

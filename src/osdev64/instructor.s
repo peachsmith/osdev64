@@ -85,6 +85,22 @@ k_inb:
   retq
 
 
+# Executes the IN instruction to read a 16-bit value from a 16-bit port.
+# The argument is a 16-bit port number.
+# This procedure does not modify the stack or base pointers.
+#
+# Params:
+#   RDI - a 16-bit port number
+#
+# Returns:
+#   RAX - an 16-bit value
+.global k_inw
+k_inw:
+  mov %di, %dx
+  in %dx, %ax
+  retq
+
+
 # Executes the LGDT instruction to load the address of the GDT into the GDTR.
 #
 # Params:

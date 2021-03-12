@@ -511,55 +511,55 @@ apic_irq_2:
   iretq
 
 apic_irq_3:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 3, apic_generic_legacy_handler
   iretq
 
 apic_irq_4:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 4, apic_generic_legacy_handler
   iretq
   
 apic_irq_5:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 5, apic_generic_legacy_handler
   iretq
 
 apic_irq_6:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 6, apic_generic_legacy_handler
   iretq
 
 apic_irq_7:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 7, apic_generic_legacy_handler
   iretq
 
 apic_irq_8:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 8, apic_generic_legacy_handler
   iretq
 
 apic_irq_9:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 9, apic_generic_legacy_handler
   iretq
 
 apic_irq_10:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 10, apic_generic_legacy_handler
   iretq
 
 apic_irq_11:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 11, apic_generic_legacy_handler
   iretq
 
 apic_irq_12:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 12, apic_generic_legacy_handler
   iretq
 
 apic_irq_13:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 13, apic_generic_legacy_handler
   iretq
 
 apic_irq_14:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 14, apic_generic_legacy_handler
   iretq
 
 apic_irq_15:
-  handle_generic_irq 1, apic_generic_legacy_handler
+  handle_generic_irq 15, apic_generic_legacy_handler
   iretq
 
 
